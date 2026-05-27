@@ -20,6 +20,8 @@ export const Route = createFileRoute("/")({
 const defaults: BTLInputs = {
   purchasePrice: 200000,
   deposit: 50000,
+  depositPct: 25,
+  depositIsPct: false,
   interestRate: 5.5,
   mortgageTermYears: 25,
   monthlyRent: 1200,
