@@ -53,9 +53,12 @@ export interface BTLResults {
 }
 
 export function calculateBTL(i: BTLInputs): BTLResults {
-  const loanAmount = Math.max(0, i.purchasePrice - i.deposit);
+  const depositAmount = i.depositIsPct
+    ? Math.round(i.purchasePrice * (i.depositPct / 100))
+    : i.deposit;
+  const loanAmount = Math.max(0, i.purchasePrice - depositAmount);
   const ltv = i.purchasePrice ? (loanAmount / i.purchasePrice) * 100 : 0;
-  const totalCashIn = i.deposit + i.stampDuty + i.legalFees + i.refurbCosts + i.surveyFees;
+  const totalCashIn = depositAmount + i.stampDuty + i.legalFees + i.refurbCosts + i.surveyFees;
 
   const r = i.interestRate / 100 / 12;
   const n = i.mortgageTermYears * 12;
