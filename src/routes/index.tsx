@@ -89,9 +89,40 @@ function Index() {
               <NumberField id="price" label="Purchase price" prefix="£" step={1000}
                 value={inputs.purchasePrice}
                 onChange={(v) => set("purchasePrice", v)} />
-              <NumberField id="deposit" label="Deposit" prefix="£" step={1000}
-                value={inputs.deposit} onChange={(v) => set("deposit", v)}
-                hint={`LTV: ${fmtPct(r.ltv, 1)}`} />
+              <div className="flex items-end gap-2">
+                <div className="flex-1">
+                  <NumberField
+                    id="deposit"
+                    label="Deposit"
+                    prefix={inputs.depositIsPct ? undefined : "£"}
+                    suffix={inputs.depositIsPct ? "%" : undefined}
+                    step={inputs.depositIsPct ? 1 : 1000}
+                    value={inputs.depositIsPct ? inputs.depositPct : inputs.deposit}
+                    onChange={(v) => set(inputs.depositIsPct ? "depositPct" : "deposit", v)}
+                    hint={depositHint}
+                  />
+                </div>
+                <div className="flex overflow-hidden rounded-md border border-border">
+                  <Button
+                    type="button"
+                    variant={inputs.depositIsPct ? "ghost" : "secondary"}
+                    size="sm"
+                    className="rounded-none"
+                    onClick={() => setDepositMode(false)}
+                  >
+                    £
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={inputs.depositIsPct ? "secondary" : "ghost"}
+                    size="sm"
+                    className="rounded-none"
+                    onClick={() => setDepositMode(true)}
+                  >
+                    %
+                  </Button>
+                </div>
+              </div>
               <NumberField id="rent" label="Expected monthly rent" prefix="£"
                 value={inputs.monthlyRent} onChange={(v) => set("monthlyRent", v)} />
             </InputGroup>
