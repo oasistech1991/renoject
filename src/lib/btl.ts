@@ -1,6 +1,8 @@
 export interface BTLInputs {
   purchasePrice: number;
-  deposit: number;
+  deposit: number; // absolute £ (used when depositIsPct = false)
+  depositPct: number; // % of purchasePrice (used when depositIsPct = true)
+  depositIsPct: boolean;
   interestRate: number; // annual %
   mortgageTermYears: number;
   monthlyRent: number;
