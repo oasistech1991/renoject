@@ -20,6 +20,8 @@ export const Route = createFileRoute("/")({
 const defaults: BTLInputs = {
   purchasePrice: 200000,
   deposit: 50000,
+  depositPct: 25,
+  depositIsPct: false,
   interestRate: 5.5,
   mortgageTermYears: 25,
   monthlyRent: 1200,
@@ -46,6 +48,22 @@ function Index() {
   const autoStamp = () => set("stampDuty", calcStampDuty(inputs.purchasePrice));
   const reset = () => setInputs(defaults);
 
+  const setDepositMode = (isPct: boolean) => {
+    if (isPct === inputs.depositIsPct) return;
+    setInputs((p) => {
+      if (isPct) {
+        const pct = p.purchasePrice > 0 ? (p.deposit / p.purchasePrice) * 100 : 0;
+        return { ...p, depositIsPct: true, depositPct: Math.round(pct * 10) / 10 };
+      }
+      const amount = Math.round(p.purchasePrice * (p.depositPct / 100));
+      return { ...p, depositIsPct: false, deposit: amount };
+    });
+  };
+
+  const depositHint = inputs.depositIsPct
+    ? `= ${fmtGBP(Math.round(inputs.purchasePrice * (inputs.depositPct / 100)))} · LTV: ${fmtPct(r.ltv, 1)}`
+    : `${fmtPct((inputs.purchasePrice ? (inputs.deposit / inputs.purchasePrice) * 100 : 0), 1)} of price · LTV: ${fmtPct(r.ltv, 1)}`;
+
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b border-border bg-card/50 backdrop-blur">
@@ -71,9 +89,40 @@ function Index() {
               <NumberField id="price" label="Purchase price" prefix="£" step={1000}
                 value={inputs.purchasePrice}
                 onChange={(v) => set("purchasePrice", v)} />
-              <NumberField id="deposit" label="Deposit" prefix="£" step={1000}
-                value={inputs.deposit} onChange={(v) => set("deposit", v)}
-                hint={`LTV: ${fmtPct(r.ltv, 1)}`} />
+              <div className="flex items-end gap-2">
+                <div className="flex-1">
+                  <NumberField
+                    id="deposit"
+                    label="Deposit"
+                    prefix={inputs.depositIsPct ? undefined : "£"}
+                    suffix={inputs.depositIsPct ? "%" : undefined}
+                    step={inputs.depositIsPct ? 1 : 1000}
+                    value={inputs.depositIsPct ? inputs.depositPct : inputs.deposit}
+                    onChange={(v) => set(inputs.depositIsPct ? "depositPct" : "deposit", v)}
+                    hint={depositHint}
+                  />
+                </div>
+                <div className="flex overflow-hidden rounded-md border border-border">
+                  <Button
+                    type="button"
+                    variant={inputs.depositIsPct ? "ghost" : "secondary"}
+                    size="sm"
+                    className="rounded-none"
+                    onClick={() => setDepositMode(false)}
+                  >
+                    £
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={inputs.depositIsPct ? "secondary" : "ghost"}
+                    size="sm"
+                    className="rounded-none"
+                    onClick={() => setDepositMode(true)}
+                  >
+                    %
+                  </Button>
+                </div>
+              </div>
               <NumberField id="rent" label="Expected monthly rent" prefix="£"
                 value={inputs.monthlyRent} onChange={(v) => set("monthlyRent", v)} />
             </InputGroup>
