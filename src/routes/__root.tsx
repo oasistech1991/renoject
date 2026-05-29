@@ -117,8 +117,27 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
+      <TopNav />
       {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
       <Outlet />
     </QueryClientProvider>
+  );
+}
+
+function TopNav() {
+  const linkBase =
+    "px-4 py-2 text-sm font-medium rounded-md transition-colors text-muted-foreground hover:text-foreground hover:bg-accent/50";
+  const activeCls = "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground";
+  return (
+    <div className="border-b border-border bg-card/30 backdrop-blur">
+      <nav className="mx-auto flex max-w-7xl items-center gap-2 px-6 py-2">
+        <Link to="/" className={linkBase} activeOptions={{ exact: true }} activeProps={{ className: `${linkBase} ${activeCls}` }}>
+          BTL Calculator
+        </Link>
+        <Link to="/hmo-compliance" className={linkBase} activeProps={{ className: `${linkBase} ${activeCls}` }}>
+          HMO Floorplan Compliance
+        </Link>
+      </nav>
+    </div>
   );
 }
