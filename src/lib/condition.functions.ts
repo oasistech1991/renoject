@@ -24,14 +24,26 @@ export const analyseCondition = createServerFn({ method: "POST" })
   .inputValidator(
     (input: {
       images: string[]; // data URLs
+      rightmoveUrl?: string;
       propertyType: string;
       bedrooms: number;
       location: string;
       targetStandard: "basic" | "mid" | "premium";
       notes?: string;
     }) => {
-      if (!Array.isArray(input.images) || input.images.length === 0) {
-        throw new Error("At least one image required");
+      const hasUrl = !!input.rightmoveUrl && input.rightmoveUrl.trim().length > 0;
+      if ((!Array.isArray(input.images) || input.images.length === 0) && !hasUrl) {
+        throw new Error("Provide at least one photo or a Rightmove URL");
+      }
+      if (hasUrl) {
+        try {
+          const u = new URL(input.rightmoveUrl!);
+          if (!/rightmove\.co\.uk$/i.test(u.hostname) && !/\.rightmove\.co\.uk$/i.test(u.hostname)) {
+            throw new Error("URL must be a rightmove.co.uk link");
+          }
+        } catch {
+          throw new Error("Invalid Rightmove URL");
+        }
       }
       if (input.images.length > 12) throw new Error("Max 12 images");
       for (const img of input.images) {
@@ -46,6 +58,64 @@ export const analyseCondition = createServerFn({ method: "POST" })
   .handler(async ({ data }): Promise<ConditionResult> => {
     const apiKey = process.env.LOVABLE_API_KEY;
     if (!apiKey) throw new Error("LOVABLE_API_KEY not configured");
+
+    // Optionally scrape Rightmove listing for images + description
+    let listingImages: string[] = [];
+    let listingContext = "";
+    if (data.rightmoveUrl) {
+      try {
+        const pageRes = await fetch(data.rightmoveUrl, {
+          headers: {
+            "User-Agent":
+              "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36",
+            "Accept": "text/html,application/xhtml+xml",
+          },
+        });
+        if (!pageRes.ok) throw new Error(`Rightmove returned ${pageRes.status}`);
+        const html = await pageRes.text();
+
+        // Extract media image URLs (Rightmove serves photos from media.rightmove.co.uk)
+        const imgMatches = Array.from(
+          html.matchAll(/https:\/\/media\.rightmove\.co\.uk\/[^"'\s)]+\.(?:jpe?g|png|webp)/gi),
+        ).map((m) => m[0]);
+        // Dedupe and prefer larger/max variants, drop floorplans/EPC/logo
+        const unique = Array.from(new Set(imgMatches)).filter(
+          (u) => !/FLP|EPC|logo|brand/i.test(u),
+        );
+        listingImages = unique.slice(0, 12);
+
+        const pick = (re: RegExp) => {
+          const m = html.match(re);
+          return m ? m[1].replace(/\s+/g, " ").trim() : "";
+        };
+        const ogTitle = pick(/<meta[^>]+property=["']og:title["'][^>]+content=["']([^"']+)["']/i);
+        const ogDesc = pick(/<meta[^>]+property=["']og:description["'][^>]+content=["']([^"']+)["']/i);
+        const pageTitle = pick(/<title>([^<]+)<\/title>/i);
+        listingContext = [
+          ogTitle && `Listing title: ${ogTitle}`,
+          pageTitle && `Page title: ${pageTitle}`,
+          ogDesc && `Listing description: ${ogDesc}`,
+          `Source: ${data.rightmoveUrl}`,
+          `Scraped ${listingImages.length} photos from the listing.`,
+        ]
+          .filter(Boolean)
+          .join("\n");
+      } catch (e) {
+        throw new Error(
+          `Could not load Rightmove listing: ${(e as Error).message}. Try again or upload photos manually.`,
+        );
+      }
+    }
+
+    // Combine uploaded data-URL images with scraped listing URLs (cap at 14 total)
+    const allImages: Array<{ url: string }> = [
+      ...data.images.map((url) => ({ url })),
+      ...listingImages.map((url) => ({ url })),
+    ].slice(0, 14);
+
+    if (allImages.length === 0) {
+      throw new Error("No photos found on the Rightmove listing. Please upload photos instead.");
+    }
 
     const system = `You are a UK lettings refurbishment surveyor. You inspect interior photographs of a property and produce a structured assessment of its current condition and the works required to bring it to a lettable rental standard.
 
@@ -92,8 +162,8 @@ Bedrooms: ${data.bedrooms}
 Location: ${data.location}
 Target rental standard: ${data.targetStandard}
 Additional notes: ${data.notes || "(none)"}
-
-Inspect the ${data.images.length} attached interior photos and return the JSON assessment.`;
+${listingContext ? `\nRightmove listing details:\n${listingContext}\n` : ""}
+Inspect the ${allImages.length} attached property photos and return the JSON assessment.`;
 
     const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -109,7 +179,7 @@ Inspect the ${data.images.length} attached interior photos and return the JSON a
             role: "user",
             content: [
               { type: "text", text: userText },
-              ...data.images.map((url) => ({
+              ...allImages.map(({ url }) => ({
                 type: "image_url" as const,
                 image_url: { url },
               })),
