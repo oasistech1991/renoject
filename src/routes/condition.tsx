@@ -97,7 +97,7 @@ function ConditionPage() {
             <div>
               <h1 className="text-lg font-semibold leading-tight">Renovation Calculator</h1>
               <p className="text-xs text-muted-foreground">
-                Upload interior photos for an AI condition score and refurb estimate
+                Upload interior photos for an AI renovation estimate and condition score
               </p>
             </div>
           </div>
@@ -231,7 +231,7 @@ function ConditionPage() {
             </div>
 
             <Button className="w-full" disabled={!canSubmit} onClick={() => mutation.mutate()}>
-              {mutation.isPending ? "Analysing photos…" : "Analyse condition"}
+              {mutation.isPending ? "Analysing photos…" : "Calculate renovation"}
             </Button>
 
             {mutation.isError && (
@@ -243,7 +243,7 @@ function ConditionPage() {
           <section className="space-y-5">
             {!result && !mutation.isPending && (
               <div className="flex min-h-[400px] flex-col items-center justify-center rounded-xl border border-border bg-card p-6 text-center text-muted-foreground">
-                <h2 className="text-lg font-semibold text-foreground">Condition report</h2>
+                <h2 className="text-lg font-semibold text-foreground">Renovation report</h2>
                 <p className="mt-2 max-w-md text-sm">
                   Upload interior photos of the property. You'll get an overall 1-10 score,
                   a room-by-room breakdown, the works needed and an estimated cost to bring
@@ -268,7 +268,7 @@ function ConditionPage() {
                 <div className="grid gap-4 sm:grid-cols-3">
                   <div className="rounded-xl border border-border bg-card p-5">
                     <div className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                      Condition score
+                      Condition score (1-10)
                     </div>
                     <div className="mt-2 flex items-baseline gap-1">
                       <span className="text-4xl font-bold tabular-nums text-primary">
