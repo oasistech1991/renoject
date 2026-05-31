@@ -131,6 +131,9 @@ function TopNav() {
   return (
     <div className="border-b border-border bg-card/30 backdrop-blur">
       <nav className="mx-auto flex max-w-7xl items-center gap-2 px-6 py-2">
+        <Link to="/" className="mr-4 text-sm font-bold tracking-wide text-foreground">
+          HARTSTONE HOLDINGS
+        </Link>
         <Link to="/" className={linkBase} activeOptions={{ exact: true }} activeProps={{ className: `${linkBase} ${activeCls}` }}>
           BTL Calculator
         </Link>
