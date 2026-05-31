@@ -137,6 +137,9 @@ function TopNav() {
         <Link to="/hmo-compliance" className={linkBase} activeProps={{ className: `${linkBase} ${activeCls}` }}>
           HMO Floorplan Compliance
         </Link>
+        <Link to="/condition" className={linkBase} activeProps={{ className: `${linkBase} ${activeCls}` }}>
+          Condition Analyser
+        </Link>
       </nav>
     </div>
   );
