@@ -10,11 +10,17 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as HmoComplianceRouteImport } from './routes/hmo-compliance'
+import { Route as ConditionRouteImport } from './routes/condition'
 import { Route as IndexRouteImport } from './routes/index'
 
 const HmoComplianceRoute = HmoComplianceRouteImport.update({
   id: '/hmo-compliance',
   path: '/hmo-compliance',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ConditionRoute = ConditionRouteImport.update({
+  id: '/condition',
+  path: '/condition',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
@@ -25,27 +31,31 @@ const IndexRoute = IndexRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/condition': typeof ConditionRoute
   '/hmo-compliance': typeof HmoComplianceRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/condition': typeof ConditionRoute
   '/hmo-compliance': typeof HmoComplianceRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/condition': typeof ConditionRoute
   '/hmo-compliance': typeof HmoComplianceRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/hmo-compliance'
+  fullPaths: '/' | '/condition' | '/hmo-compliance'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/hmo-compliance'
-  id: '__root__' | '/' | '/hmo-compliance'
+  to: '/' | '/condition' | '/hmo-compliance'
+  id: '__root__' | '/' | '/condition' | '/hmo-compliance'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  ConditionRoute: typeof ConditionRoute
   HmoComplianceRoute: typeof HmoComplianceRoute
 }
 
@@ -56,6 +66,13 @@ declare module '@tanstack/react-router' {
       path: '/hmo-compliance'
       fullPath: '/hmo-compliance'
       preLoaderRoute: typeof HmoComplianceRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/condition': {
+      id: '/condition'
+      path: '/condition'
+      fullPath: '/condition'
+      preLoaderRoute: typeof ConditionRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/': {
@@ -70,6 +87,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  ConditionRoute: ConditionRoute,
   HmoComplianceRoute: HmoComplianceRoute,
 }
 export const routeTree = rootRouteImport
