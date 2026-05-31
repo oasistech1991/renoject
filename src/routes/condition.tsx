@@ -31,6 +31,7 @@ function ConditionPage() {
   const fileRef = useRef<HTMLInputElement>(null);
 
   const [images, setImages] = useState<{ url: string; name: string }[]>([]);
+  const [rightmoveUrl, setRightmoveUrl] = useState("");
   const [propertyType, setPropertyType] = useState("Mid-terrace house");
   const [bedrooms, setBedrooms] = useState(3);
   const [location, setLocation] = useState("");
@@ -43,6 +44,7 @@ function ConditionPage() {
       analyse({
         data: {
           images: images.map((i) => i.url),
+          rightmoveUrl: rightmoveUrl.trim() || undefined,
           propertyType,
           bedrooms,
           location,
@@ -78,7 +80,9 @@ function ConditionPage() {
     setImages((prev) => prev.filter((_, i) => i !== idx));
 
   const canSubmit =
-    images.length > 0 && location.trim().length > 0 && !mutation.isPending;
+    (images.length > 0 || rightmoveUrl.trim().length > 0) &&
+    location.trim().length > 0 &&
+    !mutation.isPending;
 
   const result = mutation.data;
 
@@ -104,6 +108,23 @@ function ConditionPage() {
         <div className="grid gap-8 lg:grid-cols-[400px_1fr]">
           {/* Inputs */}
           <section className="space-y-5 rounded-xl border border-border bg-card p-5">
+            <div>
+              <label htmlFor="rmurl" className="text-sm font-medium">
+                Rightmove listing URL (optional)
+              </label>
+              <input
+                id="rmurl"
+                type="url"
+                value={rightmoveUrl}
+                onChange={(e) => setRightmoveUrl(e.target.value)}
+                placeholder="https://www.rightmove.co.uk/properties/123456789"
+                className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+              />
+              <p className="mt-1 text-xs text-muted-foreground">
+                Paste a Rightmove URL and we'll pull the listing photos automatically. You can also upload photos below.
+              </p>
+            </div>
+
             <div>
               <label className="text-sm font-medium">Interior photos</label>
               <div
