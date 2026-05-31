@@ -72,16 +72,16 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Lovable App" },
-      { name: "description", content: "Property Profit Pal calculates buy-to-let property investment metrics." },
-      { name: "author", content: "Lovable" },
-      { property: "og:title", content: "Lovable App" },
-      { property: "og:description", content: "Property Profit Pal calculates buy-to-let property investment metrics." },
+      { title: "HARTSTONE HOLDINGS" },
+      { name: "description", content: "Property investment tools by HARTSTONE HOLDINGS — BTL calculator, HMO compliance checker and property condition analyser." },
+      { name: "author", content: "HARTSTONE HOLDINGS" },
+      { property: "og:title", content: "HARTSTONE HOLDINGS" },
+      { property: "og:description", content: "Property investment tools by HARTSTONE HOLDINGS — BTL calculator, HMO compliance checker and property condition analyser." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
-      { name: "twitter:site", content: "@Lovable" },
-      { name: "twitter:title", content: "Lovable App" },
-      { name: "twitter:description", content: "Property Profit Pal calculates buy-to-let property investment metrics." },
+      { name: "twitter:site", content: "@HartstoneHoldings" },
+      { name: "twitter:title", content: "HARTSTONE HOLDINGS" },
+      { name: "twitter:description", content: "Property investment tools by HARTSTONE HOLDINGS — BTL calculator, HMO compliance checker and property condition analyser." },
       { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/c1276a80-d9e7-4e45-ab8c-0ace548ad884/id-preview-f90c6f5c--33ab3ec4-e05b-416f-827e-db8cec69c227.lovable.app-1779874236024.png" },
       { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/c1276a80-d9e7-4e45-ab8c-0ace548ad884/id-preview-f90c6f5c--33ab3ec4-e05b-416f-827e-db8cec69c227.lovable.app-1779874236024.png" },
     ],
@@ -131,6 +131,9 @@ function TopNav() {
   return (
     <div className="border-b border-border bg-card/30 backdrop-blur">
       <nav className="mx-auto flex max-w-7xl items-center gap-2 px-6 py-2">
+        <Link to="/" className="mr-4 text-sm font-bold tracking-wide text-foreground">
+          HARTSTONE HOLDINGS
+        </Link>
         <Link to="/" className={linkBase} activeOptions={{ exact: true }} activeProps={{ className: `${linkBase} ${activeCls}` }}>
           BTL Calculator
         </Link>
