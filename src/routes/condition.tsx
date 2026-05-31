@@ -31,6 +31,7 @@ function ConditionPage() {
   const fileRef = useRef<HTMLInputElement>(null);
 
   const [images, setImages] = useState<{ url: string; name: string }[]>([]);
+  const [rightmoveUrl, setRightmoveUrl] = useState("");
   const [propertyType, setPropertyType] = useState("Mid-terrace house");
   const [bedrooms, setBedrooms] = useState(3);
   const [location, setLocation] = useState("");
@@ -43,6 +44,7 @@ function ConditionPage() {
       analyse({
         data: {
           images: images.map((i) => i.url),
+          rightmoveUrl: rightmoveUrl.trim() || undefined,
           propertyType,
           bedrooms,
           location,
@@ -78,7 +80,9 @@ function ConditionPage() {
     setImages((prev) => prev.filter((_, i) => i !== idx));
 
   const canSubmit =
-    images.length > 0 && location.trim().length > 0 && !mutation.isPending;
+    (images.length > 0 || rightmoveUrl.trim().length > 0) &&
+    location.trim().length > 0 &&
+    !mutation.isPending;
 
   const result = mutation.data;
 
