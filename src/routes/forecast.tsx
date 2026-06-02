@@ -165,16 +165,16 @@ function ForecastPage() {
               >
                 <ResponsiveContainer width="100%" height={300}>
                   <BarChart data={perDeal} margin={{ top: 10, right: 12, left: 0, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                    <XAxis dataKey="name" tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" />
-                    <YAxis tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" tickFormatter={(v) => `£${(v/1000).toFixed(0)}k`} />
+                    <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+                    <XAxis dataKey="name" tick={{ fontSize: 11 }} stroke="var(--muted-foreground)" />
+                    <YAxis tick={{ fontSize: 11 }} stroke="var(--muted-foreground)" tickFormatter={(v) => `£${(v/1000).toFixed(0)}k`} />
                     <Tooltip
-                      contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12 }}
+                      contentStyle={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: 8, fontSize: 12 }}
                       formatter={(v: number) => fmtGBP(v)}
                     />
                     <Legend wrapperStyle={{ fontSize: 12 }} />
-                    <Bar dataKey="monthly" name="Monthly CF" fill="hsl(var(--primary))" radius={[4,4,0,0]} />
-                    <Bar dataKey="annual" name="Annual CF" fill="hsl(var(--accent))" radius={[4,4,0,0]} />
+                    <Bar dataKey="monthly" name="Monthly CF" fill="var(--primary)" radius={[4,4,0,0]} />
+                    <Bar dataKey="annual" name="Annual CF" fill="var(--accent)" radius={[4,4,0,0]} />
                   </BarChart>
                 </ResponsiveContainer>
               </ChartCard>
@@ -185,16 +185,16 @@ function ForecastPage() {
               >
                 <ResponsiveContainer width="100%" height={300}>
                   <BarChart data={cumulative} margin={{ top: 10, right: 12, left: 0, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                    <XAxis dataKey="month" tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" />
-                    <YAxis tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" tickFormatter={(v) => `£${(v/1000).toFixed(0)}k`} />
+                    <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+                    <XAxis dataKey="month" tick={{ fontSize: 11 }} stroke="var(--muted-foreground)" />
+                    <YAxis tick={{ fontSize: 11 }} stroke="var(--muted-foreground)" tickFormatter={(v) => `£${(v/1000).toFixed(0)}k`} />
                     <Tooltip
-                      contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12 }}
+                      contentStyle={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: 8, fontSize: 12 }}
                       formatter={(v: number) => fmtGBP(v)}
                     />
                     <Legend wrapperStyle={{ fontSize: 12 }} />
-                    <Bar dataKey="rent" name="Cumulative rent" fill="hsl(var(--muted-foreground))" radius={[4,4,0,0]} />
-                    <Bar dataKey="cashflow" name="Cumulative cashflow" fill="hsl(var(--primary))" radius={[4,4,0,0]} />
+                    <Bar dataKey="rent" name="Cumulative rent" fill="var(--muted-foreground)" radius={[4,4,0,0]} />
+                    <Bar dataKey="cashflow" name="Cumulative cashflow" fill="var(--primary)" radius={[4,4,0,0]} />
                   </BarChart>
                 </ResponsiveContainer>
               </ChartCard>
