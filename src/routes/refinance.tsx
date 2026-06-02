@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useServerFn } from "@tanstack/react-start";
 import { calcStampDuty, fmtGBP, fmtPct } from "@/lib/btl";
 import { calculateRefinance, fmtROI, type RefinanceInputs } from "@/lib/refinance";
 import { MetricCard } from "@/components/btl/MetricCard";
@@ -9,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { PROPERTY_SOURCES, type PropertySource } from "@/lib/sources";
 import { PropertyMedia } from "@/components/property/PropertyMedia";
+import { parsePropertyPdf, parsePropertyUrl } from "@/lib/import-deal.functions";
 
 export const Route = createFileRoute("/refinance")({
   validateSearch: (s: Record<string, unknown>) => ({
@@ -89,6 +91,12 @@ function RefinancePage() {
   const [saving, setSaving] = useState(false);
   const [savedAt, setSavedAt] = useState<Date | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [importing, setImporting] = useState(false);
+  const [importMsg, setImportMsg] = useState<string | null>(null);
+  const [importUrl, setImportUrl] = useState("");
+  const fileRef = useRef<HTMLInputElement>(null);
+  const parsePdf = useServerFn(parsePropertyPdf);
+  const parseUrl = useServerFn(parsePropertyUrl);
   const set = <K extends keyof RefinanceInputs>(k: K, v: RefinanceInputs[K]) =>
     setInputs((p) => ({ ...p, [k]: v }));
 
@@ -235,6 +243,75 @@ function RefinancePage() {
     });
   };
 
+  const applyExtracted = (extracted: Record<string, number | string | boolean>) => {
+    const next: any = { ...defaults, ...inputs };
+    for (const [k, v] of Object.entries(extracted)) {
+      if (k === "propertyName") continue;
+      if (k in next) next[k] = v;
+    }
+    if (typeof extracted.purchasePrice === "number" && typeof extracted.stampDuty !== "number") {
+      next.stampDuty = calcStampDuty(extracted.purchasePrice);
+    }
+    setInputs(next as RefinanceInputs);
+    if (typeof extracted.propertyName === "string" && extracted.propertyName.trim()) {
+      setPropertyName(extracted.propertyName.trim());
+    }
+  };
+
+  const onPickFile = () => fileRef.current?.click();
+  const onFileChosen = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    if (file.type !== "application/pdf" && !file.name.toLowerCase().endsWith(".pdf")) {
+      setImportMsg("Please choose a PDF file.");
+      return;
+    }
+    if (file.size > 15 * 1024 * 1024) {
+      setImportMsg("PDF is too large (max 15 MB).");
+      return;
+    }
+    setImporting(true);
+    setImportMsg("Reading PDF and extracting deal details…");
+    try {
+      const buf = new Uint8Array(await file.arrayBuffer());
+      let bin = "";
+      for (let i = 0; i < buf.length; i++) bin += String.fromCharCode(buf[i]);
+      const pdfBase64 = btoa(bin);
+      const { extracted, warning } = await parsePdf({ data: { pdfBase64, filename: file.name } });
+      if (warning) {
+        setImportMsg(warning);
+      } else {
+        applyExtracted(extracted);
+        setImportMsg(`Auto-filled ${Object.keys(extracted).length} field(s) from PDF.`);
+      }
+    } catch (err: any) {
+      setImportMsg(err?.message ?? "Failed to import PDF.");
+    } finally {
+      setImporting(false);
+    }
+  };
+
+  const onImportUrl = async () => {
+    const url = importUrl.trim();
+    if (!url) return;
+    setImporting(true);
+    setImportMsg("Fetching listing and extracting deal details…");
+    try {
+      const { extracted, warning } = await parseUrl({ data: { url } });
+      if (warning) {
+        setImportMsg(warning);
+      } else {
+        applyExtracted(extracted);
+        setImportMsg(`Auto-filled ${Object.keys(extracted).length} field(s) from URL.`);
+      }
+    } catch (err: any) {
+      setImportMsg(err?.message ?? "Failed to import URL.");
+    } finally {
+      setImporting(false);
+    }
+  };
+
   const verdictTone =
     r.verdict === "full"
       ? "border-primary bg-primary/10 text-primary"
@@ -308,6 +385,38 @@ function RefinancePage() {
                 : `Last saved ${savedAt?.toLocaleTimeString()}${propertyId ? " · syncing changes will update this deal" : ""}`}
             </p>
           )}
+          <div className="rounded-md border border-dashed border-border bg-background/40 p-3">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+              <p className="text-xs font-medium text-muted-foreground sm:w-40">
+                Auto-fill from listing
+              </p>
+              <div className="flex flex-1 gap-2">
+                <Input
+                  type="url"
+                  placeholder="Paste a Rightmove / Zoopla / agent URL"
+                  value={importUrl}
+                  onChange={(e) => setImportUrl(e.target.value)}
+                  disabled={importing}
+                />
+                <Button size="sm" onClick={onImportUrl} disabled={importing || !importUrl.trim()}>
+                  {importing ? "Working…" : "Import URL"}
+                </Button>
+                <input
+                  ref={fileRef}
+                  type="file"
+                  accept="application/pdf,.pdf"
+                  className="hidden"
+                  onChange={onFileChosen}
+                />
+                <Button size="sm" variant="outline" onClick={onPickFile} disabled={importing}>
+                  PDF
+                </Button>
+              </div>
+            </div>
+            {importMsg && (
+              <p className="mt-2 text-xs text-muted-foreground">{importMsg}</p>
+            )}
+          </div>
         </div>
       </header>
 
