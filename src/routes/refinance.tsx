@@ -76,7 +76,7 @@ const defaults: RefinanceInputs = {
   flipAgencyFee: 0,
 };
 
-type CalcMethod = "mortgage" | "cash" | "bridge" | "brrr";
+type CalcMethod = "mortgage" | "cash" | "brrr";
 
 function RefinancePage() {
   const search = Route.useSearch();
@@ -115,15 +115,6 @@ function RefinancePage() {
         refurbCost: 0,
         refurbMonths: 0,
         holdingMonthly: 0,
-        gdv: inputs.purchasePrice,
-        refiLtv: 0,
-        refiFees: 0,
-      };
-    }
-    if (method === "bridge") {
-      return {
-        ...inputs,
-        useBridge: true,
         gdv: inputs.purchasePrice,
         refiLtv: 0,
         refiFees: 0,
@@ -265,7 +256,6 @@ function RefinancePage() {
                 <p className="text-xs text-muted-foreground">
                   {method === "mortgage" && "Standard BTL mortgage"}
                   {method === "cash" && "Cash purchase"}
-                  {method === "bridge" && "Bridge + Refurb"}
                   {method === "brrr" && "Buy · Refurb · Refinance · Rent"}
                 </p>
               </div>
@@ -335,7 +325,6 @@ function RefinancePage() {
                 {([
                   ["mortgage", "Mortgage"],
                   ["cash", "Cash"],
-                  ["bridge", "Bridge + Refurb"],
                   ["brrr", "BRRR"],
                 ] as const).map(([key, label]) => (
                   <Button
@@ -406,7 +395,7 @@ function RefinancePage() {
             </InputGroup>
             )}
 
-            {(method === "brrr" || method === "bridge") && (
+            {method === "brrr" && (
             <InputGroup title="Refurb">
               <NumberField id="refurb" label="Refurb cost" prefix="£" step={500}
                 value={inputs.refurbCost} onChange={(v) => set("refurbCost", v)} />
@@ -418,7 +407,7 @@ function RefinancePage() {
             </InputGroup>
             )}
 
-            {(method === "brrr" || method === "bridge") && (
+            {method === "brrr" && (
             <InputGroup title="Bridging finance">
               <label className="flex items-center justify-between gap-3 rounded-md border border-border bg-background px-3 py-2 text-sm">
                 <span>Fund purchase with a bridge?</span>
@@ -734,7 +723,7 @@ function RefinancePage() {
                 {r.additionalAcquisitionCosts > 0 && (
                   <Row label="Additional acquisition costs" value={fmtGBP(r.additionalAcquisitionCosts)} />
                 )}
-                {(method === "brrr" || method === "bridge") && (
+                {method === "brrr" && (
                   <>
                     <Row label="Refurb cost" value={fmtGBP(effectiveInputs.refurbCost)} />
                     {effectiveInputs.useBridge && effectiveInputs.bridgeFundsRefurb && (
