@@ -261,8 +261,13 @@ function RefinancePage() {
                 ↻
               </div>
               <div>
-                <h1 className="text-lg font-semibold leading-tight">Refinance / BRRR Calculator</h1>
-                <p className="text-xs text-muted-foreground">Buy · Refurb · Refinance · Rent</p>
+                <h1 className="text-lg font-semibold leading-tight">Property Calculator</h1>
+                <p className="text-xs text-muted-foreground">
+                  {method === "mortgage" && "Standard BTL mortgage"}
+                  {method === "cash" && "Cash purchase"}
+                  {method === "bridge" && "Bridge + Refurb"}
+                  {method === "brrr" && "Buy · Refurb · Refinance · Rent"}
+                </p>
               </div>
             </div>
             <Button variant="outline" size="sm" onClick={reset}>New / Reset</Button>
