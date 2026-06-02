@@ -363,7 +363,7 @@ function PropertiesPage() {
                       );
                     })()}
                     {(() => {
-                      const method: string = m.method ?? "brrr";
+                      const method: string = inferMethod(m, r.inputs);
                       const label = method === "btl" ? "BTL"
                         : method === "cash" ? "Cash"
                         : method === "mortgage" ? "Mortgage"
@@ -378,7 +378,7 @@ function PropertiesPage() {
                   </div>
                    <dl className="mt-4 grid grid-cols-2 gap-y-2 text-sm">
                     {(() => {
-                      const method: string = m.method ?? "brrr";
+                      const method: string = inferMethod(m, r.inputs);
                       const purchasePrice = m.purchasePrice ?? r.inputs?.purchasePrice ?? 0;
                       if (method === "btl") {
                         return (
