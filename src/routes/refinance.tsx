@@ -76,10 +76,13 @@ const defaults: RefinanceInputs = {
   flipAgencyFee: 0,
 };
 
+type CalcMethod = "mortgage" | "cash" | "bridge" | "brrr";
+
 function RefinancePage() {
   const search = Route.useSearch();
   const navigate = Route.useNavigate();
   const [inputs, setInputs] = useState<RefinanceInputs>(defaults);
+  const [method, setMethod] = useState<CalcMethod>("brrr");
   const [propertyName, setPropertyName] = useState("");
   const [propertyId, setPropertyId] = useState<string | null>(null);
   const [source, setSource] = useState<PropertySource | "">("");
@@ -89,7 +92,47 @@ function RefinancePage() {
   const set = <K extends keyof RefinanceInputs>(k: K, v: RefinanceInputs[K]) =>
     setInputs((p) => ({ ...p, [k]: v }));
 
-  const r = useMemo(() => calculateRefinance(inputs), [inputs]);
+  const effectiveInputs = useMemo<RefinanceInputs>(() => {
+    if (method === "cash") {
+      return {
+        ...inputs,
+        depositIsPct: true,
+        depositPct: 100,
+        deposit: inputs.purchasePrice,
+        purchaseRate: 0,
+        useBridge: false,
+        refurbCost: 0,
+        refurbMonths: 0,
+        gdv: inputs.purchasePrice,
+        refiLtv: 0,
+        refiFees: 0,
+      };
+    }
+    if (method === "mortgage") {
+      return {
+        ...inputs,
+        useBridge: false,
+        refurbCost: 0,
+        refurbMonths: 0,
+        holdingMonthly: 0,
+        gdv: inputs.purchasePrice,
+        refiLtv: 0,
+        refiFees: 0,
+      };
+    }
+    if (method === "bridge") {
+      return {
+        ...inputs,
+        useBridge: true,
+        gdv: inputs.purchasePrice,
+        refiLtv: 0,
+        refiFees: 0,
+      };
+    }
+    return inputs;
+  }, [inputs, method]);
+
+  const r = useMemo(() => calculateRefinance(effectiveInputs), [effectiveInputs]);
 
   const autoStamp = () => set("stampDuty", calcStampDuty(inputs.purchasePrice));
   const reset = () => {
