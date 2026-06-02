@@ -203,9 +203,23 @@ function RefinancePage() {
                       onChange={(e) => set("bridgeFundsRefurb", e.target.checked)}
                     />
                   </label>
-                  <NumberField id="brate2" label="Bridge rate (annual)" suffix="%" step={0.1}
-                    value={inputs.bridgeRate} onChange={(v) => set("bridgeRate", v)}
-                    hint="Typical: 0.7–0.95% per month (≈8.4–11.4% pa)" />
+                  <div className="flex items-end gap-2">
+                    <div className="flex-1">
+                      <NumberField
+                        id="brate2"
+                        label={inputs.bridgeRateIsPCM ? "Bridge rate (PCM)" : "Bridge rate (annual)"}
+                        suffix="%"
+                        step={0.05}
+                        value={inputs.bridgeRateIsPCM ? inputs.bridgeRatePCM : inputs.bridgeRate}
+                        onChange={(v) => set(inputs.bridgeRateIsPCM ? "bridgeRatePCM" : "bridgeRate", v)}
+                        hint={inputs.bridgeRateIsPCM ? `≈ ${(inputs.bridgeRatePCM * 12).toFixed(2)}% pa` : `≈ ${(inputs.bridgeRate / 12).toFixed(2)}% per month`}
+                      />
+                    </div>
+                    <div className="flex overflow-hidden rounded-md border border-border">
+                      <Button type="button" variant={inputs.bridgeRateIsPCM ? "secondary" : "ghost"} size="sm" className="rounded-none" onClick={() => set("bridgeRateIsPCM", true)}>PCM</Button>
+                      <Button type="button" variant={inputs.bridgeRateIsPCM ? "ghost" : "secondary"} size="sm" className="rounded-none" onClick={() => set("bridgeRateIsPCM", false)}>PA</Button>
+                    </div>
+                  </div>
                   <NumberField id="bterm" label="Bridge term" suffix="mo" step={1}
                     value={inputs.bridgeTermMonths} onChange={(v) => set("bridgeTermMonths", v)}
                     hint="Refurb time + buffer until refi completes" />
