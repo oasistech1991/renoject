@@ -14,7 +14,15 @@ export interface RefinanceInputs {
   refurbCost: number;
   refurbMonths: number;
   holdingMonthly: number; // council tax, utilities, insurance during refurb
-  bridgeRate: number; // annual %, 0 = cash funded
+  // Bridging finance
+  useBridge: boolean;
+  bridgeLoanPct: number; // % of purchase price covered by bridge
+  bridgeFundsRefurb: boolean; // bridge also funds the refurb cost
+  bridgeRate: number; // annual %
+  bridgeTermMonths: number; // bridge term until refi (>= refurbMonths)
+  bridgeArrangementPct: number; // % of bridge loan
+  bridgeExitPct: number; // % of bridge loan
+  bridgeInterestRolled: boolean; // true = rolled up & compounded, false = serviced monthly
   // Refinance
   gdv: number; // post-refurb valuation
   refiLtv: number; // %
@@ -36,7 +44,14 @@ export interface RefinanceResults {
   purchaseLoan: number;
   purchaseInterestMonthly: number;
   purchaseInterestDuringRefurb: number;
-  bridgeInterestDuringRefurb: number;
+  // Bridging
+  bridgeLoan: number;
+  bridgeArrangementFee: number;
+  bridgeExitFee: number;
+  bridgeInterestTotal: number;
+  bridgeInterestServicedMonthly: number;
+  bridgeRepaymentTotal: number; // principal + rolled interest + exit fee
+  bridgeLTGDV: number; // bridge debt vs GDV
   holdingCostsTotal: number;
   totalCashIn: number;
   newLoan: number;
@@ -63,32 +78,78 @@ export interface RefinanceResults {
 }
 
 export function calculateRefinance(i: RefinanceInputs): RefinanceResults {
-  const depositAmount = i.depositIsPct
-    ? Math.round(i.purchasePrice * (i.depositPct / 100))
-    : i.deposit;
-  const purchaseLoan = Math.max(0, i.purchasePrice - depositAmount);
-  const purchaseInterestMonthly = (purchaseLoan * (i.purchaseRate / 100)) / 12;
-  const purchaseInterestDuringRefurb = purchaseInterestMonthly * i.refurbMonths;
-  const bridgeInterestDuringRefurb =
-    (i.refurbCost * (i.bridgeRate / 100)) / 12 * i.refurbMonths;
+  // --- Acquisition financing ---
+  let depositAmount: number;
+  let purchaseLoan: number;
+  let purchaseInterestMonthly = 0;
+  let purchaseInterestDuringRefurb = 0;
+
+  let bridgeLoan = 0;
+  let bridgeArrangementFee = 0;
+  let bridgeExitFee = 0;
+  let bridgeInterestTotal = 0;
+  let bridgeInterestServicedMonthly = 0;
+  let bridgeRepaymentTotal = 0;
+
+  const termMonths = Math.max(i.bridgeTermMonths, i.refurbMonths);
+
+  if (i.useBridge) {
+    // Bridge funds % of purchase, optionally adds refurb
+    bridgeLoan = i.purchasePrice * (i.bridgeLoanPct / 100)
+      + (i.bridgeFundsRefurb ? i.refurbCost : 0);
+    bridgeArrangementFee = bridgeLoan * (i.bridgeArrangementPct / 100);
+    bridgeExitFee = bridgeLoan * (i.bridgeExitPct / 100);
+
+    // Arrangement fee is typically added to the loan (rolled in)
+    const principal = bridgeLoan + bridgeArrangementFee;
+    const monthlyRate = i.bridgeRate / 100 / 12;
+
+    if (i.bridgeInterestRolled) {
+      const grown = principal * Math.pow(1 + monthlyRate, termMonths);
+      bridgeInterestTotal = grown - principal;
+    } else {
+      bridgeInterestServicedMonthly = principal * monthlyRate;
+      bridgeInterestTotal = bridgeInterestServicedMonthly * termMonths;
+    }
+    bridgeRepaymentTotal = principal + (i.bridgeInterestRolled ? bridgeInterestTotal : 0) + bridgeExitFee;
+
+    // Deposit = cash to complete purchase after bridge contribution
+    depositAmount = Math.max(0, i.purchasePrice - i.purchasePrice * (i.bridgeLoanPct / 100));
+    purchaseLoan = 0; // bridge replaces the standard mortgage at purchase
+  } else {
+    depositAmount = i.depositIsPct
+      ? Math.round(i.purchasePrice * (i.depositPct / 100))
+      : i.deposit;
+    purchaseLoan = Math.max(0, i.purchasePrice - depositAmount);
+    purchaseInterestMonthly = (purchaseLoan * (i.purchaseRate / 100)) / 12;
+    purchaseInterestDuringRefurb = purchaseInterestMonthly * i.refurbMonths;
+  }
+
   const holdingCostsTotal = i.holdingMonthly * i.refurbMonths;
+
+  const refurbCashOutlay = i.useBridge && i.bridgeFundsRefurb ? 0 : i.refurbCost;
+  const servicedBridgeInterestPaid = i.useBridge && !i.bridgeInterestRolled
+    ? bridgeInterestTotal
+    : 0;
 
   const totalCashIn =
     depositAmount +
     i.stampDuty +
     i.legalFees +
     i.surveyFees +
-    i.refurbCost +
+    refurbCashOutlay +
     holdingCostsTotal +
     purchaseInterestDuringRefurb +
-    bridgeInterestDuringRefurb;
+    servicedBridgeInterestPaid;
 
   const newLoan = Math.round(i.gdv * (i.refiLtv / 100));
   const newEquity = Math.max(0, i.gdv - newLoan);
-  const cashReleased = newLoan - purchaseLoan - i.refiFees;
+  const debtToRepayAtRefi = i.useBridge ? bridgeRepaymentTotal : purchaseLoan;
+  const cashReleased = newLoan - debtToRepayAtRefi - i.refiFees;
   const cashLeftIn = totalCashIn - cashReleased;
   const capitalRecycledPct = totalCashIn > 0 ? (cashReleased / totalCashIn) * 100 : 0;
   const profitOnPaper = i.gdv - (i.purchasePrice + i.refurbCost);
+  const bridgeLTGDV = i.useBridge && i.gdv > 0 ? (bridgeRepaymentTotal / i.gdv) * 100 : 0;
 
   const r = i.refiRate / 100 / 12;
   const n = i.refiTermYears * 12;
@@ -139,7 +200,13 @@ export function calculateRefinance(i: RefinanceInputs): RefinanceResults {
     purchaseLoan,
     purchaseInterestMonthly,
     purchaseInterestDuringRefurb,
-    bridgeInterestDuringRefurb,
+    bridgeLoan,
+    bridgeArrangementFee,
+    bridgeExitFee,
+    bridgeInterestTotal,
+    bridgeInterestServicedMonthly,
+    bridgeRepaymentTotal,
+    bridgeLTGDV,
     holdingCostsTotal,
     totalCashIn,
     newLoan,
