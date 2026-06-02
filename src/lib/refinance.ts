@@ -10,6 +10,14 @@ export interface RefinanceInputs {
   legalFees: number;
   surveyFees: number;
   purchaseRate: number; // annual %
+  // Additional acquisition costs
+  fixturesFittings: number;
+  furnishing: number;
+  brokerFees: number;
+  lenderFee: number;
+  additionalFees: number;
+  auctionFees: number;
+  sourcingFee: number;
   // Refurb
   refurbCost: number;
   refurbMonths: number;
@@ -18,7 +26,9 @@ export interface RefinanceInputs {
   useBridge: boolean;
   bridgeLoanPct: number; // % of purchase price covered by bridge
   bridgeFundsRefurb: boolean; // bridge also funds the refurb cost
-  bridgeRate: number; // annual %
+  bridgeRate: number; // annual % (derived from PCM when bridgeRateIsPCM)
+  bridgeRatePCM: number; // monthly %
+  bridgeRateIsPCM: boolean; // input mode toggle
   bridgeTermMonths: number; // bridge term until refi (>= refurbMonths)
   bridgeArrangementPct: number; // % of bridge loan
   bridgeExitPct: number; // % of bridge loan
@@ -30,6 +40,8 @@ export interface RefinanceInputs {
   refiTermYears: number;
   refiFees: number;
   // Rental
+  lettableUnits: number;
+  currentMonthlyRent: number;
   monthlyRent: number;
   managementPct: number;
   maintenancePct: number;
@@ -37,6 +49,11 @@ export interface RefinanceInputs {
   insurance: number; // monthly
   groundRent: number; // monthly
   otherMonthly: number;
+  // Flip / exit scenario
+  flipEnabled: boolean;
+  flipSalePrice: number;
+  flipLegalFees: number;
+  flipAgencyFee: number;
 }
 
 export interface RefinanceResults {
@@ -53,6 +70,7 @@ export interface RefinanceResults {
   bridgeRepaymentTotal: number; // principal + rolled interest + exit fee
   bridgeLTGDV: number; // bridge debt vs GDV
   holdingCostsTotal: number;
+  additionalAcquisitionCosts: number;
   totalCashIn: number;
   newLoan: number;
   newEquity: number;
@@ -73,6 +91,13 @@ export interface RefinanceResults {
   stressICR125: boolean;
   stressICR145: boolean;
   breakEvenRent: number;
+  // Headline metrics
+  belowMarketValuePct: number;
+  grossYieldOnPurchase: number;
+  annualRent: number;
+  allMoneyOutYears: number;
+  // Flip
+  flipProfit: number;
   verdict: "full" | "partial" | "fail";
   verdictLabel: string;
 }
@@ -93,6 +118,8 @@ export function calculateRefinance(i: RefinanceInputs): RefinanceResults {
 
   const termMonths = Math.max(i.bridgeTermMonths, i.refurbMonths);
 
+  const bridgeAnnualRate = i.bridgeRateIsPCM ? i.bridgeRatePCM * 12 : i.bridgeRate;
+
   if (i.useBridge) {
     // Bridge funds % of purchase, optionally adds refurb
     bridgeLoan = i.purchasePrice * (i.bridgeLoanPct / 100)
@@ -102,7 +129,7 @@ export function calculateRefinance(i: RefinanceInputs): RefinanceResults {
 
     // Arrangement fee is typically added to the loan (rolled in)
     const principal = bridgeLoan + bridgeArrangementFee;
-    const monthlyRate = i.bridgeRate / 100 / 12;
+    const monthlyRate = bridgeAnnualRate / 100 / 12;
 
     if (i.bridgeInterestRolled) {
       const grown = principal * Math.pow(1 + monthlyRate, termMonths);
@@ -127,6 +154,15 @@ export function calculateRefinance(i: RefinanceInputs): RefinanceResults {
 
   const holdingCostsTotal = i.holdingMonthly * i.refurbMonths;
 
+  const additionalAcquisitionCosts =
+    i.fixturesFittings +
+    i.furnishing +
+    i.brokerFees +
+    i.lenderFee +
+    i.additionalFees +
+    i.auctionFees +
+    i.sourcingFee;
+
   const refurbCashOutlay = i.useBridge && i.bridgeFundsRefurb ? 0 : i.refurbCost;
   const servicedBridgeInterestPaid = i.useBridge && !i.bridgeInterestRolled
     ? bridgeInterestTotal
@@ -137,6 +173,7 @@ export function calculateRefinance(i: RefinanceInputs): RefinanceResults {
     i.stampDuty +
     i.legalFees +
     i.surveyFees +
+    additionalAcquisitionCosts +
     refurbCashOutlay +
     holdingCostsTotal +
     purchaseInterestDuringRefurb +
@@ -182,6 +219,20 @@ export function calculateRefinance(i: RefinanceInputs): RefinanceResults {
 
   const breakEvenRent = monthlyMortgageIO + monthlyOpex;
 
+  const belowMarketValuePct = i.gdv > 0 ? ((i.gdv - i.purchasePrice) / i.gdv) * 100 : 0;
+  const annualRent = i.monthlyRent * 12 * Math.max(1, i.lettableUnits || 1);
+  const grossYieldOnPurchase = i.purchasePrice > 0 ? (annualRent / i.purchasePrice) * 100 : 0;
+  const allMoneyOutYears =
+    cashLeftIn <= 0 ? 0 : annualCashflowIO > 0 ? cashLeftIn / annualCashflowIO : Infinity;
+
+  // Flip profit: sale price minus all cash in (excl. deposit which is recovered via sale proceeds)
+  // and minus bridge/purchase debt redemption, plus flip selling costs.
+  const debtToClear = i.useBridge ? bridgeRepaymentTotal : purchaseLoan;
+  const flipProfit = i.flipEnabled
+    ? i.flipSalePrice - i.flipLegalFees - i.flipAgencyFee - debtToClear - (totalCashIn) + depositAmount + (i.useBridge ? 0 : 0)
+    : 0;
+  // Note: depositAmount is added back because it forms part of totalCashIn but is recovered from sale equity.
+
   let verdict: "full" | "partial" | "fail" = "fail";
   let verdictLabel = "Doesn't stack";
   if (monthlyCashflowIO < 0 || !stressICR125) {
@@ -208,6 +259,7 @@ export function calculateRefinance(i: RefinanceInputs): RefinanceResults {
     bridgeRepaymentTotal,
     bridgeLTGDV,
     holdingCostsTotal,
+    additionalAcquisitionCosts,
     totalCashIn,
     newLoan,
     newEquity,
@@ -228,6 +280,11 @@ export function calculateRefinance(i: RefinanceInputs): RefinanceResults {
     stressICR125,
     stressICR145,
     breakEvenRent,
+    belowMarketValuePct,
+    grossYieldOnPurchase,
+    annualRent,
+    allMoneyOutYears,
+    flipProfit,
     verdict,
     verdictLabel,
   };
