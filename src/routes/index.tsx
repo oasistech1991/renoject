@@ -40,48 +40,11 @@ const defaults: BTLInputs = {
 
 function Index() {
   const [inputs, setInputs] = useState<BTLInputs>(defaults);
-  const [mode, setMode] = useState<"mortgage" | "cash" | "bridge">("mortgage");
-  const [bridge, setBridge] = useState({
-    ltv: 70, // % of purchase price funded by bridge
-    rate: 9, // annual %
-    months: 6, // term during refurb
-    feePct: 2, // arrangement + exit fees %
-  });
-
-  // Derive the inputs actually fed to calculateBTL based on mode
-  const effectiveInputs = useMemo<BTLInputs>(() => {
-    if (mode === "cash") {
-      return {
-        ...inputs,
-        depositIsPct: true,
-        depositPct: 100,
-        deposit: inputs.purchasePrice,
-        interestRate: 0,
-      };
-    }
-    if (mode === "bridge") {
-      const bridgeLoan = inputs.purchasePrice * (bridge.ltv / 100);
-      const interestCost = bridgeLoan * (bridge.rate / 100) * (bridge.months / 12);
-      const feeCost = bridgeLoan * (bridge.feePct / 100);
-      const bridgeFinanceCost = Math.round(interestCost + feeCost);
-      return {
-        ...inputs,
-        // Roll bridge finance cost into refurb so it shows up in total cash in
-        refurbCosts: inputs.refurbCosts + bridgeFinanceCost,
-      };
-    }
-    return inputs;
-  }, [inputs, mode, bridge]);
 
   const set = <K extends keyof BTLInputs>(k: K, v: BTLInputs[K]) =>
     setInputs((p) => ({ ...p, [k]: v }));
 
-  const r = useMemo(() => calculateBTL(effectiveInputs), [effectiveInputs]);
-
-  const bridgeLoan = inputs.purchasePrice * (bridge.ltv / 100);
-  const bridgeInterest = bridgeLoan * (bridge.rate / 100) * (bridge.months / 12);
-  const bridgeFees = bridgeLoan * (bridge.feePct / 100);
-  const bridgeTotal = Math.round(bridgeInterest + bridgeFees);
+  const r = useMemo(() => calculateBTL(inputs), [inputs]);
 
   const autoStamp = () => set("stampDuty", calcStampDuty(inputs.purchasePrice));
   const reset = () => setInputs(defaults);
