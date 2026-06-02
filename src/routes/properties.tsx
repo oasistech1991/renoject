@@ -8,6 +8,7 @@ import { calcStampDuty } from "@/lib/btl";
 import { calculateRefinance, fmtROI, type RefinanceInputs } from "@/lib/refinance";
 import { parsePropertyPdf } from "@/lib/import-deal.functions";
 import { PROPERTY_SOURCES, sourceBadgeClass, sourceLabel, type PropertySource } from "@/lib/sources";
+import { useSourceColors, badgeStyleFromHex } from "@/lib/source-colors";
 
 export const Route = createFileRoute("/properties")({
   head: () => ({
@@ -92,6 +93,7 @@ function PropertiesPage() {
   const fileRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
   const parsePdf = useServerFn(parsePropertyPdf);
+  const { colorFor, setColor } = useSourceColors();
 
   const load = async () => {
     setLoading(true);
@@ -216,15 +218,30 @@ function PropertiesPage() {
             {PROPERTY_SOURCES.map((s) => {
               const n = counts[s.value] ?? 0;
               if (n === 0) return null;
+              const hex = colorFor(s.value);
               return (
-                <FilterPill
-                  key={s.value}
-                  active={filter === s.value}
-                  onClick={() => setFilter(s.value)}
-                  className={sourceBadgeClass(s.value)}
-                >
-                  {s.label} <span className="ml-1 opacity-60">{n}</span>
-                </FilterPill>
+                <div key={s.value} className="inline-flex items-center gap-1">
+                  <FilterPill
+                    active={filter === s.value}
+                    onClick={() => setFilter(s.value)}
+                    className={hex ? "" : sourceBadgeClass(s.value)}
+                    style={filter === s.value ? undefined : badgeStyleFromHex(hex)}
+                  >
+                    {s.label} <span className="ml-1 opacity-60">{n}</span>
+                  </FilterPill>
+                  <label
+                    title={`Change ${s.label} colour`}
+                    className="relative inline-flex h-5 w-5 cursor-pointer items-center justify-center rounded-full border border-border"
+                    style={{ backgroundColor: hex ?? "transparent" }}
+                  >
+                    <input
+                      type="color"
+                      value={hex ?? "#888888"}
+                      onChange={(e) => setColor(s.value, e.target.value)}
+                      className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+                    />
+                  </label>
+                </div>
               );
             })}
             {(counts["none"] ?? 0) > 0 && (
@@ -274,9 +291,17 @@ function PropertiesPage() {
                     </span>
                   </div>
                   <div className="mt-3">
-                    <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide ${sourceBadgeClass(r.source)}`}>
-                      {sourceLabel(r.source)}
-                    </span>
+                    {(() => {
+                      const hex = colorFor(r.source);
+                      return (
+                        <span
+                          className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide ${hex ? "" : sourceBadgeClass(r.source)}`}
+                          style={badgeStyleFromHex(hex)}
+                        >
+                          {sourceLabel(r.source)}
+                        </span>
+                      );
+                    })()}
                   </div>
                    <dl className="mt-4 grid grid-cols-2 gap-y-2 text-sm">
                     <dt className="text-muted-foreground">GDV</dt>
@@ -317,17 +342,20 @@ function FilterPill({
   active,
   onClick,
   className = "",
+  style,
   children,
 }: {
   active: boolean;
   onClick: () => void;
   className?: string;
+  style?: React.CSSProperties;
   children: React.ReactNode;
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
+      style={style}
       className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
         active
           ? "border-foreground bg-foreground text-background"
