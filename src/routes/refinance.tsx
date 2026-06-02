@@ -1,12 +1,17 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { calcStampDuty, fmtGBP, fmtPct } from "@/lib/btl";
 import { calculateRefinance, fmtROI, type RefinanceInputs } from "@/lib/refinance";
 import { MetricCard } from "@/components/btl/MetricCard";
 import { NumberField } from "@/components/btl/NumberField";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/refinance")({
+  validateSearch: (s: Record<string, unknown>) => ({
+    id: typeof s.id === "string" ? s.id : undefined,
+  }),
   head: () => ({
     meta: [
       { title: "Refinance / BRRR Calculator — Buy Refurb Refinance Rent" },
@@ -70,14 +75,113 @@ const defaults: RefinanceInputs = {
 };
 
 function RefinancePage() {
+  const search = Route.useSearch();
+  const navigate = Route.useNavigate();
   const [inputs, setInputs] = useState<RefinanceInputs>(defaults);
+  const [propertyName, setPropertyName] = useState("");
+  const [propertyId, setPropertyId] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [savedAt, setSavedAt] = useState<Date | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const set = <K extends keyof RefinanceInputs>(k: K, v: RefinanceInputs[K]) =>
     setInputs((p) => ({ ...p, [k]: v }));
 
   const r = useMemo(() => calculateRefinance(inputs), [inputs]);
 
   const autoStamp = () => set("stampDuty", calcStampDuty(inputs.purchasePrice));
-  const reset = () => setInputs(defaults);
+  const reset = () => {
+    setInputs(defaults);
+    setPropertyName("");
+    setPropertyId(null);
+    setSavedAt(null);
+    navigate({ search: { id: undefined }, replace: true });
+  };
+
+  // Load a saved property when ?id= is present
+  useEffect(() => {
+    const id = search.id;
+    if (!id || id === propertyId) return;
+    let cancelled = false;
+    (async () => {
+      setLoadError(null);
+      const { data, error } = await supabase
+        .from("properties")
+        .select("*")
+        .eq("id", id)
+        .maybeSingle();
+      if (cancelled) return;
+      if (error) {
+        setLoadError(error.message);
+        return;
+      }
+      if (!data) {
+        setLoadError("Property not found");
+        return;
+      }
+      setInputs({ ...defaults, ...(data.inputs as unknown as RefinanceInputs) });
+      setPropertyName(data.name);
+      setPropertyId(data.id);
+      setSavedAt(new Date(data.updated_at));
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [search.id]);
+
+  const metricsSnapshot = () => ({
+    cashLeftIn: r.cashLeftIn,
+    cashReleased: r.cashReleased,
+    newLoan: r.newLoan,
+    totalCashIn: r.totalCashIn,
+    monthlyCashflowIO: r.monthlyCashflowIO,
+    annualCashflowIO: r.annualCashflowIO,
+    grossYield: r.grossYield,
+    netYield: r.netYield,
+    roiOnCashLeftIn: isFinite(r.roiOnCashLeftIn) ? r.roiOnCashLeftIn : null,
+    capitalRecycledPct: r.capitalRecycledPct,
+    profitOnPaper: r.profitOnPaper,
+    verdict: r.verdict,
+    verdictLabel: r.verdictLabel,
+  });
+
+  const doSave = async (forceNew = false) => {
+    if (!propertyName.trim()) {
+      alert("Give the property a name first.");
+      return;
+    }
+    setSaving(true);
+    const payload = {
+      name: propertyName.trim(),
+      inputs: inputs as any,
+      metrics: metricsSnapshot() as any,
+    };
+    if (propertyId && !forceNew) {
+      const { error } = await supabase
+        .from("properties")
+        .update(payload)
+        .eq("id", propertyId);
+      setSaving(false);
+      if (error) {
+        alert(error.message);
+        return;
+      }
+      setSavedAt(new Date());
+    } else {
+      const { data, error } = await supabase
+        .from("properties")
+        .insert(payload)
+        .select()
+        .single();
+      setSaving(false);
+      if (error) {
+        alert(error.message);
+        return;
+      }
+      setPropertyId(data.id);
+      setSavedAt(new Date());
+      navigate({ search: { id: data.id }, replace: true });
+    }
+  };
 
   const setDepositMode = (isPct: boolean) => {
     if (isPct === inputs.depositIsPct) return;
@@ -101,17 +205,49 @@ function RefinancePage() {
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b border-border bg-card/50 backdrop-blur">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-5">
-          <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary text-primary-foreground font-bold">
-              ↻
+        <div className="mx-auto flex max-w-7xl flex-col gap-4 px-6 py-5">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary text-primary-foreground font-bold">
+                ↻
+              </div>
+              <div>
+                <h1 className="text-lg font-semibold leading-tight">Refinance / BRRR Calculator</h1>
+                <p className="text-xs text-muted-foreground">Buy · Refurb · Refinance · Rent</p>
+              </div>
             </div>
-            <div>
-              <h1 className="text-lg font-semibold leading-tight">Refinance / BRRR Calculator</h1>
-              <p className="text-xs text-muted-foreground">Buy · Refurb · Refinance · Rent</p>
+            <Button variant="outline" size="sm" onClick={reset}>New / Reset</Button>
+          </div>
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
+            <div className="flex-1">
+              <label htmlFor="propname" className="mb-1 block text-xs font-medium text-muted-foreground">
+                Property name
+              </label>
+              <Input
+                id="propname"
+                placeholder="e.g. 12 High Street, Leeds"
+                value={propertyName}
+                onChange={(e) => setPropertyName(e.target.value)}
+              />
+            </div>
+            <div className="flex gap-2">
+              <Button size="sm" onClick={() => doSave(false)} disabled={saving}>
+                {saving ? "Saving…" : propertyId ? "Save" : "Save deal"}
+              </Button>
+              {propertyId && (
+                <Button size="sm" variant="outline" onClick={() => doSave(true)} disabled={saving}>
+                  Save as new
+                </Button>
+              )}
             </div>
           </div>
-          <Button variant="outline" size="sm" onClick={reset}>Reset</Button>
+          {(savedAt || loadError) && (
+            <p className={`text-xs ${loadError ? "text-destructive" : "text-muted-foreground"}`}>
+              {loadError
+                ? loadError
+                : `Last saved ${savedAt?.toLocaleTimeString()}${propertyId ? " · syncing changes will update this deal" : ""}`}
+            </p>
+          )}
         </div>
       </header>
 
