@@ -948,6 +948,7 @@ function RefinancePage() {
             <p className="pt-4 text-xs text-muted-foreground">
               Estimates only. Holding costs assume the purchase mortgage runs interest-only throughout the refurb. Stress test uses a 5.5% notional refi rate. Speak to a broker, accountant and solicitor before committing.
             </p>
+            </>)}
           </section>
         </div>
       </main>
