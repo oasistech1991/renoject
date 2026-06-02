@@ -1,37 +1,46 @@
 ## Goal
-On the Forecast page, account for the time each deal spends in refurb + on the market before rent starts. Today the cumulative chart assumes rent flows from month 1, which overstates the early months.
 
-## Changes
+1. Rename **Refinance / BRRR** → **Property Calculator** in the top nav.
+2. Rename **Properties** → **View Deals** in the top nav.
+3. Move the purchase-method selector (currently on the BTL Calculator) onto the Property Calculator page, expanded to **4 methods**.
 
-### 1. Per-deal "rent start" offset
-Add two numbers per deal (default 4 months refurb + 2 months to let = 6):
-- `refurbMonths`
-- `voidToLetMonths`
+URLs stay the same (`/refinance`, `/properties`) so saved links keep working.
 
-Source of truth: read from `r.inputs.refurbMonths` / `r.inputs.voidToLetMonths` if set, otherwise fall back to a global default controlled at the top of the Forecast page (one input pair, applies to any deal missing its own).
+## Property Calculator — 4 methods
 
-A deal's rent (and therefore monthly cashflow) only starts contributing in month `refurbMonths + voidToLetMonths + 1`.
+A tab bar at the top of the page picks one of:
 
-### 2. Cumulative chart becomes phased
-Replace the current flat `runCF += totals.monthlyCashflow` loop with a per-deal walk:
+| Method | What it models |
+|---|---|
+| **Mortgage** | Standard BTL purchase with a mortgage. No refurb cycle, no bridge, no refi. |
+| **Cash** | 100% cash purchase. No loan, no bridge, no refi. |
+| **Bridge + Refurb** | Bridge-funded purchase, refurb period, then held on the bridge (no refi step). |
+| **Refinance / BRRR** | The current full configuration on this page — purchase → refurb → refinance → rent. **Kept exactly as it is today.** |
 
-```text
-for each month 1..24:
-  for each deal:
-    if month > deal.refurbMonths + deal.voidToLetMonths:
-      add deal.monthlyCashflow and deal.monthlyRent
-```
+For each method the page hides the input blocks and result cards that don't apply:
 
-So the cumulative rent / cashflow curve stays flat (or only reflects already-renting deals) until each deal "comes online", then ramps.
+- **Mortgage**: hides bridge block, refurb block, GDV / refi-rate / refi-LTV block, and the "capital recycled / cash left in" results.
+- **Cash**: hides all loan, bridge, refurb and refi blocks. Shows cashflow, yield and ROI on full cash in.
+- **Bridge + Refurb**: shows bridge + refurb inputs; hides GDV / refi block and the "cash released on refi" result.
+- **Refinance / BRRR**: unchanged.
 
-### 3. UI on the Forecast page
-- A small "Rent start defaults" card above the charts with two inputs (refurb months, void-to-let months) — drives the default for any deal missing its own values.
-- A new column in the deals table: "Rent starts" showing `Month N` for each deal, computed from its offsets.
-- Chart subtitle updated to "Phased by refurb + time-to-let per deal".
+Default tab on first load = **Refinance / BRRR** so existing users land on the same screen they have now.
 
-### 4. Headline stats stay as steady-state
-The top stat cards ("Monthly cashflow", "Annual cashflow", "Total monthly rent") continue to show the steady-state numbers once everything is let — that's the long-run view. The phasing only changes the 24-month cumulative chart and adds the "Rent starts" column.
+## BTL Calculator page
 
-## Out of scope
-- Persisting per-deal refurb/void-to-let into the database (would need a migration). For now they live on `inputs` if already there, otherwise the global default is used. We can add a migration + editor later if you want each deal to remember its own.
-- Changing the deal page or properties page calculations.
+Removes the Mortgage / Cash / Bridge tabs that were recently added there. The BTL page goes back to a single straight mortgage calculator. (The functionality moves to Property Calculator instead.)
+
+## Technical notes
+
+Files touched:
+
+- `src/routes/__root.tsx` — change two `<Link>` labels only.
+- `src/routes/refinance.tsx`:
+  - Add `method` state with 4 values.
+  - Add a tab bar (same component shape as BTL's existing mode tabs).
+  - Derive an `effectiveInputs: RefinanceInputs` via `useMemo` that forces fields per method (e.g. cash → `depositPct=100, purchaseRate=0`; mortgage → `useBridge=false, refurbMonths=0, refurbCost=0, refiLtv=0`; bridge → `useBridge=true, refiLtv=0`).
+  - Wrap each input section and result card in a `method`-aware conditional.
+  - Persist `method` in the Supabase save payload (default to `"brrr"` when loading older records that don't have it).
+- `src/routes/index.tsx` — delete the `mode` / `bridge` state, the method tab bar, the `effectiveInputs` memo and the bridge inputs block; restore a plain BTL calculator that calls `calculateBTL(inputs)` directly.
+
+No new routes, no new packages, no DB migration. All existing saved deals continue to load — they'll just open in the "Refinance / BRRR" tab by default.
