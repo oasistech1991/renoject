@@ -119,10 +119,13 @@ export const parsePropertyPdf = createServerFn({ method: "POST" })
     } catch {
       return { extracted: {}, raw: trimmed.slice(0, 500), warning: "Failed to parse AI response." };
     }
-    // Strip nulls
-    const clean: Record<string, unknown> = {};
+    // Strip nulls and coerce to a serializable shape
+    const clean: Record<string, number | string | boolean> = {};
     for (const [k, v] of Object.entries(extracted)) {
-      if (v !== null && v !== undefined && v !== "") clean[k] = v;
+      if (v === null || v === undefined || v === "") continue;
+      if (typeof v === "number" || typeof v === "string" || typeof v === "boolean") {
+        clean[k] = v;
+      }
     }
-    return { extracted: clean, raw: "", warning: null };
+    return { extracted: clean, raw: "", warning: null as string | null };
   });
