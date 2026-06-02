@@ -29,6 +29,57 @@ type PropertyRow = {
   updated_at: string;
 };
 
+const DEFAULT_INPUTS: RefinanceInputs = {
+  purchasePrice: 150000, deposit: 37500, depositPct: 25, depositIsPct: false,
+  stampDuty: calcStampDuty(150000), legalFees: 1500, surveyFees: 500, purchaseRate: 6.0,
+  fixturesFittings: 0, furnishing: 0, brokerFees: 995, lenderFee: 0,
+  additionalFees: 0, auctionFees: 0, sourcingFee: 0,
+  refurbCost: 30000, refurbMonths: 3, holdingMonthly: 300,
+  useBridge: false, bridgeLoanPct: 75, bridgeFundsRefurb: false,
+  bridgeRate: 9.6, bridgeRatePCM: 0.8, bridgeRateIsPCM: true,
+  bridgeTermMonths: 6, bridgeArrangementPct: 2, bridgeArrangementIsPct: true,
+  bridgeArrangementAmount: 3000, bridgeExitPct: 1, bridgeInterestRolled: true,
+  gdv: 220000, refiLtv: 75, refiRate: 5.5, refiTermYears: 25, refiFees: 2500,
+  lettableUnits: 1, currentMonthlyRent: 0, monthlyRent: 1300,
+  managementPct: 10, maintenancePct: 5, voidsPct: 4,
+  insurance: 25, groundRent: 0, otherMonthly: 0,
+  flipEnabled: false, flipSalePrice: 0, flipLegalFees: 1500, flipAgencyFee: 0,
+};
+
+function mergeDefaults(extracted: Record<string, number | string | boolean>): RefinanceInputs {
+  const merged: any = { ...DEFAULT_INPUTS };
+  for (const [k, v] of Object.entries(extracted)) {
+    if (k === "propertyName") continue;
+    if (k in merged) merged[k] = v;
+  }
+  // If purchase price was extracted but stamp duty wasn't, recompute it.
+  if (
+    typeof extracted.purchasePrice === "number" &&
+    typeof extracted.stampDuty !== "number"
+  ) {
+    merged.stampDuty = calcStampDuty(extracted.purchasePrice);
+  }
+  return merged as RefinanceInputs;
+}
+
+function snapshotMetrics(r: ReturnType<typeof calculateRefinance>) {
+  return {
+    cashLeftIn: r.cashLeftIn,
+    cashReleased: r.cashReleased,
+    newLoan: r.newLoan,
+    totalCashIn: r.totalCashIn,
+    monthlyCashflowIO: r.monthlyCashflowIO,
+    annualCashflowIO: r.annualCashflowIO,
+    grossYield: r.grossYield,
+    netYield: r.netYield,
+    roiOnCashLeftIn: isFinite(r.roiOnCashLeftIn) ? r.roiOnCashLeftIn : null,
+    capitalRecycledPct: r.capitalRecycledPct,
+    profitOnPaper: r.profitOnPaper,
+    verdict: r.verdict,
+    verdictLabel: r.verdictLabel,
+  };
+}
+
 function PropertiesPage() {
   const [rows, setRows] = useState<PropertyRow[]>([]);
   const [loading, setLoading] = useState(true);
