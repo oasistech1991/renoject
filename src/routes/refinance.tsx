@@ -145,9 +145,60 @@ function RefinancePage() {
               <NumberField id="holding" label="Holding costs / month" prefix="£"
                 value={inputs.holdingMonthly} onChange={(v) => set("holdingMonthly", v)}
                 hint="Council tax, utilities, insurance during refurb" />
-              <NumberField id="brate" label="Bridge / refurb finance rate" suffix="%" step={0.1}
-                value={inputs.bridgeRate} onChange={(v) => set("bridgeRate", v)}
-                hint="0 = cash funded" />
+            </InputGroup>
+
+            <InputGroup title="Bridging finance">
+              <label className="flex items-center justify-between gap-3 rounded-md border border-border bg-background px-3 py-2 text-sm">
+                <span>Fund purchase with a bridge?</span>
+                <input
+                  type="checkbox"
+                  className="h-4 w-4 accent-primary"
+                  checked={inputs.useBridge}
+                  onChange={(e) => set("useBridge", e.target.checked)}
+                />
+              </label>
+              {inputs.useBridge && (
+                <>
+                  <NumberField id="bltv" label="Bridge LTV (of purchase price)" suffix="%" step={1}
+                    value={inputs.bridgeLoanPct} onChange={(v) => set("bridgeLoanPct", v)}
+                    hint="Typical: 70–75% of purchase price" />
+                  <label className="flex items-center justify-between gap-3 rounded-md border border-border bg-background px-3 py-2 text-sm">
+                    <span>Bridge also funds refurb?</span>
+                    <input
+                      type="checkbox"
+                      className="h-4 w-4 accent-primary"
+                      checked={inputs.bridgeFundsRefurb}
+                      onChange={(e) => set("bridgeFundsRefurb", e.target.checked)}
+                    />
+                  </label>
+                  <NumberField id="brate2" label="Bridge rate (annual)" suffix="%" step={0.1}
+                    value={inputs.bridgeRate} onChange={(v) => set("bridgeRate", v)}
+                    hint="Typical: 0.7–0.95% per month (≈8.4–11.4% pa)" />
+                  <NumberField id="bterm" label="Bridge term" suffix="mo" step={1}
+                    value={inputs.bridgeTermMonths} onChange={(v) => set("bridgeTermMonths", v)}
+                    hint="Refurb time + buffer until refi completes" />
+                  <NumberField id="barr" label="Arrangement fee" suffix="%" step={0.1}
+                    value={inputs.bridgeArrangementPct} onChange={(v) => set("bridgeArrangementPct", v)}
+                    hint="Typical: 2% of bridge loan, added to loan" />
+                  <NumberField id="bexit" label="Exit fee" suffix="%" step={0.1}
+                    value={inputs.bridgeExitPct} onChange={(v) => set("bridgeExitPct", v)}
+                    hint="Often 1% of loan, charged on redemption" />
+                  <label className="flex items-center justify-between gap-3 rounded-md border border-border bg-background px-3 py-2 text-sm">
+                    <span>Roll up interest (vs serviced monthly)</span>
+                    <input
+                      type="checkbox"
+                      className="h-4 w-4 accent-primary"
+                      checked={inputs.bridgeInterestRolled}
+                      onChange={(e) => set("bridgeInterestRolled", e.target.checked)}
+                    />
+                  </label>
+                </>
+              )}
+              {!inputs.useBridge && (
+                <p className="text-xs text-muted-foreground">
+                  Off = standard purchase mortgage. Switch on to model a bridge that's repaid by the refinance.
+                </p>
+              )}
             </InputGroup>
 
             <InputGroup title="Refinance">
@@ -197,7 +248,12 @@ function RefinancePage() {
               <div className="mt-3 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
                 <MetricCard label="Total cash in" value={fmtGBP(r.totalCashIn)} hint="Deposit + costs + refurb + holding + interest" />
                 <MetricCard label="New loan @ refi" value={fmtGBP(r.newLoan)} hint={`${fmtPct(inputs.refiLtv, 0)} of GDV`} />
-                <MetricCard label="Cash released" value={fmtGBP(r.cashReleased)} hint="New loan − purchase loan − refi fees" tone={r.cashReleased >= 0 ? "positive" : "negative"} />
+                <MetricCard
+                  label="Cash released"
+                  value={fmtGBP(r.cashReleased)}
+                  hint={inputs.useBridge ? "New loan − bridge redemption − refi fees" : "New loan − purchase loan − refi fees"}
+                  tone={r.cashReleased >= 0 ? "positive" : "negative"}
+                />
                 <MetricCard
                   label="Cash left in deal"
                   value={fmtGBP(Math.max(0, r.cashLeftIn))}
@@ -206,6 +262,33 @@ function RefinancePage() {
                 />
               </div>
             </div>
+
+            {inputs.useBridge && (
+              <div>
+                <h2 className="text-sm font-medium uppercase tracking-wider text-muted-foreground">Bridging finance</h2>
+                <div className="mt-3 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                  <MetricCard label="Bridge loan" value={fmtGBP(r.bridgeLoan)} hint={`${fmtPct(inputs.bridgeLoanPct, 0)} of purchase${inputs.bridgeFundsRefurb ? " + refurb" : ""}`} />
+                  <MetricCard label="Interest (total)" value={fmtGBP(r.bridgeInterestTotal)} hint={`${inputs.bridgeTermMonths} mo · ${inputs.bridgeInterestRolled ? "rolled up" : "serviced"}`} />
+                  <MetricCard label="Arrangement + exit fees" value={fmtGBP(r.bridgeArrangementFee + r.bridgeExitFee)} hint={`Arr ${fmtPct(inputs.bridgeArrangementPct, 1)} · Exit ${fmtPct(inputs.bridgeExitPct, 1)}`} />
+                  <MetricCard
+                    label="Bridge redemption"
+                    value={fmtGBP(r.bridgeRepaymentTotal)}
+                    hint={`Bridge LTGDV: ${fmtPct(r.bridgeLTGDV, 0)}`}
+                    tone={r.newLoan >= r.bridgeRepaymentTotal ? "positive" : "negative"}
+                  />
+                </div>
+                {r.newLoan < r.bridgeRepaymentTotal && (
+                  <p className="mt-2 text-xs text-destructive">
+                    Warning: refi loan ({fmtGBP(r.newLoan)}) does not fully repay the bridge ({fmtGBP(r.bridgeRepaymentTotal)}). You'll need to inject {fmtGBP(r.bridgeRepaymentTotal - r.newLoan)} extra cash to clear it.
+                  </p>
+                )}
+                {inputs.bridgeInterestRolled && (
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    Rolled-up interest compounds monthly on (loan + arrangement fee). Serviced mode would cost {fmtGBP(r.bridgeInterestServicedMonthly || (r.bridgeLoan + r.bridgeArrangementFee) * (inputs.bridgeRate / 100) / 12)}/mo cash out of pocket instead.
+                  </p>
+                )}
+              </div>
+            )}
 
             <div>
               <h2 className="text-sm font-medium uppercase tracking-wider text-muted-foreground">Value uplift</h2>
@@ -255,18 +338,35 @@ function RefinancePage() {
               <h2 className="text-sm font-medium uppercase tracking-wider text-muted-foreground">Deal summary</h2>
               <div className="mt-3 overflow-hidden rounded-xl border border-border bg-card">
                 <Row label="Deposit" value={fmtGBP(r.depositAmount)} />
-                <Row label="Purchase loan" value={fmtGBP(r.purchaseLoan)} />
+                {!inputs.useBridge && <Row label="Purchase loan" value={fmtGBP(r.purchaseLoan)} />}
                 <Row label="Stamp duty + legal + survey" value={fmtGBP(inputs.stampDuty + inputs.legalFees + inputs.surveyFees)} />
                 <Row label="Refurb cost" value={fmtGBP(inputs.refurbCost)} />
+                {inputs.useBridge && inputs.bridgeFundsRefurb && (
+                  <Row label="Less: refurb funded by bridge" value={`− ${fmtGBP(inputs.refurbCost)}`} />
+                )}
                 <Row label={`Holding costs (${inputs.refurbMonths} mo)`} value={fmtGBP(r.holdingCostsTotal)} />
-                <Row label={`Purchase interest during refurb (${inputs.refurbMonths} mo)`} value={fmtGBP(r.purchaseInterestDuringRefurb)} />
-                {inputs.bridgeRate > 0 && (
-                  <Row label="Bridge interest during refurb" value={fmtGBP(r.bridgeInterestDuringRefurb)} />
+                {!inputs.useBridge && (
+                  <Row label={`Purchase interest during refurb (${inputs.refurbMonths} mo)`} value={fmtGBP(r.purchaseInterestDuringRefurb)} />
+                )}
+                {inputs.useBridge && (
+                  <>
+                    <Row label="Bridge loan drawn" value={fmtGBP(r.bridgeLoan)} />
+                    <Row label={`Bridge arrangement fee (${fmtPct(inputs.bridgeArrangementPct, 1)})`} value={fmtGBP(r.bridgeArrangementFee)} />
+                    <Row
+                      label={`Bridge interest (${inputs.bridgeTermMonths} mo · ${inputs.bridgeInterestRolled ? "rolled" : "serviced"})`}
+                      value={fmtGBP(r.bridgeInterestTotal)}
+                    />
+                    <Row label={`Bridge exit fee (${fmtPct(inputs.bridgeExitPct, 1)})`} value={fmtGBP(r.bridgeExitFee)} />
+                  </>
                 )}
                 <Row label="Total cash in" value={fmtGBP(r.totalCashIn)} bold />
                 <Row label="Post-refurb valuation (GDV)" value={fmtGBP(inputs.gdv)} />
                 <Row label={`New loan @ ${fmtPct(inputs.refiLtv, 0)} LTV`} value={fmtGBP(r.newLoan)} />
-                <Row label="Less: original loan repaid" value={`− ${fmtGBP(r.purchaseLoan)}`} />
+                {inputs.useBridge ? (
+                  <Row label="Less: bridge redemption (loan + interest + fees)" value={`− ${fmtGBP(r.bridgeRepaymentTotal)}`} bold tone="negative" />
+                ) : (
+                  <Row label="Less: original loan repaid" value={`− ${fmtGBP(r.purchaseLoan)}`} />
+                )}
                 <Row label="Less: refi fees" value={`− ${fmtGBP(inputs.refiFees)}`} />
                 <Row label="Cash released on refi" value={fmtGBP(r.cashReleased)} bold tone={r.cashReleased >= 0 ? "positive" : "negative"} />
                 <Row label="Cash left in deal" value={fmtGBP(Math.max(0, r.cashLeftIn))} bold tone={r.cashLeftIn <= 0 ? "positive" : undefined} />
