@@ -300,7 +300,27 @@ function PropertiesPage() {
           </div>
         )}
         {!loading && visibleRows.length > 0 && (
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          <>
+            <div className="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              {(() => {
+                const totals = visibleRows.reduce(
+                  (acc, r) => {
+                    const m = r.metrics ?? {};
+                    acc.monthly += Number(m.monthlyCashflowIO ?? 0);
+                    acc.annual += Number(m.annualCashflowIO ?? 0);
+                    return acc;
+                  },
+                  { monthly: 0, annual: 0 },
+                );
+                return (
+                  <>
+                    <SummaryCard label="Total monthly cashflow" value={fmtGBP(totals.monthly)} tone={totals.monthly >= 0 ? "positive" : "negative"} />
+                    <SummaryCard label="Total annual cashflow" value={fmtGBP(totals.annual)} tone={totals.annual >= 0 ? "positive" : "negative"} />
+                  </>
+                );
+              })()}
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
             {visibleRows.map((r) => {
               const m = r.metrics ?? {};
               const verdict: string = m.verdictLabel ?? "—";
@@ -377,6 +397,7 @@ function PropertiesPage() {
               );
             })}
           </div>
+          </>
         )}
         {!loading && rows.length > 0 && visibleRows.length === 0 && (
           <p className="text-sm text-muted-foreground">No deals match this filter.</p>
