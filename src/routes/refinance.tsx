@@ -118,7 +118,7 @@ function RefinancePage() {
         setLoadError("Property not found");
         return;
       }
-      setInputs({ ...defaults, ...(data.inputs as RefinanceInputs) });
+      setInputs({ ...defaults, ...(data.inputs as unknown as RefinanceInputs) });
       setPropertyName(data.name);
       setPropertyId(data.id);
       setSavedAt(new Date(data.updated_at));
