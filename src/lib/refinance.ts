@@ -126,7 +126,9 @@ export function calculateRefinance(i: RefinanceInputs): RefinanceResults {
     // Bridge funds % of purchase, optionally adds refurb
     bridgeLoan = i.purchasePrice * (i.bridgeLoanPct / 100)
       + (i.bridgeFundsRefurb ? i.refurbCost : 0);
-    bridgeArrangementFee = bridgeLoan * (i.bridgeArrangementPct / 100);
+  bridgeArrangementFee = i.bridgeArrangementIsPct
+    ? bridgeLoan * (i.bridgeArrangementPct / 100)
+    : i.bridgeArrangementAmount;
     bridgeExitFee = bridgeLoan * (i.bridgeExitPct / 100);
 
     // Arrangement fee is typically added to the loan (rolled in)
