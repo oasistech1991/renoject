@@ -1,46 +1,30 @@
-## Goal
+## Plan
 
-1. Rename **Refinance / BRRR** → **Property Calculator** in the top nav.
-2. Rename **Properties** → **View Deals** in the top nav.
-3. Move the purchase-method selector (currently on the BTL Calculator) onto the Property Calculator page, expanded to **4 methods**.
+### 1. Persist the selected purchase method
+Update the Property Calculator save flow so every deal stores the active method (`btl`, `brrr`, `mortgage`, or `cash`) in the saved metrics payload.
 
-URLs stay the same (`/refinance`, `/properties`) so saved links keep working.
+### 2. Save the right input set
+BTL uses its own calculator inputs, so when **BTL** is selected, save those BTL inputs alongside the deal data. When reopening an existing deal, restore both the selected method and the matching input values.
 
-## Property Calculator — 4 methods
+### 3. Snapshot method-specific figures
+Change the saved metrics snapshot so it uses the currently selected purchase method:
 
-A tab bar at the top of the page picks one of:
+- **BTL**: cash in, loan amount, monthly/annual cashflow, gross yield, net yield, ROI, ICR, stress result.
+- **Mortgage**: mortgage-style cash in, cashflow, yield, ROI/ICR style figures.
+- **Cash**: cash purchase figures without loan/refinance values.
+- **BRRR**: keep the current BRRR/refinance figures.
 
-| Method | What it models |
-|---|---|
-| **Mortgage** | Standard BTL purchase with a mortgage. No refurb cycle, no bridge, no refi. |
-| **Cash** | 100% cash purchase. No loan, no bridge, no refi. |
-| **Bridge + Refurb** | Bridge-funded purchase, refurb period, then held on the bridge (no refi step). |
-| **Refinance / BRRR** | The current full configuration on this page — purchase → refurb → refinance → rent. **Kept exactly as it is today.** |
+### 4. Show relevant figures on property cards
+Update the saved property card to prioritise `metrics.method` and render rows that match the selected method instead of always showing BRRR fields like cash released/cash left in.
 
-For each method the page hides the input blocks and result cards that don't apply:
+Example:
 
-- **Mortgage**: hides bridge block, refurb block, GDV / refi-rate / refi-LTV block, and the "capital recycled / cash left in" results.
-- **Cash**: hides all loan, bridge, refurb and refi blocks. Shows cashflow, yield and ROI on full cash in.
-- **Bridge + Refurb**: shows bridge + refurb inputs; hides GDV / refi block and the "cash released on refi" result.
-- **Refinance / BRRR**: unchanged.
+```text
+BTL card: Purchase price, Cash in, Monthly cashflow, Gross yield, Net yield, ROI, ICR
+BRRR card: GDV, Cash required, Cash left in, Cash released, Gross yield, Monthly cashflow, ROI on cash left in
+Cash card: Purchase price, Cash in, Monthly cashflow, Gross yield, Net yield, ROI on cash in
+Mortgage card: Purchase price, Cash in, Monthly cashflow, Gross yield, ROI, ICR
+```
 
-Default tab on first load = **Refinance / BRRR** so existing users land on the same screen they have now.
-
-## BTL Calculator page
-
-Removes the Mortgage / Cash / Bridge tabs that were recently added there. The BTL page goes back to a single straight mortgage calculator. (The functionality moves to Property Calculator instead.)
-
-## Technical notes
-
-Files touched:
-
-- `src/routes/__root.tsx` — change two `<Link>` labels only.
-- `src/routes/refinance.tsx`:
-  - Add `method` state with 4 values.
-  - Add a tab bar (same component shape as BTL's existing mode tabs).
-  - Derive an `effectiveInputs: RefinanceInputs` via `useMemo` that forces fields per method (e.g. cash → `depositPct=100, purchaseRate=0`; mortgage → `useBridge=false, refurbMonths=0, refurbCost=0, refiLtv=0`; bridge → `useBridge=true, refiLtv=0`).
-  - Wrap each input section and result card in a `method`-aware conditional.
-  - Persist `method` in the Supabase save payload (default to `"brrr"` when loading older records that don't have it).
-- `src/routes/index.tsx` — delete the `mode` / `bridge` state, the method tab bar, the `effectiveInputs` memo and the bridge inputs block; restore a plain BTL calculator that calls `calculateBTL(inputs)` directly.
-
-No new routes, no new packages, no DB migration. All existing saved deals continue to load — they'll just open in the "Refinance / BRRR" tab by default.
+### 5. Keep existing deals compatible
+Older deals without a saved method will default to **BRRR**, so current saved deals continue to display as they do now.

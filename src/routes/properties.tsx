@@ -350,6 +350,7 @@ function PropertiesPage() {
                     </span>
                   </div>
                   <div className="mt-3">
+                    <div className="flex flex-wrap items-center gap-1.5">
                     {(() => {
                       const hex = colorFor(r.source);
                       return (
@@ -361,22 +362,99 @@ function PropertiesPage() {
                         </span>
                       );
                     })()}
+                    {(() => {
+                      const method: string = m.method ?? "brrr";
+                      const label = method === "btl" ? "BTL"
+                        : method === "cash" ? "Cash"
+                        : method === "mortgage" ? "Mortgage"
+                        : "BRRR";
+                      return (
+                        <span className="inline-flex items-center rounded-full border border-border bg-muted/40 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                          {label}
+                        </span>
+                      );
+                    })()}
+                    </div>
                   </div>
                    <dl className="mt-4 grid grid-cols-2 gap-y-2 text-sm">
-                    <dt className="text-muted-foreground">GDV</dt>
-                    <dd className="text-right tabular-nums">{fmtGBP(r.inputs?.gdv ?? 0)}</dd>
-                    <dt className="text-muted-foreground">Cash required</dt>
-                    <dd className="text-right tabular-nums">{fmtGBP(m.totalCashIn ?? 0)}</dd>
-                    <dt className="text-muted-foreground">Cash left in</dt>
-                    <dd className="text-right tabular-nums">{fmtGBP(Math.max(0, m.cashLeftIn ?? 0))}</dd>
-                    <dt className="text-muted-foreground">Cash released</dt>
-                    <dd className="text-right tabular-nums">{fmtGBP(m.cashReleased ?? 0)}</dd>
-                    <dt className="text-muted-foreground">Gross yield</dt>
-                    <dd className="text-right tabular-nums">{fmtPct(m.grossYield ?? 0)}</dd>
-                    <dt className="text-muted-foreground">Monthly cashflow</dt>
-                    <dd className="text-right tabular-nums">{fmtGBP(m.monthlyCashflowIO ?? 0)}</dd>
-                    <dt className="text-muted-foreground">ROI on cash left in</dt>
-                    <dd className="text-right tabular-nums">{fmtROI(m.roiOnCashLeftIn ?? 0)}</dd>
+                    {(() => {
+                      const method: string = m.method ?? "brrr";
+                      const purchasePrice = m.purchasePrice ?? r.inputs?.purchasePrice ?? 0;
+                      if (method === "btl") {
+                        return (
+                          <>
+                            <dt className="text-muted-foreground">Purchase price</dt>
+                            <dd className="text-right tabular-nums">{fmtGBP(purchasePrice)}</dd>
+                            <dt className="text-muted-foreground">Cash in</dt>
+                            <dd className="text-right tabular-nums">{fmtGBP(m.totalCashIn ?? 0)}</dd>
+                            <dt className="text-muted-foreground">Monthly cashflow</dt>
+                            <dd className="text-right tabular-nums">{fmtGBP(m.monthlyCashflowIO ?? 0)}</dd>
+                            <dt className="text-muted-foreground">Gross yield</dt>
+                            <dd className="text-right tabular-nums">{fmtPct(m.grossYield ?? 0)}</dd>
+                            <dt className="text-muted-foreground">Net yield</dt>
+                            <dd className="text-right tabular-nums">{fmtPct(m.netYield ?? 0)}</dd>
+                            <dt className="text-muted-foreground">ROI</dt>
+                            <dd className="text-right tabular-nums">{fmtPct(m.roiIO ?? 0)}</dd>
+                            <dt className="text-muted-foreground">ICR</dt>
+                            <dd className="text-right tabular-nums">{fmtPct(m.icr ?? 0, 0)}</dd>
+                          </>
+                        );
+                      }
+                      if (method === "cash") {
+                        return (
+                          <>
+                            <dt className="text-muted-foreground">Purchase price</dt>
+                            <dd className="text-right tabular-nums">{fmtGBP(purchasePrice)}</dd>
+                            <dt className="text-muted-foreground">Cash in</dt>
+                            <dd className="text-right tabular-nums">{fmtGBP(m.totalCashIn ?? 0)}</dd>
+                            <dt className="text-muted-foreground">Monthly cashflow</dt>
+                            <dd className="text-right tabular-nums">{fmtGBP(m.monthlyCashflowIO ?? 0)}</dd>
+                            <dt className="text-muted-foreground">Gross yield</dt>
+                            <dd className="text-right tabular-nums">{fmtPct(m.grossYield ?? 0)}</dd>
+                            <dt className="text-muted-foreground">Net yield</dt>
+                            <dd className="text-right tabular-nums">{fmtPct(m.netYield ?? 0)}</dd>
+                            <dt className="text-muted-foreground">ROI on cash</dt>
+                            <dd className="text-right tabular-nums">{fmtROI(m.roiIO ?? m.roiOnCashLeftIn ?? 0)}</dd>
+                          </>
+                        );
+                      }
+                      if (method === "mortgage") {
+                        return (
+                          <>
+                            <dt className="text-muted-foreground">Purchase price</dt>
+                            <dd className="text-right tabular-nums">{fmtGBP(purchasePrice)}</dd>
+                            <dt className="text-muted-foreground">Cash in</dt>
+                            <dd className="text-right tabular-nums">{fmtGBP(m.totalCashIn ?? 0)}</dd>
+                            <dt className="text-muted-foreground">Monthly cashflow</dt>
+                            <dd className="text-right tabular-nums">{fmtGBP(m.monthlyCashflowIO ?? 0)}</dd>
+                            <dt className="text-muted-foreground">Gross yield</dt>
+                            <dd className="text-right tabular-nums">{fmtPct(m.grossYield ?? 0)}</dd>
+                            <dt className="text-muted-foreground">ROI</dt>
+                            <dd className="text-right tabular-nums">{fmtROI(m.roiIO ?? m.roiOnCashLeftIn ?? 0)}</dd>
+                            <dt className="text-muted-foreground">ICR</dt>
+                            <dd className="text-right tabular-nums">{fmtPct(m.icr ?? 0, 0)}</dd>
+                          </>
+                        );
+                      }
+                      return (
+                        <>
+                          <dt className="text-muted-foreground">GDV</dt>
+                          <dd className="text-right tabular-nums">{fmtGBP(r.inputs?.gdv ?? 0)}</dd>
+                          <dt className="text-muted-foreground">Cash required</dt>
+                          <dd className="text-right tabular-nums">{fmtGBP(m.totalCashIn ?? 0)}</dd>
+                          <dt className="text-muted-foreground">Cash left in</dt>
+                          <dd className="text-right tabular-nums">{fmtGBP(Math.max(0, m.cashLeftIn ?? 0))}</dd>
+                          <dt className="text-muted-foreground">Cash released</dt>
+                          <dd className="text-right tabular-nums">{fmtGBP(m.cashReleased ?? 0)}</dd>
+                          <dt className="text-muted-foreground">Gross yield</dt>
+                          <dd className="text-right tabular-nums">{fmtPct(m.grossYield ?? 0)}</dd>
+                          <dt className="text-muted-foreground">Monthly cashflow</dt>
+                          <dd className="text-right tabular-nums">{fmtGBP(m.monthlyCashflowIO ?? 0)}</dd>
+                          <dt className="text-muted-foreground">ROI on cash left in</dt>
+                          <dd className="text-right tabular-nums">{fmtROI(m.roiOnCashLeftIn ?? 0)}</dd>
+                        </>
+                      );
+                    })()}
                   </dl>
                   <div className="mt-4 flex gap-2">
                     <Link to="/refinance" search={{ id: r.id }} className="flex-1">
