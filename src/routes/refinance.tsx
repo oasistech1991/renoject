@@ -1,12 +1,17 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { calcStampDuty, fmtGBP, fmtPct } from "@/lib/btl";
 import { calculateRefinance, fmtROI, type RefinanceInputs } from "@/lib/refinance";
 import { MetricCard } from "@/components/btl/MetricCard";
 import { NumberField } from "@/components/btl/NumberField";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/refinance")({
+  validateSearch: (s: Record<string, unknown>) => ({
+    id: typeof s.id === "string" ? s.id : undefined,
+  }),
   head: () => ({
     meta: [
       { title: "Refinance / BRRR Calculator — Buy Refurb Refinance Rent" },
@@ -70,14 +75,113 @@ const defaults: RefinanceInputs = {
 };
 
 function RefinancePage() {
+  const search = Route.useSearch();
+  const navigate = Route.useNavigate();
   const [inputs, setInputs] = useState<RefinanceInputs>(defaults);
+  const [propertyName, setPropertyName] = useState("");
+  const [propertyId, setPropertyId] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [savedAt, setSavedAt] = useState<Date | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const set = <K extends keyof RefinanceInputs>(k: K, v: RefinanceInputs[K]) =>
     setInputs((p) => ({ ...p, [k]: v }));
 
   const r = useMemo(() => calculateRefinance(inputs), [inputs]);
 
   const autoStamp = () => set("stampDuty", calcStampDuty(inputs.purchasePrice));
-  const reset = () => setInputs(defaults);
+  const reset = () => {
+    setInputs(defaults);
+    setPropertyName("");
+    setPropertyId(null);
+    setSavedAt(null);
+    navigate({ search: { id: undefined }, replace: true });
+  };
+
+  // Load a saved property when ?id= is present
+  useEffect(() => {
+    const id = search.id;
+    if (!id || id === propertyId) return;
+    let cancelled = false;
+    (async () => {
+      setLoadError(null);
+      const { data, error } = await supabase
+        .from("properties")
+        .select("*")
+        .eq("id", id)
+        .maybeSingle();
+      if (cancelled) return;
+      if (error) {
+        setLoadError(error.message);
+        return;
+      }
+      if (!data) {
+        setLoadError("Property not found");
+        return;
+      }
+      setInputs({ ...defaults, ...(data.inputs as RefinanceInputs) });
+      setPropertyName(data.name);
+      setPropertyId(data.id);
+      setSavedAt(new Date(data.updated_at));
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [search.id]);
+
+  const metricsSnapshot = () => ({
+    cashLeftIn: r.cashLeftIn,
+    cashReleased: r.cashReleased,
+    newLoan: r.newLoan,
+    totalCashIn: r.totalCashIn,
+    monthlyCashflowIO: r.monthlyCashflowIO,
+    annualCashflowIO: r.annualCashflowIO,
+    grossYield: r.grossYield,
+    netYield: r.netYield,
+    roiOnCashLeftIn: isFinite(r.roiOnCashLeftIn) ? r.roiOnCashLeftIn : null,
+    capitalRecycledPct: r.capitalRecycledPct,
+    profitOnPaper: r.profitOnPaper,
+    verdict: r.verdict,
+    verdictLabel: r.verdictLabel,
+  });
+
+  const doSave = async (forceNew = false) => {
+    if (!propertyName.trim()) {
+      alert("Give the property a name first.");
+      return;
+    }
+    setSaving(true);
+    const payload = {
+      name: propertyName.trim(),
+      inputs: inputs as any,
+      metrics: metricsSnapshot() as any,
+    };
+    if (propertyId && !forceNew) {
+      const { error } = await supabase
+        .from("properties")
+        .update(payload)
+        .eq("id", propertyId);
+      setSaving(false);
+      if (error) {
+        alert(error.message);
+        return;
+      }
+      setSavedAt(new Date());
+    } else {
+      const { data, error } = await supabase
+        .from("properties")
+        .insert(payload)
+        .select()
+        .single();
+      setSaving(false);
+      if (error) {
+        alert(error.message);
+        return;
+      }
+      setPropertyId(data.id);
+      setSavedAt(new Date());
+      navigate({ search: { id: data.id }, replace: true });
+    }
+  };
 
   const setDepositMode = (isPct: boolean) => {
     if (isPct === inputs.depositIsPct) return;
