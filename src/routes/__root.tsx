@@ -149,6 +149,9 @@ function TopNav() {
         <Link to="/properties" className={linkBase} activeProps={{ className: `${linkBase} ${activeCls}` }}>
           Properties
         </Link>
+        <Link to="/forecast" className={linkBase} activeProps={{ className: `${linkBase} ${activeCls}` }}>
+          Forecast
+        </Link>
       </nav>
     </div>
   );

@@ -18,6 +18,7 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          in_portfolio: boolean
           inputs: Json
           metrics: Json
           name: string
@@ -27,6 +28,7 @@ export type Database = {
         Insert: {
           created_at?: string
           id?: string
+          in_portfolio?: boolean
           inputs: Json
           metrics: Json
           name: string
@@ -36,6 +38,7 @@ export type Database = {
         Update: {
           created_at?: string
           id?: string
+          in_portfolio?: boolean
           inputs?: Json
           metrics?: Json
           name?: string

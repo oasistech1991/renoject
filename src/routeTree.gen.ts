@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as RefinanceRouteImport } from './routes/refinance'
 import { Route as PropertiesRouteImport } from './routes/properties'
 import { Route as HmoComplianceRouteImport } from './routes/hmo-compliance'
+import { Route as ForecastRouteImport } from './routes/forecast'
 import { Route as ConditionRouteImport } from './routes/condition'
 import { Route as IndexRouteImport } from './routes/index'
 
@@ -30,6 +31,11 @@ const HmoComplianceRoute = HmoComplianceRouteImport.update({
   path: '/hmo-compliance',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ForecastRoute = ForecastRouteImport.update({
+  id: '/forecast',
+  path: '/forecast',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ConditionRoute = ConditionRouteImport.update({
   id: '/condition',
   path: '/condition',
@@ -44,6 +50,7 @@ const IndexRoute = IndexRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/condition': typeof ConditionRoute
+  '/forecast': typeof ForecastRoute
   '/hmo-compliance': typeof HmoComplianceRoute
   '/properties': typeof PropertiesRoute
   '/refinance': typeof RefinanceRoute
@@ -51,6 +58,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/condition': typeof ConditionRoute
+  '/forecast': typeof ForecastRoute
   '/hmo-compliance': typeof HmoComplianceRoute
   '/properties': typeof PropertiesRoute
   '/refinance': typeof RefinanceRoute
@@ -59,6 +67,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/condition': typeof ConditionRoute
+  '/forecast': typeof ForecastRoute
   '/hmo-compliance': typeof HmoComplianceRoute
   '/properties': typeof PropertiesRoute
   '/refinance': typeof RefinanceRoute
@@ -68,15 +77,23 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/condition'
+    | '/forecast'
     | '/hmo-compliance'
     | '/properties'
     | '/refinance'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/condition' | '/hmo-compliance' | '/properties' | '/refinance'
+  to:
+    | '/'
+    | '/condition'
+    | '/forecast'
+    | '/hmo-compliance'
+    | '/properties'
+    | '/refinance'
   id:
     | '__root__'
     | '/'
     | '/condition'
+    | '/forecast'
     | '/hmo-compliance'
     | '/properties'
     | '/refinance'
@@ -85,6 +102,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ConditionRoute: typeof ConditionRoute
+  ForecastRoute: typeof ForecastRoute
   HmoComplianceRoute: typeof HmoComplianceRoute
   PropertiesRoute: typeof PropertiesRoute
   RefinanceRoute: typeof RefinanceRoute
@@ -113,6 +131,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof HmoComplianceRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/forecast': {
+      id: '/forecast'
+      path: '/forecast'
+      fullPath: '/forecast'
+      preLoaderRoute: typeof ForecastRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/condition': {
       id: '/condition'
       path: '/condition'
@@ -133,6 +158,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ConditionRoute: ConditionRoute,
+  ForecastRoute: ForecastRoute,
   HmoComplianceRoute: HmoComplianceRoute,
   PropertiesRoute: PropertiesRoute,
   RefinanceRoute: RefinanceRoute,

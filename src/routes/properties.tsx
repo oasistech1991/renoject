@@ -28,6 +28,7 @@ type PropertyRow = {
   inputs: any;
   metrics: any;
   source: string | null;
+  in_portfolio?: boolean | null;
   created_at: string;
   updated_at: string;
 };
@@ -186,6 +187,18 @@ function PropertiesPage() {
     setRows((p) => p.filter((r) => r.id !== id));
   };
 
+  const togglePortfolio = async (id: string, next: boolean) => {
+    setRows((p) => p.map((r) => (r.id === id ? { ...r, in_portfolio: next } : r)));
+    const { error } = await supabase
+      .from("properties")
+      .update({ in_portfolio: next } as any)
+      .eq("id", id);
+    if (error) {
+      alert(error.message);
+      setRows((p) => p.map((r) => (r.id === id ? { ...r, in_portfolio: !next } : r)));
+    }
+  };
+
   const visibleRows = rows.filter((r) => {
     if (filter === "all") return true;
     if (filter === "none") return !r.source;
@@ -216,6 +229,9 @@ function PropertiesPage() {
             <Button size="sm" variant="outline" onClick={onPickFile} disabled={importing}>
               {importing ? "Importing…" : "Import from PDF"}
             </Button>
+            <Link to="/forecast">
+              <Button size="sm" variant="outline">Portfolio forecast</Button>
+            </Link>
             <Link to="/refinance">
               <Button size="sm">+ New property</Button>
             </Link>
@@ -348,6 +364,15 @@ function PropertiesPage() {
                     </Link>
                     <Button size="sm" variant="outline" onClick={() => remove(r.id, r.name)}>Delete</Button>
                   </div>
+                  <label className="mt-3 flex cursor-pointer items-center gap-2 rounded-md border border-border bg-background/40 px-3 py-2 text-xs font-medium select-none">
+                    <input
+                      type="checkbox"
+                      checked={!!r.in_portfolio}
+                      onChange={(e) => togglePortfolio(r.id, e.target.checked)}
+                      className="h-4 w-4 accent-primary"
+                    />
+                    <span>{r.in_portfolio ? "In portfolio forecast" : "Add to portfolio forecast"}</span>
+                  </label>
                 </div>
               );
             })}
