@@ -317,6 +317,54 @@ function RefinancePage() {
             </div>
 
             <div>
+              <h2 className="text-sm font-medium uppercase tracking-wider text-muted-foreground">Key metrics</h2>
+              <div className="mt-3 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                <MetricCard label="Purchase price" value={fmtGBP(inputs.purchasePrice)} />
+                <MetricCard label="Fixtures & fittings" value={fmtGBP(inputs.fixturesFittings)} />
+                <MetricCard label="Refurbishment cost" value={fmtGBP(inputs.refurbCost)} />
+                <MetricCard label="Conservative GDV" value={fmtGBP(inputs.gdv)} />
+                <MetricCard
+                  label="Below market value %"
+                  value={fmtPct(r.belowMarketValuePct)}
+                  hint="(GDV − Purchase) ÷ GDV"
+                  tone={r.belowMarketValuePct >= 20 ? "positive" : "accent"}
+                />
+                <MetricCard
+                  label="All money out (years)"
+                  value={
+                    r.cashLeftIn <= 0
+                      ? "0 (full pull-out)"
+                      : !isFinite(r.allMoneyOutYears)
+                        ? "—"
+                        : `${r.allMoneyOutYears.toFixed(2)} yrs`
+                  }
+                  hint="Cash left in ÷ annual cashflow"
+                />
+              </div>
+            </div>
+
+            <div>
+              <h2 className="text-sm font-medium uppercase tracking-wider text-muted-foreground">Revenue</h2>
+              <div className="mt-3 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                <MetricCard label="Lettable units" value={`${inputs.lettableUnits}`} />
+                <MetricCard label="Current monthly rent" value={fmtGBP(inputs.currentMonthlyRent)} />
+                <MetricCard label="Achievable monthly rent" value={fmtGBP(inputs.monthlyRent)} tone="positive" />
+                <MetricCard label="Achievable annual rent" value={fmtGBP(r.annualRent)} />
+                <MetricCard
+                  label="Gross yield (on purchase)"
+                  value={fmtPct(r.grossYieldOnPurchase)}
+                  hint="Annual rent ÷ purchase price"
+                  tone="positive"
+                />
+                <MetricCard
+                  label="Gross yield (on GDV)"
+                  value={fmtPct(r.grossYield)}
+                  hint="Annual rent ÷ GDV"
+                />
+              </div>
+            </div>
+
+            <div>
               <h2 className="text-sm font-medium uppercase tracking-wider text-muted-foreground">The deal</h2>
               <div className="mt-3 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
                 <MetricCard label="Total cash in" value={fmtGBP(r.totalCashIn)} hint="Deposit + costs + refurb + holding + interest" />
