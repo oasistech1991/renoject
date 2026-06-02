@@ -165,11 +165,12 @@ function SignInScreen() {
   const handleGoogle = async () => {
     setLoading(true);
     setError(null);
-    const result = await lovable.auth.signInWithOAuth("google", {
+    const result: any = await lovable.auth.signInWithOAuth("google", {
       redirect_uri: window.location.origin,
     });
-    if (result.error) {
-      setError(typeof result.error === "string" ? result.error : "Sign-in failed");
+    if (result?.error) {
+      const msg = result.error?.message ?? (typeof result.error === "string" ? result.error : "Sign-in failed");
+      setError(msg);
       setLoading(false);
     }
   };
