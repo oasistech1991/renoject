@@ -9,6 +9,11 @@ import {
 } from "@tanstack/react-router";
 
 import appCss from "../styles.css?url";
+import { useEffect, useState } from "react";
+import type { Session } from "@supabase/supabase-js";
+import { supabase } from "@/integrations/supabase/client";
+import { lovable } from "@/integrations/lovable";
+import { Button } from "@/components/ui/button";
 
 function NotFoundComponent() {
   return (
@@ -117,14 +122,74 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <TopNav />
-      {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
-      <Outlet />
+      <AuthGate />
     </QueryClientProvider>
   );
 }
 
-function TopNav() {
+function AuthGate() {
+  const [session, setSession] = useState<Session | null>(null);
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => {
+      setSession(data.session);
+      setReady(true);
+    });
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, s) => {
+      setSession(s);
+    });
+    return () => subscription.unsubscribe();
+  }, []);
+
+  if (!ready) {
+    return <div className="flex min-h-screen items-center justify-center text-sm text-muted-foreground">Loading…</div>;
+  }
+
+  if (!session) {
+    return <SignInScreen />;
+  }
+
+  return (
+    <>
+      <TopNav onSignOut={() => supabase.auth.signOut()} email={session.user.email ?? ""} />
+      <Outlet />
+    </>
+  );
+}
+
+function SignInScreen() {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleGoogle = async () => {
+    setLoading(true);
+    setError(null);
+    const result: any = await lovable.auth.signInWithOAuth("google", {
+      redirect_uri: window.location.origin,
+    });
+    if (result?.error) {
+      const msg = result.error?.message ?? (typeof result.error === "string" ? result.error : "Sign-in failed");
+      setError(msg);
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-background px-4">
+      <div className="w-full max-w-sm rounded-lg border border-border bg-card p-8 shadow-sm">
+        <h1 className="text-xl font-bold tracking-wide text-foreground">HARTSTONE HOLDINGS</h1>
+        <p className="mt-2 text-sm text-muted-foreground">Sign in to access your property tools.</p>
+        <Button onClick={handleGoogle} disabled={loading} className="mt-6 w-full">
+          {loading ? "Signing in…" : "Continue with Google"}
+        </Button>
+        {error && <p className="mt-3 text-xs text-destructive">{error}</p>}
+      </div>
+    </div>
+  );
+}
+
+function TopNav({ onSignOut, email }: { onSignOut: () => void; email: string }) {
   const linkBase =
     "px-4 py-2 text-sm font-medium rounded-md transition-colors text-muted-foreground hover:text-foreground hover:bg-accent/50";
   const activeCls = "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground";
@@ -152,6 +217,10 @@ function TopNav() {
         <Link to="/forecast" className={linkBase} activeProps={{ className: `${linkBase} ${activeCls}` }}>
           Forecast
         </Link>
+        <div className="ml-auto flex items-center gap-2">
+          <span className="text-xs text-muted-foreground">{email}</span>
+          <Button variant="outline" size="sm" onClick={onSignOut}>Sign out</Button>
+        </div>
       </nav>
     </div>
   );
