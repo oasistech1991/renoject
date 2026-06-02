@@ -568,6 +568,7 @@ function RefinancePage() {
 
           {/* Results */}
           <section className="space-y-6">
+            {method === "brrr" && (
             <div className={`rounded-xl border p-5 ${verdictTone}`}>
               <div className="text-xs font-medium uppercase tracking-wider opacity-80">BRRR verdict</div>
               <div className="mt-1 text-2xl font-semibold">{r.verdictLabel}</div>
@@ -575,6 +576,7 @@ function RefinancePage() {
                 {fmtPct(Math.max(0, Math.min(100, r.capitalRecycledPct)), 0)} of starting capital recycled · Cash left in {fmtGBP(Math.max(0, r.cashLeftIn))}
               </div>
             </div>
+            )}
 
             <div>
               <h2 className="text-sm font-medium uppercase tracking-wider text-muted-foreground">Key metrics</h2>
