@@ -387,6 +387,7 @@ function RefinancePage() {
                 value={inputs.purchaseRate} onChange={(v) => set("purchaseRate", v)} />
             </InputGroup>
 
+            {method !== "cash" && (
             <InputGroup title="Additional acquisition costs">
               <NumberField id="ff" label="Fixtures & fittings" prefix="£"
                 value={inputs.fixturesFittings} onChange={(v) => set("fixturesFittings", v)} />
@@ -403,7 +404,9 @@ function RefinancePage() {
               <NumberField id="sourcing" label="Sourcing fee" prefix="£"
                 value={inputs.sourcingFee} onChange={(v) => set("sourcingFee", v)} />
             </InputGroup>
+            )}
 
+            {(method === "brrr" || method === "bridge") && (
             <InputGroup title="Refurb">
               <NumberField id="refurb" label="Refurb cost" prefix="£" step={500}
                 value={inputs.refurbCost} onChange={(v) => set("refurbCost", v)} />
@@ -413,7 +416,9 @@ function RefinancePage() {
                 value={inputs.holdingMonthly} onChange={(v) => set("holdingMonthly", v)}
                 hint="Council tax, utilities, insurance during refurb" />
             </InputGroup>
+            )}
 
+            {(method === "brrr" || method === "bridge") && (
             <InputGroup title="Bridging finance">
               <label className="flex items-center justify-between gap-3 rounded-md border border-border bg-background px-3 py-2 text-sm">
                 <span>Fund purchase with a bridge?</span>
@@ -496,7 +501,9 @@ function RefinancePage() {
                 </p>
               )}
             </InputGroup>
+            )}
 
+            {method === "brrr" && (
             <InputGroup title="Refinance">
               <NumberField id="gdv" label="Post-refurb valuation (GDV)" prefix="£" step={1000}
                 value={inputs.gdv} onChange={(v) => set("gdv", v)} />
@@ -510,6 +517,7 @@ function RefinancePage() {
                 value={inputs.refiFees} onChange={(v) => set("refiFees", v)}
                 hint="Arrangement + valuation + legal" />
             </InputGroup>
+            )}
 
             <InputGroup title="Rental (post-refi)">
               <NumberField id="units" label="Lettable units" step={1}
@@ -533,6 +541,7 @@ function RefinancePage() {
                 value={inputs.otherMonthly} onChange={(v) => set("otherMonthly", v)} />
             </InputGroup>
 
+            {method === "brrr" && (
             <InputGroup title="Flip / sale exit (optional)">
               <label className="flex items-center justify-between gap-3 rounded-md border border-border bg-background px-3 py-2 text-sm">
                 <span>Model a flip / resale instead of refi?</span>
@@ -554,6 +563,7 @@ function RefinancePage() {
                 </>
               )}
             </InputGroup>
+            )}
           </section>
 
           {/* Results */}
