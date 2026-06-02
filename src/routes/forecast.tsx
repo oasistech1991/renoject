@@ -38,6 +38,8 @@ function ForecastPage() {
   const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [defaultRefurb, setDefaultRefurb] = useState(4);
+  const [defaultVoidToLet, setDefaultVoidToLet] = useState(2);
 
   const load = async () => {
     setLoading(true);
@@ -85,6 +87,22 @@ function ForecastPage() {
   const portfolioROI = totals.cashLeftIn > 0 ? (totals.annualCashflow / totals.cashLeftIn) * 100 : null;
   const portfolioYield = totals.gdv > 0 ? ((totals.monthlyRent * 12) / totals.gdv) * 100 : 0;
 
+  const dealOffsets = rows.map((r) => {
+    const i = r.inputs ?? {};
+    const m = r.metrics ?? {};
+    const refurb = Number(i.refurbMonths ?? defaultRefurb);
+    const voidToLet = Number(i.voidToLetMonths ?? defaultVoidToLet);
+    const startMonth = refurb + voidToLet + 1;
+    return {
+      id: r.id,
+      refurb,
+      voidToLet,
+      startMonth,
+      monthly: Number(m.monthlyCashflowIO ?? 0),
+      rent: Number(i.monthlyRent ?? 0),
+    };
+  });
+
   const perDeal = rows.map((r) => {
     const m = r.metrics ?? {};
     const i = r.inputs ?? {};
@@ -103,8 +121,12 @@ function ForecastPage() {
   let runCF = 0;
   let runRent = 0;
   for (let mIdx = 1; mIdx <= 24; mIdx++) {
-    runCF += totals.monthlyCashflow;
-    runRent += totals.monthlyRent;
+    for (const d of dealOffsets) {
+      if (mIdx >= d.startMonth) {
+        runCF += d.monthly;
+        runRent += d.rent;
+      }
+    }
     cumulative.push({ month: `M${mIdx}`, cashflow: Math.round(runCF), rent: Math.round(runRent) });
   }
 
@@ -157,6 +179,37 @@ function ForecastPage() {
               <Stat label="Total purchase price" value={fmtGBP(totals.purchase)} />
             </div>
 
+            <div className="mt-6 rounded-xl border border-border bg-card p-5">
+              <div className="flex flex-wrap items-end gap-6">
+                <div>
+                  <h3 className="text-sm font-semibold">Rent-start defaults</h3>
+                  <p className="text-xs text-muted-foreground">
+                    Applied to any deal that doesn't set its own refurb / time-to-let.
+                  </p>
+                </div>
+                <label className="flex flex-col text-xs text-muted-foreground">
+                  Refurb (months)
+                  <input
+                    type="number"
+                    min={0}
+                    value={defaultRefurb}
+                    onChange={(e) => setDefaultRefurb(Math.max(0, Number(e.target.value) || 0))}
+                    className="mt-1 w-24 rounded-md border border-border bg-background px-3 py-1.5 text-sm text-foreground"
+                  />
+                </label>
+                <label className="flex flex-col text-xs text-muted-foreground">
+                  Time to let (months)
+                  <input
+                    type="number"
+                    min={0}
+                    value={defaultVoidToLet}
+                    onChange={(e) => setDefaultVoidToLet(Math.max(0, Number(e.target.value) || 0))}
+                    className="mt-1 w-24 rounded-md border border-border bg-background px-3 py-1.5 text-sm text-foreground"
+                  />
+                </label>
+              </div>
+            </div>
+
             <div className="mt-8 grid gap-4 lg:grid-cols-2">
               <ChartCard
                 title="Cashflow per deal"
@@ -171,7 +224,7 @@ function ForecastPage() {
 
               <ChartCard
                 title="Cumulative income — next 24 months"
-                subtitle="Projected rolling cashflow and gross rent across the portfolio"
+                subtitle="Phased by refurb + time-to-let per deal"
               >
                 <ClientOnly fallback={<div className="h-[300px]" />}>
                   <Suspense fallback={<div className="h-[300px]" />}>
@@ -192,6 +245,7 @@ function ForecastPage() {
                     <th className="px-4 py-3 text-right font-medium">Monthly CF</th>
                     <th className="px-4 py-3 text-right font-medium">Annual CF</th>
                     <th className="px-4 py-3 text-right font-medium">Profit on paper</th>
+                    <th className="px-4 py-3 text-right font-medium">Rent starts</th>
                     <th className="px-4 py-3"></th>
                   </tr>
                 </thead>
@@ -199,6 +253,7 @@ function ForecastPage() {
                   {rows.map((r) => {
                     const m = r.metrics ?? {};
                     const i = r.inputs ?? {};
+                    const off = dealOffsets.find((d) => d.id === r.id);
                     return (
                       <tr key={r.id} className="border-t border-border">
                         <td className="px-4 py-3">
@@ -212,6 +267,9 @@ function ForecastPage() {
                         <td className="px-4 py-3 text-right tabular-nums">{fmtGBP(m.monthlyCashflowIO ?? 0)}</td>
                         <td className="px-4 py-3 text-right tabular-nums">{fmtGBP(m.annualCashflowIO ?? 0)}</td>
                         <td className="px-4 py-3 text-right tabular-nums">{fmtGBP(m.profitOnPaper ?? 0)}</td>
+                        <td className="px-4 py-3 text-right tabular-nums text-muted-foreground">
+                          {off ? `M${off.startMonth}` : "—"}
+                        </td>
                         <td className="px-4 py-3 text-right">
                           <Button size="sm" variant="ghost" onClick={() => toggle(r.id)}>Remove</Button>
                         </td>
