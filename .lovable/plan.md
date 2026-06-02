@@ -1,86 +1,49 @@
 ## Goal
 
-Add a **Refinance / BRRR Calculator** as a new page so you can model the full Buy-Refurb-Refinance-Rent cycle and see how much cash you pull back out, what's left in the deal, and whether the post-refi rent still stacks.
+Let you name a property in the Refinance / BRRR calculator, save it (inputs + key metrics) to a backend, list all saved properties on a new page, and load any of them back into the calculator to keep working.
 
-## New route
+## Backend (Lovable Cloud)
 
-`src/routes/refinance.tsx` → `/refinance`, added to the top nav in `__root.tsx` next to "Renovation Calculator" and "HMO Compliance". Own `head()` meta (title, description, og:title, og:description) so it's SEO/share-friendly.
+Enable Lovable Cloud and add one table:
 
-## Inputs (left column, grouped like the BTL page)
+`properties`
+- `id` uuid primary key
+- `name` text not null
+- `inputs` jsonb not null — the full `RefinanceInputs` object
+- `metrics` jsonb not null — snapshot of headline `RefinanceResults` (cash left in, cash released, new loan, ROI, gross yield, GDV, verdict, etc.)
+- `created_at`, `updated_at` timestamptz
 
-**Purchase**
-- Purchase price
-- Deposit (£ or %, same toggle pattern as BTL)
-- Stamp duty (with Auto button, reuses `calcStampDuty`)
-- Legal fees, survey fees
-- Purchase mortgage rate %, term (yrs) — usually interest-only for BRRR
+Since you chose **shared / no login**, RLS will allow public select/insert/update/delete from the anon role. (Heads up: anyone with the app URL can read/edit — fine for a personal tool, not for real client data. Easy to switch to per-user later.)
 
-**Refurb**
-- Refurb cost (can be pre-filled from the Renovation Calculator output later — out of scope for v1, but I'll keep the field name aligned)
-- Refurb duration (months) — used for holding cost
-- Holding costs / month during refurb (council tax, utilities, insurance)
-- Bridge / refurb finance rate % (optional, 0 = cash funded)
+Grants: `GRANT SELECT, INSERT, UPDATE, DELETE ON public.properties TO anon, authenticated;`
 
-**Refinance**
-- Post-refurb valuation (GDV / end value)
-- Refinance LTV % (default 75)
-- Refinance rate %, term (yrs)
-- Refinance fees (arrangement, valuation, legal) — single £ field
+## Calculator changes (`src/routes/refinance.tsx`)
 
-**Rental (post-refi)**
-- Monthly rent
-- Management %, maintenance %, voids %
-- Insurance / month, ground rent / month, other / month
+- New **Property name** text input at the top of the page (above the input columns), plus a small toolbar:
+  - **Save** — inserts a new row if no current id, otherwise updates the existing row.
+  - **Save as new** — always inserts a new row.
+  - **New** — clears the form back to defaults.
+  - Subtle "Last saved …" indicator.
+- A `?id=<uuid>` search param so a saved deal can be deep-linked; on mount, if present, fetch and hydrate inputs.
 
-## Calculated results (right column, MetricCard grid + summary table)
+## New page: `/properties` (`src/routes/properties.tsx`)
 
-**The deal**
-- Total cash in (deposit + stamp + legal + survey + refurb + holding costs during refurb + bridge interest)
-- New loan amount (GDV × refi LTV)
-- Cash released on refi (new loan − original loan balance − refi fees)
-- **Cash left in deal** (total cash in − cash released) — the headline BRRR number
-- % capital recycled (cash released ÷ total cash in)
+- Lists all saved properties as cards/rows: name, GDV, cash left in, ROI, verdict badge, updated date.
+- Each row links to `/refinance?id=<uuid>` to load it back into the calculator.
+- Delete button per row (with confirm).
+- "New property" button → `/refinance` (blank).
+- Empty state when nothing saved yet.
 
-**Value uplift**
-- GDV − (price + refurb) = profit on paper
-- Money multiple on starting cash
-- New equity (GDV − new loan)
+## Nav
 
-**Post-refi monthly cashflow**
-- New monthly mortgage (interest-only AND repayment)
-- Operating costs (mgmt + maint + voids + insurance + ground rent + other)
-- Net monthly cashflow (IO and repayment)
-- Annualised cashflow
+Add a `Properties` link to the top nav in `__root.tsx` next to Refinance / BRRR.
 
-**Yields & lender stress**
-- Gross yield on GDV
-- Net yield on GDV
-- ROI on cash-left-in (annual cashflow ÷ cash left in) — infinite if cash left in ≤ 0, shown as "∞ (no money left in)"
-- ICR at refi rate
-- Stress ICR @ 5.5% (Pass 145% / Pass 125% / Fail) — reuse BTL logic
-- Break-even rent
+## Data access
 
-**BRRR verdict banner**
-A coloured banner at the top of results summarising the deal:
-- Green "Full BRRR" if cash left in ≤ £0 AND stress ICR ≥ 125%
-- Amber "Partial pull-out" if some cash left in but cashflow positive and ICR passes
-- Red "Doesn't stack" if cashflow negative or ICR fails
+Use the browser Supabase client directly from the two pages (simpler than server functions for a no-auth shared table, and matches the existing client-only calculator). All reads/writes go through `supabase.from('properties')`.
 
-## Implementation
+## Out of scope
 
-- New `src/lib/refinance.ts` with a `RefinanceInputs` interface, a pure `calculateRefinance()` function, and reuses `calcStampDuty`, `fmtGBP`, `fmtPct` from `src/lib/btl.ts`. All logic is unit-testable, no side effects.
-- New `src/routes/refinance.tsx` using the same `MetricCard` / `NumberField` / `InputGroup` / `Row` building blocks as `src/routes/index.tsx` for a consistent look.
-- Update `__root.tsx` nav: add `<Link to="/refinance">Refinance / BRRR</Link>`.
-- Update the home page header tagline or add a small card linking to the new tool (optional, can skip if you'd rather keep the homepage as-is — let me know).
-- Sensible defaults so the page is useful on first load (e.g. £150k buy, £30k refurb, £220k GDV, 75% refi LTV, 5.5% refi rate, £1,300 rent).
-
-## Out of scope for v1
-
-- Saving deals to a database (no backend changes).
-- Pulling the refurb figure automatically from the Renovation Calculator (can wire up later).
-- Multi-year projections / appreciation modelling.
-- Tax modelling on the refi — the BTL page already handles Section 24 for the holding period; happy to add a "post-tax" row here too if you want, just say.
-
-## Quick question
-
-Do you want **bridge finance** modelled properly (interest during refurb based on a draw schedule), or is a simple "refurb finance rate × refurb cost × months" approximation good enough for v1? I'll default to the simple approximation unless you say otherwise.
+- Auth / per-user privacy (can layer on later by adding a `user_id` column + RLS scoped to `auth.uid()`).
+- Versioning / history of saved snapshots.
+- CSV export, sharing links beyond the raw `/refinance?id=…` URL.
