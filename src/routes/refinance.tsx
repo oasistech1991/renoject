@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { PROPERTY_SOURCES, type PropertySource } from "@/lib/sources";
+import { PropertyMedia } from "@/components/property/PropertyMedia";
 
 export const Route = createFileRoute("/refinance")({
   validateSearch: (s: Record<string, unknown>) => ({
@@ -273,6 +274,11 @@ function RefinancePage() {
       </header>
 
       <main className="mx-auto max-w-7xl px-6 py-8">
+        {propertyId && (
+          <div className="mb-8">
+            <PropertyMedia propertyId={propertyId} />
+          </div>
+        )}
         <div className="grid gap-8 lg:grid-cols-[400px_1fr]">
           {/* Inputs */}
           <section className="space-y-6">

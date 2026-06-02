@@ -94,6 +94,7 @@ function PropertiesPage() {
   const navigate = useNavigate();
   const parsePdf = useServerFn(parsePropertyPdf);
   const { colorFor, setColor } = useSourceColors();
+  const [heroUrls, setHeroUrls] = useState<Record<string, string>>({});
 
   const load = async () => {
     setLoading(true);
@@ -104,6 +105,22 @@ function PropertiesPage() {
     if (error) setError(error.message);
     else setRows((data as PropertyRow[]) ?? []);
     setLoading(false);
+    // Load hero banners (one signed url per property if marked)
+    const { data: media } = await supabase
+      .from("property_media")
+      .select("property_id, storage_path")
+      .eq("is_hero", true)
+      .eq("kind", "image");
+    const map: Record<string, string> = {};
+    await Promise.all(
+      ((media as { property_id: string; storage_path: string }[]) ?? []).map(async (m) => {
+        const { data: s } = await supabase.storage
+          .from("property-media")
+          .createSignedUrl(m.storage_path, 60 * 60);
+        if (s?.signedUrl) map[m.property_id] = s.signedUrl;
+      })
+    );
+    setHeroUrls(map);
   };
 
   useEffect(() => {
@@ -279,6 +296,12 @@ function PropertiesPage() {
                     : "bg-destructive/10 text-destructive border-destructive/30";
               return (
                 <div key={r.id} className="rounded-xl border border-border bg-card p-5">
+                  {heroUrls[r.id] && (
+                    <div
+                      className="-mx-5 -mt-5 mb-4 h-32 rounded-t-xl bg-cover bg-center"
+                      style={{ backgroundImage: `url(${heroUrls[r.id]})` }}
+                    />
+                  )}
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <h3 className="truncate text-base font-semibold">{r.name}</h3>

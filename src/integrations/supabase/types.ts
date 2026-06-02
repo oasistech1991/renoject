@@ -44,6 +44,47 @@ export type Database = {
         }
         Relationships: []
       }
+      property_media: {
+        Row: {
+          created_at: string
+          filename: string | null
+          id: string
+          is_hero: boolean
+          kind: string
+          property_id: string
+          sort_order: number
+          storage_path: string
+        }
+        Insert: {
+          created_at?: string
+          filename?: string | null
+          id?: string
+          is_hero?: boolean
+          kind: string
+          property_id: string
+          sort_order?: number
+          storage_path: string
+        }
+        Update: {
+          created_at?: string
+          filename?: string | null
+          id?: string
+          is_hero?: boolean
+          kind?: string
+          property_id?: string
+          sort_order?: number
+          storage_path?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "property_media_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
