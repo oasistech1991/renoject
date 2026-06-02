@@ -33,6 +33,24 @@ type PropertyRow = {
   updated_at: string;
 };
 
+// Infer the purchase method for legacy deals that didn't persist `method`.
+// Heuristics on the inputs: BRRR uplifts GDV above purchase and/or has refurb;
+// cash purchases zero out the deposit/rate; BTL has no GDV uplift or refurb.
+function inferMethod(metrics: any, inputs: any): "btl" | "brrr" | "cash" | "mortgage" {
+  if (metrics?.method) return metrics.method;
+  const purchasePrice = Number(inputs?.purchasePrice ?? 0);
+  const gdv = Number(inputs?.gdv ?? 0);
+  const refurbCost = Number(inputs?.refurbCost ?? 0);
+  const useBridge = !!inputs?.useBridge;
+  const hasBtlBlob = !!inputs?.__btl;
+  if (hasBtlBlob) return "btl";
+  if (useBridge || refurbCost > 0 || (gdv > 0 && gdv > purchasePrice)) return "brrr";
+  const deposit = Number(inputs?.deposit ?? 0);
+  const depositPct = Number(inputs?.depositPct ?? 0);
+  if (deposit === 0 && depositPct === 0) return "cash";
+  return "btl";
+}
+
 const DEFAULT_INPUTS: RefinanceInputs = {
   purchasePrice: 150000, deposit: 37500, depositPct: 25, depositIsPct: false,
   stampDuty: calcStampDuty(150000), legalFees: 1500, surveyFees: 500, purchaseRate: 6.0,
@@ -363,7 +381,7 @@ function PropertiesPage() {
                       );
                     })()}
                     {(() => {
-                      const method: string = m.method ?? "brrr";
+                      const method: string = inferMethod(m, r.inputs);
                       const label = method === "btl" ? "BTL"
                         : method === "cash" ? "Cash"
                         : method === "mortgage" ? "Mortgage"
@@ -378,7 +396,7 @@ function PropertiesPage() {
                   </div>
                    <dl className="mt-4 grid grid-cols-2 gap-y-2 text-sm">
                     {(() => {
-                      const method: string = m.method ?? "brrr";
+                      const method: string = inferMethod(m, r.inputs);
                       const purchasePrice = m.purchasePrice ?? r.inputs?.purchasePrice ?? 0;
                       if (method === "btl") {
                         return (
