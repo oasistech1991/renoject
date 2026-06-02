@@ -330,6 +330,28 @@ function RefinancePage() {
         <div className="grid gap-8 lg:grid-cols-[400px_1fr]">
           {/* Inputs */}
           <section className="space-y-6">
+            <InputGroup title="Purchase method">
+              <div className="grid grid-cols-2 gap-0 overflow-hidden rounded-md border border-border sm:grid-cols-4">
+                {([
+                  ["mortgage", "Mortgage"],
+                  ["cash", "Cash"],
+                  ["bridge", "Bridge + Refurb"],
+                  ["brrr", "Refinance / BRRR"],
+                ] as const).map(([key, label]) => (
+                  <Button
+                    key={key}
+                    type="button"
+                    variant={method === key ? "secondary" : "ghost"}
+                    size="sm"
+                    className="rounded-none"
+                    onClick={() => setMethod(key)}
+                  >
+                    {label}
+                  </Button>
+                ))}
+              </div>
+            </InputGroup>
+
             <InputGroup title="Purchase">
               <NumberField id="price" label="Purchase price" prefix="£" step={1000}
                 value={inputs.purchasePrice} onChange={(v) => set("purchasePrice", v)} />
