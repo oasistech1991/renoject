@@ -45,6 +45,8 @@ const defaults: RefinanceInputs = {
   bridgeRateIsPCM: true,
   bridgeTermMonths: 6,
   bridgeArrangementPct: 2,
+  bridgeArrangementIsPct: true,
+  bridgeArrangementAmount: 3000,
   bridgeExitPct: 1,
   bridgeInterestRolled: true,
   gdv: 220000,
