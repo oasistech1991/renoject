@@ -499,6 +499,23 @@ function RefinancePage() {
               </div>
             </div>
 
+            {inputs.flipEnabled && (
+              <div>
+                <h2 className="text-sm font-medium uppercase tracking-wider text-muted-foreground">Flip / sale exit</h2>
+                <div className="mt-3 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                  <MetricCard label="Sale price achieved" value={fmtGBP(inputs.flipSalePrice)} />
+                  <MetricCard label="Sale legal fees" value={fmtGBP(inputs.flipLegalFees)} />
+                  <MetricCard label="Agency fee" value={fmtGBP(inputs.flipAgencyFee)} />
+                  <MetricCard
+                    label="Flip profit"
+                    value={fmtGBP(r.flipProfit)}
+                    hint="Sale − selling costs − debt − cash in (deposit recovered)"
+                    tone={r.flipProfit >= 0 ? "positive" : "negative"}
+                  />
+                </div>
+              </div>
+            )}
+
             <p className="pt-4 text-xs text-muted-foreground">
               Estimates only. Holding costs assume the purchase mortgage runs interest-only throughout the refurb. Stress test uses a 5.5% notional refi rate. Speak to a broker, accountant and solicitor before committing.
             </p>
