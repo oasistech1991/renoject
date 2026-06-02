@@ -1,49 +1,37 @@
 ## Goal
+On the Forecast page, account for the time each deal spends in refurb + on the market before rent starts. Today the cumulative chart assumes rent flows from month 1, which overstates the early months.
 
-Let you name a property in the Refinance / BRRR calculator, save it (inputs + key metrics) to a backend, list all saved properties on a new page, and load any of them back into the calculator to keep working.
+## Changes
 
-## Backend (Lovable Cloud)
+### 1. Per-deal "rent start" offset
+Add two numbers per deal (default 4 months refurb + 2 months to let = 6):
+- `refurbMonths`
+- `voidToLetMonths`
 
-Enable Lovable Cloud and add one table:
+Source of truth: read from `r.inputs.refurbMonths` / `r.inputs.voidToLetMonths` if set, otherwise fall back to a global default controlled at the top of the Forecast page (one input pair, applies to any deal missing its own).
 
-`properties`
-- `id` uuid primary key
-- `name` text not null
-- `inputs` jsonb not null — the full `RefinanceInputs` object
-- `metrics` jsonb not null — snapshot of headline `RefinanceResults` (cash left in, cash released, new loan, ROI, gross yield, GDV, verdict, etc.)
-- `created_at`, `updated_at` timestamptz
+A deal's rent (and therefore monthly cashflow) only starts contributing in month `refurbMonths + voidToLetMonths + 1`.
 
-Since you chose **shared / no login**, RLS will allow public select/insert/update/delete from the anon role. (Heads up: anyone with the app URL can read/edit — fine for a personal tool, not for real client data. Easy to switch to per-user later.)
+### 2. Cumulative chart becomes phased
+Replace the current flat `runCF += totals.monthlyCashflow` loop with a per-deal walk:
 
-Grants: `GRANT SELECT, INSERT, UPDATE, DELETE ON public.properties TO anon, authenticated;`
+```text
+for each month 1..24:
+  for each deal:
+    if month > deal.refurbMonths + deal.voidToLetMonths:
+      add deal.monthlyCashflow and deal.monthlyRent
+```
 
-## Calculator changes (`src/routes/refinance.tsx`)
+So the cumulative rent / cashflow curve stays flat (or only reflects already-renting deals) until each deal "comes online", then ramps.
 
-- New **Property name** text input at the top of the page (above the input columns), plus a small toolbar:
-  - **Save** — inserts a new row if no current id, otherwise updates the existing row.
-  - **Save as new** — always inserts a new row.
-  - **New** — clears the form back to defaults.
-  - Subtle "Last saved …" indicator.
-- A `?id=<uuid>` search param so a saved deal can be deep-linked; on mount, if present, fetch and hydrate inputs.
+### 3. UI on the Forecast page
+- A small "Rent start defaults" card above the charts with two inputs (refurb months, void-to-let months) — drives the default for any deal missing its own values.
+- A new column in the deals table: "Rent starts" showing `Month N` for each deal, computed from its offsets.
+- Chart subtitle updated to "Phased by refurb + time-to-let per deal".
 
-## New page: `/properties` (`src/routes/properties.tsx`)
-
-- Lists all saved properties as cards/rows: name, GDV, cash left in, ROI, verdict badge, updated date.
-- Each row links to `/refinance?id=<uuid>` to load it back into the calculator.
-- Delete button per row (with confirm).
-- "New property" button → `/refinance` (blank).
-- Empty state when nothing saved yet.
-
-## Nav
-
-Add a `Properties` link to the top nav in `__root.tsx` next to Refinance / BRRR.
-
-## Data access
-
-Use the browser Supabase client directly from the two pages (simpler than server functions for a no-auth shared table, and matches the existing client-only calculator). All reads/writes go through `supabase.from('properties')`.
+### 4. Headline stats stay as steady-state
+The top stat cards ("Monthly cashflow", "Annual cashflow", "Total monthly rent") continue to show the steady-state numbers once everything is let — that's the long-run view. The phasing only changes the 24-month cumulative chart and adds the "Rent starts" column.
 
 ## Out of scope
-
-- Auth / per-user privacy (can layer on later by adding a `user_id` column + RLS scoped to `auth.uid()`).
-- Versioning / history of saved snapshots.
-- CSV export, sharing links beyond the raw `/refinance?id=…` URL.
+- Persisting per-deal refurb/void-to-let into the database (would need a migration). For now they live on `inputs` if already there, otherwise the global default is used. We can add a migration + editor later if you want each deal to remember its own.
+- Changing the deal page or properties page calculations.
