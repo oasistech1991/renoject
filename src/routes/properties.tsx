@@ -233,9 +233,11 @@ function PropertiesPage() {
                       {verdict}
                     </span>
                   </div>
-                  <dl className="mt-4 grid grid-cols-2 gap-y-2 text-sm">
+                   <dl className="mt-4 grid grid-cols-2 gap-y-2 text-sm">
                     <dt className="text-muted-foreground">GDV</dt>
                     <dd className="text-right tabular-nums">{fmtGBP(r.inputs?.gdv ?? 0)}</dd>
+                    <dt className="text-muted-foreground">Cash required</dt>
+                    <dd className="text-right tabular-nums">{fmtGBP(m.totalCashIn ?? 0)}</dd>
                     <dt className="text-muted-foreground">Cash left in</dt>
                     <dd className="text-right tabular-nums">{fmtGBP(Math.max(0, m.cashLeftIn ?? 0))}</dd>
                     <dt className="text-muted-foreground">Cash released</dt>
