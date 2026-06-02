@@ -489,7 +489,8 @@ function RefinancePage() {
               </div>
             </InputGroup>
 
-            {method !== "btl" && (<>
+            {method !== "btl" && (
+              <>
             <InputGroup title="Purchase">
               <NumberField id="price" label="Purchase price" prefix="£" step={1000}
                 value={inputs.purchasePrice} onChange={(v) => set("purchasePrice", v)} />
@@ -702,7 +703,8 @@ function RefinancePage() {
               )}
             </InputGroup>
             )}
-            </>)}
+              </>
+            )}
 
             {method === "btl" && (
               <BtlInputs
@@ -719,7 +721,8 @@ function RefinancePage() {
           <section className="space-y-6">
             {method === "btl" ? (
               <BtlResults inputs={btlInputs} r={btl} />
-            ) : (<>
+            ) : (
+              <>
             {method === "brrr" && (
             <div className={`rounded-xl border p-5 ${verdictTone}`}>
               <div className="text-xs font-medium uppercase tracking-wider opacity-80">BRRR verdict</div>
@@ -949,7 +952,8 @@ function RefinancePage() {
             <p className="pt-4 text-xs text-muted-foreground">
               Estimates only. Holding costs assume the purchase mortgage runs interest-only throughout the refurb. Stress test uses a 5.5% notional refi rate. Speak to a broker, accountant and solicitor before committing.
             </p>
-            </>)}
+              </>
+            )}
           </section>
         </div>
       </main>
