@@ -152,6 +152,23 @@ function RefinancePage() {
                 value={inputs.purchaseRate} onChange={(v) => set("purchaseRate", v)} />
             </InputGroup>
 
+            <InputGroup title="Additional acquisition costs">
+              <NumberField id="ff" label="Fixtures & fittings" prefix="£"
+                value={inputs.fixturesFittings} onChange={(v) => set("fixturesFittings", v)} />
+              <NumberField id="furn" label="Furnishing" prefix="£"
+                value={inputs.furnishing} onChange={(v) => set("furnishing", v)} />
+              <NumberField id="broker" label="Broker fees" prefix="£"
+                value={inputs.brokerFees} onChange={(v) => set("brokerFees", v)} />
+              <NumberField id="lender" label="Lender fee" prefix="£"
+                value={inputs.lenderFee} onChange={(v) => set("lenderFee", v)} />
+              <NumberField id="addfees" label="Additional fees" prefix="£"
+                value={inputs.additionalFees} onChange={(v) => set("additionalFees", v)} />
+              <NumberField id="auction" label="Auction fees" prefix="£"
+                value={inputs.auctionFees} onChange={(v) => set("auctionFees", v)} />
+              <NumberField id="sourcing" label="Sourcing fee" prefix="£"
+                value={inputs.sourcingFee} onChange={(v) => set("sourcingFee", v)} />
+            </InputGroup>
+
             <InputGroup title="Refurb">
               <NumberField id="refurb" label="Refurb cost" prefix="£" step={500}
                 value={inputs.refurbCost} onChange={(v) => set("refurbCost", v)} />
