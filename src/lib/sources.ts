@@ -1,6 +1,8 @@
 export const PROPERTY_SOURCES = [
   { value: "open-market", label: "Open market" },
   { value: "off-market", label: "Off market" },
+  { value: "rightmove", label: "Rightmove" },
+  { value: "renoject", label: "Renoject" },
   { value: "auction", label: "Auction" },
   { value: "direct-to-vendor", label: "Direct to vendor" },
   { value: "agent", label: "Estate agent" },
@@ -23,6 +25,10 @@ export function sourceBadgeClass(value?: string | null): string {
       return "border-sky-500/40 bg-sky-500/10 text-sky-600 dark:text-sky-300";
     case "off-market":
       return "border-violet-500/40 bg-violet-500/10 text-violet-600 dark:text-violet-300";
+    case "rightmove":
+      return "border-green-600/40 bg-green-600/10 text-green-700 dark:text-green-400";
+    case "renoject":
+      return "border-fuchsia-500/40 bg-fuchsia-500/10 text-fuchsia-600 dark:text-fuchsia-300";
     case "auction":
       return "border-rose-500/40 bg-rose-500/10 text-rose-600 dark:text-rose-300";
     case "direct-to-vendor":
