@@ -397,6 +397,7 @@ function PropertiesPage() {
               );
             })}
           </div>
+          </>
         )}
         {!loading && rows.length > 0 && visibleRows.length === 0 && (
           <p className="text-sm text-muted-foreground">No deals match this filter.</p>
