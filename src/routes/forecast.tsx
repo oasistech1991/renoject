@@ -1,19 +1,18 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import { ClientOnly } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { fmtGBP, fmtPct } from "@/lib/btl";
 import { sourceLabel } from "@/lib/sources";
-import {
-  ResponsiveContainer,
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  Tooltip,
-  CartesianGrid,
-  Legend,
-} from "recharts";
+import { lazy, Suspense } from "react";
+
+const DealsChart = lazy(() =>
+  import("@/components/forecast/ForecastCharts").then((m) => ({ default: m.DealsChart })),
+);
+const CumulativeChart = lazy(() =>
+  import("@/components/forecast/ForecastCharts").then((m) => ({ default: m.CumulativeChart })),
+);
 
 export const Route = createFileRoute("/forecast")({
   head: () => ({
@@ -163,40 +162,22 @@ function ForecastPage() {
                 title="Cashflow per deal"
                 subtitle="Monthly vs annual net cashflow (interest-only)"
               >
-                <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={perDeal} margin={{ top: 10, right: 12, left: 0, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-                    <XAxis dataKey="name" tick={{ fontSize: 11 }} stroke="var(--muted-foreground)" />
-                    <YAxis tick={{ fontSize: 11 }} stroke="var(--muted-foreground)" tickFormatter={(v) => `£${(v/1000).toFixed(0)}k`} />
-                    <Tooltip
-                      contentStyle={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: 8, fontSize: 12 }}
-                      formatter={(v: number) => fmtGBP(v)}
-                    />
-                    <Legend wrapperStyle={{ fontSize: 12 }} />
-                    <Bar dataKey="monthly" name="Monthly CF" fill="var(--primary)" radius={[4,4,0,0]} />
-                    <Bar dataKey="annual" name="Annual CF" fill="var(--accent)" radius={[4,4,0,0]} />
-                  </BarChart>
-                </ResponsiveContainer>
+                <ClientOnly fallback={<div className="h-[300px]" />}>
+                  <Suspense fallback={<div className="h-[300px]" />}>
+                    <DealsChart data={perDeal} />
+                  </Suspense>
+                </ClientOnly>
               </ChartCard>
 
               <ChartCard
                 title="Cumulative income — next 24 months"
                 subtitle="Projected rolling cashflow and gross rent across the portfolio"
               >
-                <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={cumulative} margin={{ top: 10, right: 12, left: 0, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-                    <XAxis dataKey="month" tick={{ fontSize: 11 }} stroke="var(--muted-foreground)" />
-                    <YAxis tick={{ fontSize: 11 }} stroke="var(--muted-foreground)" tickFormatter={(v) => `£${(v/1000).toFixed(0)}k`} />
-                    <Tooltip
-                      contentStyle={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: 8, fontSize: 12 }}
-                      formatter={(v: number) => fmtGBP(v)}
-                    />
-                    <Legend wrapperStyle={{ fontSize: 12 }} />
-                    <Bar dataKey="rent" name="Cumulative rent" fill="var(--muted-foreground)" radius={[4,4,0,0]} />
-                    <Bar dataKey="cashflow" name="Cumulative cashflow" fill="var(--primary)" radius={[4,4,0,0]} />
-                  </BarChart>
-                </ResponsiveContainer>
+                <ClientOnly fallback={<div className="h-[300px]" />}>
+                  <Suspense fallback={<div className="h-[300px]" />}>
+                    <CumulativeChart data={cumulative} />
+                  </Suspense>
+                </ClientOnly>
               </ChartCard>
             </div>
 
