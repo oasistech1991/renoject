@@ -677,6 +677,7 @@ function RefinancePage() {
               </div>
             )}
 
+            {method === "brrr" && (
             <div>
               <h2 className="text-sm font-medium uppercase tracking-wider text-muted-foreground">Value uplift</h2>
               <div className="mt-3 grid gap-4 sm:grid-cols-3">
@@ -685,6 +686,7 @@ function RefinancePage() {
                 <MetricCard label="Money multiple" value={r.totalCashIn > 0 ? `${(inputs.gdv / r.totalCashIn).toFixed(2)}×` : "—"} hint="GDV ÷ total cash in" />
               </div>
             </div>
+            )}
 
             <div>
               <h2 className="text-sm font-medium uppercase tracking-wider text-muted-foreground">Post-refi monthly cashflow</h2>
