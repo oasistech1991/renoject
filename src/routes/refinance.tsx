@@ -16,9 +16,9 @@ export const Route = createFileRoute("/refinance")({
   }),
   head: () => ({
     meta: [
-      { title: "Refinance / BRRR Calculator — Buy Refurb Refinance Rent" },
+      { title: "BRRR Calculator — Buy Refurb Refinance Rent" },
       { name: "description", content: "Model the full UK BRRR cycle: total cash in, GDV, cash pulled out on refinance, cash left in the deal and post-refi cashflow." },
-      { property: "og:title", content: "Refinance / BRRR Calculator" },
+      { property: "og:title", content: "BRRR Calculator" },
       { property: "og:description", content: "Work out cash recycled, money left in and post-refi yield for any BRRR deal." },
     ],
   }),
@@ -336,7 +336,7 @@ function RefinancePage() {
                   ["mortgage", "Mortgage"],
                   ["cash", "Cash"],
                   ["bridge", "Bridge + Refurb"],
-                  ["brrr", "Refinance / BRRR"],
+                  ["brrr", "BRRR"],
                 ] as const).map(([key, label]) => (
                   <Button
                     key={key}
