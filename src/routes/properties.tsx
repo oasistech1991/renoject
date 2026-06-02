@@ -350,6 +350,7 @@ function PropertiesPage() {
                     </span>
                   </div>
                   <div className="mt-3">
+                    <div className="flex flex-wrap items-center gap-1.5">
                     {(() => {
                       const hex = colorFor(r.source);
                       return (
@@ -361,6 +362,19 @@ function PropertiesPage() {
                         </span>
                       );
                     })()}
+                    {(() => {
+                      const method: string = m.method ?? "brrr";
+                      const label = method === "btl" ? "BTL"
+                        : method === "cash" ? "Cash"
+                        : method === "mortgage" ? "Mortgage"
+                        : "BRRR";
+                      return (
+                        <span className="inline-flex items-center rounded-full border border-border bg-muted/40 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                          {label}
+                        </span>
+                      );
+                    })()}
+                    </div>
                   </div>
                    <dl className="mt-4 grid grid-cols-2 gap-y-2 text-sm">
                     {(() => {
