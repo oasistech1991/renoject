@@ -1,0 +1,1 @@
+ALTER TABLE public.properties ADD COLUMN IF NOT EXISTS in_portfolio boolean NOT NULL DEFAULT false;
