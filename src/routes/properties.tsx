@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { fmtGBP, fmtPct } from "@/lib/btl";
+import { fmtROI } from "@/lib/refinance";
 
 export const Route = createFileRoute("/properties")({
   head: () => ({
@@ -120,6 +121,8 @@ function PropertiesPage() {
                     <dd className="text-right tabular-nums">{fmtPct(m.grossYield ?? 0)}</dd>
                     <dt className="text-muted-foreground">Monthly cashflow</dt>
                     <dd className="text-right tabular-nums">{fmtGBP(m.monthlyCashflowIO ?? 0)}</dd>
+                    <dt className="text-muted-foreground">ROI on cash left in</dt>
+                    <dd className="text-right tabular-nums">{fmtROI(m.roiOnCashLeftIn ?? 0)}</dd>
                   </dl>
                   <div className="mt-4 flex gap-2">
                     <Link to="/refinance" search={{ id: r.id }} className="flex-1">
