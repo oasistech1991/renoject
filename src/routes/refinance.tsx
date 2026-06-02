@@ -369,6 +369,7 @@ function RefinancePage() {
                 <h1 className="text-lg font-semibold leading-tight">Property Calculator</h1>
                 <p className="text-xs text-muted-foreground">
                   {method === "mortgage" && "Standard BTL mortgage"}
+                  {method === "btl" && "Buy-to-let — yield, ROI, ICR & tax"}
                   {method === "cash" && "Cash purchase"}
                   {method === "brrr" && "Buy · Refurb · Refinance · Rent"}
                 </p>
