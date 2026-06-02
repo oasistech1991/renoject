@@ -209,10 +209,10 @@ function TopNav({ onSignOut, email }: { onSignOut: () => void; email: string }) 
           Renovation Calculator
         </Link>
         <Link to="/refinance" className={linkBase} activeProps={{ className: `${linkBase} ${activeCls}` }}>
-          Refinance / BRRR
+          Property Calculator
         </Link>
         <Link to="/properties" className={linkBase} activeProps={{ className: `${linkBase} ${activeCls}` }}>
-          Properties
+          View Deals
         </Link>
         <Link to="/forecast" className={linkBase} activeProps={{ className: `${linkBase} ${activeCls}` }}>
           Forecast

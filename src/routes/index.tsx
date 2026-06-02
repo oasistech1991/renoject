@@ -40,48 +40,11 @@ const defaults: BTLInputs = {
 
 function Index() {
   const [inputs, setInputs] = useState<BTLInputs>(defaults);
-  const [mode, setMode] = useState<"mortgage" | "cash" | "bridge">("mortgage");
-  const [bridge, setBridge] = useState({
-    ltv: 70, // % of purchase price funded by bridge
-    rate: 9, // annual %
-    months: 6, // term during refurb
-    feePct: 2, // arrangement + exit fees %
-  });
-
-  // Derive the inputs actually fed to calculateBTL based on mode
-  const effectiveInputs = useMemo<BTLInputs>(() => {
-    if (mode === "cash") {
-      return {
-        ...inputs,
-        depositIsPct: true,
-        depositPct: 100,
-        deposit: inputs.purchasePrice,
-        interestRate: 0,
-      };
-    }
-    if (mode === "bridge") {
-      const bridgeLoan = inputs.purchasePrice * (bridge.ltv / 100);
-      const interestCost = bridgeLoan * (bridge.rate / 100) * (bridge.months / 12);
-      const feeCost = bridgeLoan * (bridge.feePct / 100);
-      const bridgeFinanceCost = Math.round(interestCost + feeCost);
-      return {
-        ...inputs,
-        // Roll bridge finance cost into refurb so it shows up in total cash in
-        refurbCosts: inputs.refurbCosts + bridgeFinanceCost,
-      };
-    }
-    return inputs;
-  }, [inputs, mode, bridge]);
 
   const set = <K extends keyof BTLInputs>(k: K, v: BTLInputs[K]) =>
     setInputs((p) => ({ ...p, [k]: v }));
 
-  const r = useMemo(() => calculateBTL(effectiveInputs), [effectiveInputs]);
-
-  const bridgeLoan = inputs.purchasePrice * (bridge.ltv / 100);
-  const bridgeInterest = bridgeLoan * (bridge.rate / 100) * (bridge.months / 12);
-  const bridgeFees = bridgeLoan * (bridge.feePct / 100);
-  const bridgeTotal = Math.round(bridgeInterest + bridgeFees);
+  const r = useMemo(() => calculateBTL(inputs), [inputs]);
 
   const autoStamp = () => set("stampDuty", calcStampDuty(inputs.purchasePrice));
   const reset = () => setInputs(defaults);
@@ -123,34 +86,6 @@ function Index() {
         <div className="grid gap-8 lg:grid-cols-[400px_1fr]">
           {/* Inputs */}
           <section className="space-y-6">
-            <InputGroup title="Purchase method">
-              <div className="grid grid-cols-3 overflow-hidden rounded-md border border-border">
-                {([
-                  ["mortgage", "Mortgage"],
-                  ["cash", "Cash"],
-                  ["bridge", "Bridge + refurb"],
-                ] as const).map(([key, label]) => (
-                  <Button
-                    key={key}
-                    type="button"
-                    variant={mode === key ? "secondary" : "ghost"}
-                    size="sm"
-                    className="rounded-none"
-                    onClick={() => setMode(key)}
-                  >
-                    {label}
-                  </Button>
-                ))}
-              </div>
-              <p className="text-xs text-muted-foreground">
-                {mode === "cash"
-                  ? "No mortgage — full purchase price paid in cash."
-                  : mode === "bridge"
-                    ? "Short-term bridging finance to buy & refurb, then refinance onto the BTL mortgage below."
-                    : "Standard BTL mortgage with deposit."}
-              </p>
-            </InputGroup>
-
             <InputGroup title="The Property">
               <NumberField id="price" label="Purchase price" prefix="£" step={1000}
                 value={inputs.purchasePrice}
@@ -193,28 +128,12 @@ function Index() {
                 value={inputs.monthlyRent} onChange={(v) => set("monthlyRent", v)} />
             </InputGroup>
 
-            {mode !== "cash" && (
-              <InputGroup title={mode === "bridge" ? "Exit mortgage (post-refurb)" : "The Mortgage"}>
-                <NumberField id="rate" label="Interest rate" suffix="%" step={0.1}
-                  value={inputs.interestRate} onChange={(v) => set("interestRate", v)} />
-                <NumberField id="term" label="Term (years)" suffix="yr"
-                  value={inputs.mortgageTermYears} onChange={(v) => set("mortgageTermYears", v)} />
-              </InputGroup>
-            )}
-
-            {mode === "bridge" && (
-              <InputGroup title="Bridging finance">
-                <NumberField id="bridgeLtv" label="Bridge LTV" suffix="%" step={1}
-                  value={bridge.ltv} onChange={(v) => setBridge((b) => ({ ...b, ltv: v }))} />
-                <NumberField id="bridgeRate" label="Bridge rate (annual)" suffix="%" step={0.1}
-                  value={bridge.rate} onChange={(v) => setBridge((b) => ({ ...b, rate: v }))} />
-                <NumberField id="bridgeMonths" label="Bridge term" suffix="mo" step={1}
-                  value={bridge.months} onChange={(v) => setBridge((b) => ({ ...b, months: v }))} />
-                <NumberField id="bridgeFee" label="Arrangement + exit fees" suffix="%" step={0.1}
-                  value={bridge.feePct} onChange={(v) => setBridge((b) => ({ ...b, feePct: v }))}
-                  hint={`Bridge loan ${fmtGBP(bridgeLoan)} · Finance cost ${fmtGBP(bridgeTotal)}`} />
-              </InputGroup>
-            )}
+            <InputGroup title="The Mortgage">
+              <NumberField id="rate" label="Interest rate" suffix="%" step={0.1}
+                value={inputs.interestRate} onChange={(v) => set("interestRate", v)} />
+              <NumberField id="term" label="Term (years)" suffix="yr"
+                value={inputs.mortgageTermYears} onChange={(v) => set("mortgageTermYears", v)} />
+            </InputGroup>
 
             <InputGroup title="Purchase Costs">
               <div className="flex items-end gap-2">
