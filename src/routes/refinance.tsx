@@ -985,3 +985,161 @@ function Row({
     </div>
   );
 }
+
+function BtlInputs({
+  inputs,
+  set,
+  autoStamp,
+  setDepositMode,
+  r,
+}: {
+  inputs: BTLInputs;
+  set: <K extends keyof BTLInputs>(k: K, v: BTLInputs[K]) => void;
+  autoStamp: () => void;
+  setDepositMode: (isPct: boolean) => void;
+  r: ReturnType<typeof calculateBTL>;
+}) {
+  const depositHint = inputs.depositIsPct
+    ? `= ${fmtGBP(Math.round(inputs.purchasePrice * (inputs.depositPct / 100)))} · LTV: ${fmtPct(r.ltv, 1)}`
+    : `${fmtPct((inputs.purchasePrice ? (inputs.deposit / inputs.purchasePrice) * 100 : 0), 1)} of price · LTV: ${fmtPct(r.ltv, 1)}`;
+  return (
+    <>
+      <InputGroup title="The Property">
+        <NumberField id="bprice" label="Purchase price" prefix="£" step={1000}
+          value={inputs.purchasePrice} onChange={(v) => set("purchasePrice", v)} />
+        <div className="flex items-end gap-2">
+          <div className="flex-1">
+            <NumberField id="bdeposit" label="Deposit"
+              prefix={inputs.depositIsPct ? undefined : "£"}
+              suffix={inputs.depositIsPct ? "%" : undefined}
+              step={inputs.depositIsPct ? 1 : 1000}
+              value={inputs.depositIsPct ? inputs.depositPct : inputs.deposit}
+              onChange={(v) => set(inputs.depositIsPct ? "depositPct" : "deposit", v)}
+              hint={depositHint} />
+          </div>
+          <div className="flex overflow-hidden rounded-md border border-border">
+            <Button type="button" variant={inputs.depositIsPct ? "ghost" : "secondary"} size="sm" className="rounded-none" onClick={() => setDepositMode(false)}>£</Button>
+            <Button type="button" variant={inputs.depositIsPct ? "secondary" : "ghost"} size="sm" className="rounded-none" onClick={() => setDepositMode(true)}>%</Button>
+          </div>
+        </div>
+        <NumberField id="brent" label="Expected monthly rent" prefix="£"
+          value={inputs.monthlyRent} onChange={(v) => set("monthlyRent", v)} />
+      </InputGroup>
+
+      <InputGroup title="The Mortgage">
+        <NumberField id="brate" label="Interest rate" suffix="%" step={0.1}
+          value={inputs.interestRate} onChange={(v) => set("interestRate", v)} />
+        <NumberField id="bterm" label="Term (years)" suffix="yr"
+          value={inputs.mortgageTermYears} onChange={(v) => set("mortgageTermYears", v)} />
+      </InputGroup>
+
+      <InputGroup title="Purchase Costs">
+        <div className="flex items-end gap-2">
+          <div className="flex-1">
+            <NumberField id="bstamp" label="Stamp duty" prefix="£"
+              value={inputs.stampDuty} onChange={(v) => set("stampDuty", v)} />
+          </div>
+          <Button type="button" variant="outline" size="sm" onClick={autoStamp}>Auto</Button>
+        </div>
+        <NumberField id="blegal" label="Legal fees" prefix="£"
+          value={inputs.legalFees} onChange={(v) => set("legalFees", v)} />
+        <NumberField id="bsurvey" label="Survey / valuation" prefix="£"
+          value={inputs.surveyFees} onChange={(v) => set("surveyFees", v)} />
+        <NumberField id="brefurb" label="Refurb / furnishing" prefix="£"
+          value={inputs.refurbCosts} onChange={(v) => set("refurbCosts", v)} />
+      </InputGroup>
+
+      <InputGroup title="Running Costs">
+        <NumberField id="bmgmt" label="Management fee" suffix="%"
+          value={inputs.managementPct} onChange={(v) => set("managementPct", v)} />
+        <NumberField id="bmaint" label="Maintenance allowance" suffix="%"
+          value={inputs.maintenancePct} onChange={(v) => set("maintenancePct", v)} />
+        <NumberField id="bvoids" label="Voids allowance" suffix="%"
+          value={inputs.voidsPct} onChange={(v) => set("voidsPct", v)} />
+        <NumberField id="bins" label="Insurance / month" prefix="£"
+          value={inputs.insurance} onChange={(v) => set("insurance", v)} />
+        <NumberField id="bground" label="Ground rent / service / month" prefix="£"
+          value={inputs.groundRent} onChange={(v) => set("groundRent", v)} />
+        <NumberField id="bother" label="Other / month" prefix="£"
+          value={inputs.otherMonthly} onChange={(v) => set("otherMonthly", v)} />
+      </InputGroup>
+
+      <InputGroup title="Tax">
+        <NumberField id="btax" label="Your income tax rate" suffix="%"
+          value={inputs.taxRate} onChange={(v) => set("taxRate", v)}
+          hint="20 basic · 40 higher · 45 additional" />
+      </InputGroup>
+    </>
+  );
+}
+
+function BtlResults({ inputs, r }: { inputs: BTLInputs; r: ReturnType<typeof calculateBTL> }) {
+  return (
+    <>
+      <div>
+        <h2 className="text-sm font-medium uppercase tracking-wider text-muted-foreground">Headline metrics</h2>
+        <div className="mt-3 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <MetricCard label="Gross yield" value={fmtPct(r.grossYield)} hint="Annual rent ÷ price" tone="positive" />
+          <MetricCard label="Net yield" value={fmtPct(r.netYield)} hint="After running costs" tone="positive" />
+          <MetricCard label="ROI (cash-on-cash)" value={fmtPct(r.roiIO)} hint="Interest-only basis" tone="accent" />
+          <MetricCard label="Cap rate (NOI)" value={fmtPct(r.capRate)} hint="NOI ÷ price" />
+        </div>
+      </div>
+
+      <div>
+        <h2 className="text-sm font-medium uppercase tracking-wider text-muted-foreground">Monthly cashflow</h2>
+        <div className="mt-3 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <MetricCard label="Rent" value={fmtGBP(inputs.monthlyRent)} />
+          <MetricCard label="Mortgage (IO)" value={fmtGBP(r.monthlyInterestOnly)} hint={`Repayment: ${fmtGBP(r.monthlyRepayment)}`} />
+          <MetricCard label="Operating costs" value={fmtGBP(r.monthlyOpex)} hint="Mgmt, maint, voids, insurance" />
+          <MetricCard label="Cashflow (IO)" value={fmtGBP(r.monthlyCashflowIO)}
+            hint={`Repayment basis: ${fmtGBP(r.monthlyCashflowRepay)}`}
+            tone={r.monthlyCashflowIO >= 0 ? "positive" : "negative"} />
+        </div>
+      </div>
+
+      <div>
+        <h2 className="text-sm font-medium uppercase tracking-wider text-muted-foreground">Lender stress & ratios</h2>
+        <div className="mt-3 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <MetricCard label="ICR (current rate)" value={fmtPct(r.icr, 0)} hint="Rent ÷ mortgage interest" />
+          <MetricCard label="Stress test @ 5.5%"
+            value={r.stressICR145 ? "Pass 145%" : r.stressICR125 ? "Pass 125%" : "Fail"}
+            hint="Higher-rate threshold: 145%"
+            tone={r.stressICR145 ? "positive" : r.stressICR125 ? "accent" : "negative"} />
+          <MetricCard label="Break-even rent" value={fmtGBP(r.breakEvenRent)} hint="To cover mortgage + costs" />
+          <MetricCard label="Rent / mortgage" value={`${r.rentToMortgage.toFixed(2)}×`} />
+        </div>
+      </div>
+
+      <div>
+        <h2 className="text-sm font-medium uppercase tracking-wider text-muted-foreground">Annual summary</h2>
+        <div className="mt-3 overflow-hidden rounded-xl border border-border bg-card">
+          <Row label="Gross annual rent" value={fmtGBP(r.annualGrossRent)} />
+          <Row label="Less voids" value={`− ${fmtGBP(r.annualGrossRent - r.annualEffectiveRent)}`} />
+          <Row label="Effective rent" value={fmtGBP(r.annualEffectiveRent)} />
+          <Row label="Operating expenses" value={`− ${fmtGBP(r.annualOpex)}`} />
+          <Row label="Net operating income (NOI)" value={fmtGBP(r.annualNOI)} bold />
+          <Row label="Mortgage interest" value={`− ${fmtGBP(r.monthlyInterestOnly * 12)}`} />
+          <Row label="Pre-tax cashflow (IO)" value={fmtGBP(r.annualCashflowIO)} bold />
+          <Row label={`Estimated tax @ ${inputs.taxRate}% (Sec 24)`} value={`− ${fmtGBP(r.taxBill)}`} />
+          <Row label="Post-tax cashflow" value={fmtGBP(r.postTaxCashflow)} bold
+            tone={r.postTaxCashflow >= 0 ? "positive" : "negative"} />
+        </div>
+      </div>
+
+      <div>
+        <h2 className="text-sm font-medium uppercase tracking-wider text-muted-foreground">Capital deployed</h2>
+        <div className="mt-3 grid gap-4 sm:grid-cols-3">
+          <MetricCard label="Loan amount" value={fmtGBP(r.loanAmount)} hint={`LTV ${fmtPct(r.ltv, 1)}`} />
+          <MetricCard label="Total cash in" value={fmtGBP(r.totalCashIn)} hint="Deposit + purchase costs" />
+          <MetricCard label="Payback (pre-tax)" value={r.annualCashflowIO > 0 ? `${(r.totalCashIn / r.annualCashflowIO).toFixed(1)} yrs` : "—"} />
+        </div>
+      </div>
+
+      <p className="pt-4 text-xs text-muted-foreground">
+        Estimates only. Stamp duty assumes an additional-dwelling purchase in England.
+        Tax uses a simplified Section 24 model (20% interest credit) and your nominal rate.
+      </p>
+    </>
+  );
+}
