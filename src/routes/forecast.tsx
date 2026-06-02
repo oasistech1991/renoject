@@ -1,19 +1,13 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import { ClientOnly } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { fmtGBP, fmtPct } from "@/lib/btl";
 import { sourceLabel } from "@/lib/sources";
-import {
-  ResponsiveContainer,
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  Tooltip,
-  CartesianGrid,
-  Legend,
-} from "recharts";
+import { lazy, Suspense } from "react";
+
+const ForecastCharts = lazy(() => import("@/components/forecast/ForecastCharts"));
 
 export const Route = createFileRoute("/forecast")({
   head: () => ({
