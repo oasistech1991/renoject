@@ -225,9 +225,24 @@ function RefinancePage() {
                   <NumberField id="bterm" label="Bridge term" suffix="mo" step={1}
                     value={inputs.bridgeTermMonths} onChange={(v) => set("bridgeTermMonths", v)}
                     hint="Refurb time + buffer until refi completes" />
-                  <NumberField id="barr" label="Arrangement fee" suffix="%" step={0.1}
-                    value={inputs.bridgeArrangementPct} onChange={(v) => set("bridgeArrangementPct", v)}
-                    hint="Typical: 2% of bridge loan, added to loan" />
+                  <div className="flex items-end gap-2">
+                    <div className="flex-1">
+                      <NumberField
+                        id="barr"
+                        label="Arrangement fee"
+                        prefix={inputs.bridgeArrangementIsPct ? undefined : "£"}
+                        suffix={inputs.bridgeArrangementIsPct ? "%" : undefined}
+                        step={inputs.bridgeArrangementIsPct ? 0.1 : 100}
+                        value={inputs.bridgeArrangementIsPct ? inputs.bridgeArrangementPct : inputs.bridgeArrangementAmount}
+                        onChange={(v) => set(inputs.bridgeArrangementIsPct ? "bridgeArrangementPct" : "bridgeArrangementAmount", v)}
+                        hint={inputs.bridgeArrangementIsPct ? "Typical: 2% of bridge loan, added to loan" : "Flat fee added to loan"}
+                      />
+                    </div>
+                    <div className="flex overflow-hidden rounded-md border border-border">
+                      <Button type="button" variant={inputs.bridgeArrangementIsPct ? "ghost" : "secondary"} size="sm" className="rounded-none" onClick={() => set("bridgeArrangementIsPct", false)}>£</Button>
+                      <Button type="button" variant={inputs.bridgeArrangementIsPct ? "secondary" : "ghost"} size="sm" className="rounded-none" onClick={() => set("bridgeArrangementIsPct", true)}>%</Button>
+                    </div>
+                  </div>
                   <NumberField id="bexit" label="Exit fee" suffix="%" step={0.1}
                     value={inputs.bridgeExitPct} onChange={(v) => set("bridgeExitPct", v)}
                     hint="Often 1% of loan, charged on redemption" />
