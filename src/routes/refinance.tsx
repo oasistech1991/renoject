@@ -76,7 +76,7 @@ const defaults: RefinanceInputs = {
   flipAgencyFee: 0,
 };
 
-type CalcMethod = "mortgage" | "cash" | "bridge" | "brrr";
+type CalcMethod = "mortgage" | "cash" | "brrr";
 
 function RefinancePage() {
   const search = Route.useSearch();
@@ -115,15 +115,6 @@ function RefinancePage() {
         refurbCost: 0,
         refurbMonths: 0,
         holdingMonthly: 0,
-        gdv: inputs.purchasePrice,
-        refiLtv: 0,
-        refiFees: 0,
-      };
-    }
-    if (method === "bridge") {
-      return {
-        ...inputs,
-        useBridge: true,
         gdv: inputs.purchasePrice,
         refiLtv: 0,
         refiFees: 0,
@@ -265,7 +256,6 @@ function RefinancePage() {
                 <p className="text-xs text-muted-foreground">
                   {method === "mortgage" && "Standard BTL mortgage"}
                   {method === "cash" && "Cash purchase"}
-                  {method === "bridge" && "Bridge + Refurb"}
                   {method === "brrr" && "Buy · Refurb · Refinance · Rent"}
                 </p>
               </div>
@@ -335,7 +325,6 @@ function RefinancePage() {
                 {([
                   ["mortgage", "Mortgage"],
                   ["cash", "Cash"],
-                  ["bridge", "Bridge + Refurb"],
                   ["brrr", "BRRR"],
                 ] as const).map(([key, label]) => (
                   <Button
