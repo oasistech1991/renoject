@@ -701,10 +701,24 @@ function RefinancePage() {
               )}
             </InputGroup>
             )}
+            </>)}
+
+            {method === "btl" && (
+              <BtlInputs
+                inputs={btlInputs}
+                set={setB}
+                autoStamp={autoStampBtl}
+                setDepositMode={setBtlDepositMode}
+                r={btl}
+              />
+            )}
           </section>
 
           {/* Results */}
           <section className="space-y-6">
+            {method === "btl" ? (
+              <BtlResults inputs={btlInputs} r={btl} />
+            ) : (<>
             {method === "brrr" && (
             <div className={`rounded-xl border p-5 ${verdictTone}`}>
               <div className="text-xs font-medium uppercase tracking-wider opacity-80">BRRR verdict</div>
