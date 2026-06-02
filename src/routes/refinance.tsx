@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { calcStampDuty, fmtGBP, fmtPct } from "@/lib/btl";
+import { calcStampDuty, calculateBTL, fmtGBP, fmtPct, type BTLInputs } from "@/lib/btl";
 import { calculateRefinance, fmtROI, type RefinanceInputs } from "@/lib/refinance";
 import { MetricCard } from "@/components/btl/MetricCard";
 import { NumberField } from "@/components/btl/NumberField";
@@ -78,13 +78,35 @@ const defaults: RefinanceInputs = {
   flipAgencyFee: 0,
 };
 
-type CalcMethod = "mortgage" | "cash" | "brrr";
+type CalcMethod = "mortgage" | "cash" | "brrr" | "btl";
+
+const btlDefaults: BTLInputs = {
+  purchasePrice: 200000,
+  deposit: 50000,
+  depositPct: 25,
+  depositIsPct: false,
+  interestRate: 5.5,
+  mortgageTermYears: 25,
+  monthlyRent: 1200,
+  stampDuty: calcStampDuty(200000),
+  legalFees: 1500,
+  refurbCosts: 3000,
+  surveyFees: 500,
+  managementPct: 10,
+  maintenancePct: 5,
+  insurance: 25,
+  groundRent: 0,
+  voidsPct: 4,
+  otherMonthly: 0,
+  taxRate: 40,
+};
 
 function RefinancePage() {
   const search = Route.useSearch();
   const navigate = Route.useNavigate();
   const [inputs, setInputs] = useState<RefinanceInputs>(defaults);
   const [method, setMethod] = useState<CalcMethod>("brrr");
+  const [btlInputs, setBtlInputs] = useState<BTLInputs>(btlDefaults);
   const [propertyName, setPropertyName] = useState("");
   const [propertyId, setPropertyId] = useState<string | null>(null);
   const [source, setSource] = useState<PropertySource | "">("");
@@ -99,6 +121,21 @@ function RefinancePage() {
   const parseUrl = useServerFn(parsePropertyUrl);
   const set = <K extends keyof RefinanceInputs>(k: K, v: RefinanceInputs[K]) =>
     setInputs((p) => ({ ...p, [k]: v }));
+  const setB = <K extends keyof BTLInputs>(k: K, v: BTLInputs[K]) =>
+    setBtlInputs((p) => ({ ...p, [k]: v }));
+  const btl = useMemo(() => calculateBTL(btlInputs), [btlInputs]);
+  const autoStampBtl = () => setB("stampDuty", calcStampDuty(btlInputs.purchasePrice));
+  const setBtlDepositMode = (isPct: boolean) => {
+    if (isPct === btlInputs.depositIsPct) return;
+    setBtlInputs((p) => {
+      if (isPct) {
+        const pct = p.purchasePrice > 0 ? (p.deposit / p.purchasePrice) * 100 : 0;
+        return { ...p, depositIsPct: true, depositPct: Math.round(pct * 10) / 10 };
+      }
+      const amount = Math.round(p.purchasePrice * (p.depositPct / 100));
+      return { ...p, depositIsPct: false, deposit: amount };
+    });
+  };
 
   const effectiveInputs = useMemo<RefinanceInputs>(() => {
     if (method === "cash") {
@@ -435,6 +472,7 @@ function RefinancePage() {
                   ["mortgage", "Mortgage"],
                   ["cash", "Cash"],
                   ["brrr", "BRRR"],
+                  ["btl", "BTL"],
                 ] as const).map(([key, label]) => (
                   <Button
                     key={key}
@@ -450,6 +488,7 @@ function RefinancePage() {
               </div>
             </InputGroup>
 
+            {method !== "btl" && (<>
             <InputGroup title="Purchase">
               <NumberField id="price" label="Purchase price" prefix="£" step={1000}
                 value={inputs.purchasePrice} onChange={(v) => set("purchasePrice", v)} />
