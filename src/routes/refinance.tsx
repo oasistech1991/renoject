@@ -703,6 +703,7 @@ function RefinancePage() {
               </div>
             </div>
 
+            {method !== "cash" && (
             <div>
               <h2 className="text-sm font-medium uppercase tracking-wider text-muted-foreground">Yields, ROI & lender stress</h2>
               <div className="mt-3 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -722,6 +723,7 @@ function RefinancePage() {
                 />
               </div>
             </div>
+            )}
 
             <div>
               <h2 className="text-sm font-medium uppercase tracking-wider text-muted-foreground">Deal summary</h2>
@@ -767,7 +769,7 @@ function RefinancePage() {
               </div>
             </div>
 
-            {inputs.flipEnabled && (
+            {method === "brrr" && inputs.flipEnabled && (
               <div>
                 <h2 className="text-sm font-medium uppercase tracking-wider text-muted-foreground">Flip / sale exit</h2>
                 <div className="mt-3 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
