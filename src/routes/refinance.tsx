@@ -461,6 +461,9 @@ function RefinancePage() {
                 <Row label="Deposit" value={fmtGBP(r.depositAmount)} />
                 {!inputs.useBridge && <Row label="Purchase loan" value={fmtGBP(r.purchaseLoan)} />}
                 <Row label="Stamp duty + legal + survey" value={fmtGBP(inputs.stampDuty + inputs.legalFees + inputs.surveyFees)} />
+                {r.additionalAcquisitionCosts > 0 && (
+                  <Row label="Additional acquisition costs" value={fmtGBP(r.additionalAcquisitionCosts)} />
+                )}
                 <Row label="Refurb cost" value={fmtGBP(inputs.refurbCost)} />
                 {inputs.useBridge && inputs.bridgeFundsRefurb && (
                   <Row label="Less: refurb funded by bridge" value={`− ${fmtGBP(inputs.refurbCost)}`} />
