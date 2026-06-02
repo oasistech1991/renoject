@@ -31,6 +31,8 @@ export interface RefinanceInputs {
   bridgeRateIsPCM: boolean; // input mode toggle
   bridgeTermMonths: number; // bridge term until refi (>= refurbMonths)
   bridgeArrangementPct: number; // % of bridge loan
+  bridgeArrangementIsPct: boolean;
+  bridgeArrangementAmount: number; // £ flat fee
   bridgeExitPct: number; // % of bridge loan
   bridgeInterestRolled: boolean; // true = rolled up & compounded, false = serviced monthly
   // Refinance
@@ -124,7 +126,9 @@ export function calculateRefinance(i: RefinanceInputs): RefinanceResults {
     // Bridge funds % of purchase, optionally adds refurb
     bridgeLoan = i.purchasePrice * (i.bridgeLoanPct / 100)
       + (i.bridgeFundsRefurb ? i.refurbCost : 0);
-    bridgeArrangementFee = bridgeLoan * (i.bridgeArrangementPct / 100);
+  bridgeArrangementFee = i.bridgeArrangementIsPct
+    ? bridgeLoan * (i.bridgeArrangementPct / 100)
+    : i.bridgeArrangementAmount;
     bridgeExitFee = bridgeLoan * (i.bridgeExitPct / 100);
 
     // Arrangement fee is typically added to the loan (rolled in)
