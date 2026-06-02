@@ -27,6 +27,13 @@ const defaults: RefinanceInputs = {
   legalFees: 1500,
   surveyFees: 500,
   purchaseRate: 6.0,
+  fixturesFittings: 0,
+  furnishing: 0,
+  brokerFees: 995,
+  lenderFee: 0,
+  additionalFees: 0,
+  auctionFees: 0,
+  sourcingFee: 0,
   refurbCost: 30000,
   refurbMonths: 3,
   holdingMonthly: 300,
@@ -34,6 +41,8 @@ const defaults: RefinanceInputs = {
   bridgeLoanPct: 75,
   bridgeFundsRefurb: false,
   bridgeRate: 9.6,
+  bridgeRatePCM: 0.8,
+  bridgeRateIsPCM: true,
   bridgeTermMonths: 6,
   bridgeArrangementPct: 2,
   bridgeExitPct: 1,
@@ -43,6 +52,8 @@ const defaults: RefinanceInputs = {
   refiRate: 5.5,
   refiTermYears: 25,
   refiFees: 2500,
+  lettableUnits: 1,
+  currentMonthlyRent: 0,
   monthlyRent: 1300,
   managementPct: 10,
   maintenancePct: 5,
@@ -50,6 +61,10 @@ const defaults: RefinanceInputs = {
   insurance: 25,
   groundRent: 0,
   otherMonthly: 0,
+  flipEnabled: false,
+  flipSalePrice: 0,
+  flipLegalFees: 1500,
+  flipAgencyFee: 0,
 };
 
 function RefinancePage() {
@@ -137,6 +152,23 @@ function RefinancePage() {
                 value={inputs.purchaseRate} onChange={(v) => set("purchaseRate", v)} />
             </InputGroup>
 
+            <InputGroup title="Additional acquisition costs">
+              <NumberField id="ff" label="Fixtures & fittings" prefix="£"
+                value={inputs.fixturesFittings} onChange={(v) => set("fixturesFittings", v)} />
+              <NumberField id="furn" label="Furnishing" prefix="£"
+                value={inputs.furnishing} onChange={(v) => set("furnishing", v)} />
+              <NumberField id="broker" label="Broker fees" prefix="£"
+                value={inputs.brokerFees} onChange={(v) => set("brokerFees", v)} />
+              <NumberField id="lender" label="Lender fee" prefix="£"
+                value={inputs.lenderFee} onChange={(v) => set("lenderFee", v)} />
+              <NumberField id="addfees" label="Additional fees" prefix="£"
+                value={inputs.additionalFees} onChange={(v) => set("additionalFees", v)} />
+              <NumberField id="auction" label="Auction fees" prefix="£"
+                value={inputs.auctionFees} onChange={(v) => set("auctionFees", v)} />
+              <NumberField id="sourcing" label="Sourcing fee" prefix="£"
+                value={inputs.sourcingFee} onChange={(v) => set("sourcingFee", v)} />
+            </InputGroup>
+
             <InputGroup title="Refurb">
               <NumberField id="refurb" label="Refurb cost" prefix="£" step={500}
                 value={inputs.refurbCost} onChange={(v) => set("refurbCost", v)} />
@@ -171,9 +203,23 @@ function RefinancePage() {
                       onChange={(e) => set("bridgeFundsRefurb", e.target.checked)}
                     />
                   </label>
-                  <NumberField id="brate2" label="Bridge rate (annual)" suffix="%" step={0.1}
-                    value={inputs.bridgeRate} onChange={(v) => set("bridgeRate", v)}
-                    hint="Typical: 0.7–0.95% per month (≈8.4–11.4% pa)" />
+                  <div className="flex items-end gap-2">
+                    <div className="flex-1">
+                      <NumberField
+                        id="brate2"
+                        label={inputs.bridgeRateIsPCM ? "Bridge rate (PCM)" : "Bridge rate (annual)"}
+                        suffix="%"
+                        step={0.05}
+                        value={inputs.bridgeRateIsPCM ? inputs.bridgeRatePCM : inputs.bridgeRate}
+                        onChange={(v) => set(inputs.bridgeRateIsPCM ? "bridgeRatePCM" : "bridgeRate", v)}
+                        hint={inputs.bridgeRateIsPCM ? `≈ ${(inputs.bridgeRatePCM * 12).toFixed(2)}% pa` : `≈ ${(inputs.bridgeRate / 12).toFixed(2)}% per month`}
+                      />
+                    </div>
+                    <div className="flex overflow-hidden rounded-md border border-border">
+                      <Button type="button" variant={inputs.bridgeRateIsPCM ? "secondary" : "ghost"} size="sm" className="rounded-none" onClick={() => set("bridgeRateIsPCM", true)}>PCM</Button>
+                      <Button type="button" variant={inputs.bridgeRateIsPCM ? "ghost" : "secondary"} size="sm" className="rounded-none" onClick={() => set("bridgeRateIsPCM", false)}>PA</Button>
+                    </div>
+                  </div>
                   <NumberField id="bterm" label="Bridge term" suffix="mo" step={1}
                     value={inputs.bridgeTermMonths} onChange={(v) => set("bridgeTermMonths", v)}
                     hint="Refurb time + buffer until refi completes" />
@@ -216,7 +262,12 @@ function RefinancePage() {
             </InputGroup>
 
             <InputGroup title="Rental (post-refi)">
-              <NumberField id="rent" label="Monthly rent" prefix="£"
+              <NumberField id="units" label="Lettable units" step={1}
+                value={inputs.lettableUnits} onChange={(v) => set("lettableUnits", v)} />
+              <NumberField id="currentRent" label="Current monthly rent" prefix="£"
+                value={inputs.currentMonthlyRent} onChange={(v) => set("currentMonthlyRent", v)}
+                hint="Rent being achieved today (pre-refurb)" />
+              <NumberField id="rent" label="Achievable monthly rent" prefix="£"
                 value={inputs.monthlyRent} onChange={(v) => set("monthlyRent", v)} />
               <NumberField id="mgmt" label="Management fee" suffix="%"
                 value={inputs.managementPct} onChange={(v) => set("managementPct", v)} />
@@ -231,6 +282,28 @@ function RefinancePage() {
               <NumberField id="other" label="Other / month" prefix="£"
                 value={inputs.otherMonthly} onChange={(v) => set("otherMonthly", v)} />
             </InputGroup>
+
+            <InputGroup title="Flip / sale exit (optional)">
+              <label className="flex items-center justify-between gap-3 rounded-md border border-border bg-background px-3 py-2 text-sm">
+                <span>Model a flip / resale instead of refi?</span>
+                <input
+                  type="checkbox"
+                  className="h-4 w-4 accent-primary"
+                  checked={inputs.flipEnabled}
+                  onChange={(e) => set("flipEnabled", e.target.checked)}
+                />
+              </label>
+              {inputs.flipEnabled && (
+                <>
+                  <NumberField id="flipPrice" label="Sale price achieved" prefix="£" step={1000}
+                    value={inputs.flipSalePrice} onChange={(v) => set("flipSalePrice", v)} />
+                  <NumberField id="flipLegal" label="Sale legal fees" prefix="£"
+                    value={inputs.flipLegalFees} onChange={(v) => set("flipLegalFees", v)} />
+                  <NumberField id="flipAgency" label="Agency fee" prefix="£"
+                    value={inputs.flipAgencyFee} onChange={(v) => set("flipAgencyFee", v)} />
+                </>
+              )}
+            </InputGroup>
           </section>
 
           {/* Results */}
@@ -240,6 +313,54 @@ function RefinancePage() {
               <div className="mt-1 text-2xl font-semibold">{r.verdictLabel}</div>
               <div className="mt-1 text-sm opacity-90">
                 {fmtPct(Math.max(0, Math.min(100, r.capitalRecycledPct)), 0)} of starting capital recycled · Cash left in {fmtGBP(Math.max(0, r.cashLeftIn))}
+              </div>
+            </div>
+
+            <div>
+              <h2 className="text-sm font-medium uppercase tracking-wider text-muted-foreground">Key metrics</h2>
+              <div className="mt-3 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                <MetricCard label="Purchase price" value={fmtGBP(inputs.purchasePrice)} />
+                <MetricCard label="Fixtures & fittings" value={fmtGBP(inputs.fixturesFittings)} />
+                <MetricCard label="Refurbishment cost" value={fmtGBP(inputs.refurbCost)} />
+                <MetricCard label="Conservative GDV" value={fmtGBP(inputs.gdv)} />
+                <MetricCard
+                  label="Below market value %"
+                  value={fmtPct(r.belowMarketValuePct)}
+                  hint="(GDV − Purchase) ÷ GDV"
+                  tone={r.belowMarketValuePct >= 20 ? "positive" : "accent"}
+                />
+                <MetricCard
+                  label="All money out (years)"
+                  value={
+                    r.cashLeftIn <= 0
+                      ? "0 (full pull-out)"
+                      : !isFinite(r.allMoneyOutYears)
+                        ? "—"
+                        : `${r.allMoneyOutYears.toFixed(2)} yrs`
+                  }
+                  hint="Cash left in ÷ annual cashflow"
+                />
+              </div>
+            </div>
+
+            <div>
+              <h2 className="text-sm font-medium uppercase tracking-wider text-muted-foreground">Revenue</h2>
+              <div className="mt-3 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                <MetricCard label="Lettable units" value={`${inputs.lettableUnits}`} />
+                <MetricCard label="Current monthly rent" value={fmtGBP(inputs.currentMonthlyRent)} />
+                <MetricCard label="Achievable monthly rent" value={fmtGBP(inputs.monthlyRent)} tone="positive" />
+                <MetricCard label="Achievable annual rent" value={fmtGBP(r.annualRent)} />
+                <MetricCard
+                  label="Gross yield (on purchase)"
+                  value={fmtPct(r.grossYieldOnPurchase)}
+                  hint="Annual rent ÷ purchase price"
+                  tone="positive"
+                />
+                <MetricCard
+                  label="Gross yield (on GDV)"
+                  value={fmtPct(r.grossYield)}
+                  hint="Annual rent ÷ GDV"
+                />
               </div>
             </div>
 
@@ -340,6 +461,9 @@ function RefinancePage() {
                 <Row label="Deposit" value={fmtGBP(r.depositAmount)} />
                 {!inputs.useBridge && <Row label="Purchase loan" value={fmtGBP(r.purchaseLoan)} />}
                 <Row label="Stamp duty + legal + survey" value={fmtGBP(inputs.stampDuty + inputs.legalFees + inputs.surveyFees)} />
+                {r.additionalAcquisitionCosts > 0 && (
+                  <Row label="Additional acquisition costs" value={fmtGBP(r.additionalAcquisitionCosts)} />
+                )}
                 <Row label="Refurb cost" value={fmtGBP(inputs.refurbCost)} />
                 {inputs.useBridge && inputs.bridgeFundsRefurb && (
                   <Row label="Less: refurb funded by bridge" value={`− ${fmtGBP(inputs.refurbCost)}`} />
@@ -374,6 +498,23 @@ function RefinancePage() {
                 <Row label="Annual cashflow (IO)" value={fmtGBP(r.annualCashflowIO)} bold tone={r.annualCashflowIO >= 0 ? "positive" : "negative"} />
               </div>
             </div>
+
+            {inputs.flipEnabled && (
+              <div>
+                <h2 className="text-sm font-medium uppercase tracking-wider text-muted-foreground">Flip / sale exit</h2>
+                <div className="mt-3 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                  <MetricCard label="Sale price achieved" value={fmtGBP(inputs.flipSalePrice)} />
+                  <MetricCard label="Sale legal fees" value={fmtGBP(inputs.flipLegalFees)} />
+                  <MetricCard label="Agency fee" value={fmtGBP(inputs.flipAgencyFee)} />
+                  <MetricCard
+                    label="Flip profit"
+                    value={fmtGBP(r.flipProfit)}
+                    hint="Sale − selling costs − debt − cash in (deposit recovered)"
+                    tone={r.flipProfit >= 0 ? "positive" : "negative"}
+                  />
+                </div>
+              </div>
+            )}
 
             <p className="pt-4 text-xs text-muted-foreground">
               Estimates only. Holding costs assume the purchase mortgage runs interest-only throughout the refurb. Stress test uses a 5.5% notional refi rate. Speak to a broker, accountant and solicitor before committing.
