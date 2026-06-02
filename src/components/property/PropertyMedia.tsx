@@ -17,6 +17,52 @@ type SignedRow = MediaRow & { signedUrl: string | null };
 
 const BUCKET = "property-media";
 
+async function uploadImage(propertyId: string, blob: Blob, filename: string) {
+  const safe = filename.replace(/[^a-z0-9._-]+/gi, "_");
+  const path = `${propertyId}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}-${safe}`;
+  const { error: upErr } = await supabase.storage
+    .from(BUCKET)
+    .upload(path, blob, { contentType: blob.type || "image/png", upsert: false });
+  if (upErr) throw upErr;
+  const { error: insErr } = await supabase.from("property_media").insert({
+    property_id: propertyId,
+    storage_path: path,
+    kind: "image",
+    filename,
+    is_hero: false,
+    sort_order: 0,
+  } as any);
+  if (insErr) throw insErr;
+}
+
+async function renderPdfPagesToImages(file: File): Promise<Blob[]> {
+  // Dynamic import so this never runs during SSR
+  const pdfjs: any = await import("pdfjs-dist/build/pdf.mjs");
+  // Vite ?url import for the worker bundle
+  const workerUrl = (await import("pdfjs-dist/build/pdf.worker.mjs?url")).default;
+  pdfjs.GlobalWorkerOptions.workerSrc = workerUrl;
+
+  const buf = await file.arrayBuffer();
+  const doc = await pdfjs.getDocument({ data: buf }).promise;
+  const out: Blob[] = [];
+  for (let p = 1; p <= doc.numPages; p++) {
+    const page = await doc.getPage(p);
+    const viewport = page.getViewport({ scale: 2 });
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.ceil(viewport.width);
+    canvas.height = Math.ceil(viewport.height);
+    const ctx = canvas.getContext("2d");
+    if (!ctx) continue;
+    await page.render({ canvasContext: ctx, viewport, canvas }).promise;
+    const blob: Blob | null = await new Promise((res) =>
+      canvas.toBlob((b) => res(b), "image/png"),
+    );
+    if (blob) out.push(blob);
+  }
+  await doc.destroy();
+  return out;
+}
+
 export function PropertyMedia({ propertyId }: { propertyId: string }) {
   const [items, setItems] = useState<SignedRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -77,24 +123,23 @@ export function PropertyMedia({ propertyId }: { propertyId: string }) {
           setError(`Skipped ${file.name}: max 25 MB.`);
           continue;
         }
-        const ext = file.name.split(".").pop() ?? (isPdf ? "pdf" : "bin");
-        const safe = file.name.replace(/[^a-z0-9._-]+/gi, "_");
-        const path = `${propertyId}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}-${safe}`;
-        const { error: upErr } = await supabase.storage
-          .from(BUCKET)
-          .upload(path, file, { contentType: file.type || undefined, upsert: false });
-        if (upErr) throw upErr;
-        const { error: insErr } = await supabase.from("property_media").insert({
-          property_id: propertyId,
-          storage_path: path,
-          kind: isPdf ? "pdf" : "image",
-          filename: file.name,
-          is_hero: false,
-          sort_order: 0,
-        } as any);
-        if (insErr) throw insErr;
-        // suppress unused var warning
-        void ext;
+        if (isPdf) {
+          // Rasterise every page of the PDF into a PNG and upload as image only.
+          // Text and other PDF data are intentionally discarded.
+          const blobs = await renderPdfPagesToImages(file);
+          if (blobs.length === 0) {
+            setError(`No pages found in ${file.name}.`);
+            continue;
+          }
+          const baseName = file.name.replace(/\.pdf$/i, "");
+          for (let i = 0; i < blobs.length; i++) {
+            const pageBlob = blobs[i];
+            const filename = `${baseName} — page ${i + 1}.png`;
+            await uploadImage(propertyId, pageBlob, filename);
+          }
+        } else {
+          await uploadImage(propertyId, file, file.name);
+        }
       }
       await load();
     } catch (err: any) {
@@ -145,7 +190,7 @@ export function PropertyMedia({ propertyId }: { propertyId: string }) {
         <div>
           <h2 className="text-sm font-semibold">Gallery & attachments</h2>
           <p className="text-xs text-muted-foreground">
-            Upload images or PDFs. Mark one image as the hero banner.
+            Upload images or a PDF — every PDF page is added to the gallery as an image. Mark one image as the hero banner.
           </p>
         </div>
         <div className="flex items-center gap-2">
