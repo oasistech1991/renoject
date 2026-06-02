@@ -630,23 +630,27 @@ function RefinancePage() {
               <h2 className="text-sm font-medium uppercase tracking-wider text-muted-foreground">The deal</h2>
               <div className="mt-3 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
                 <MetricCard label="Total cash in" value={fmtGBP(r.totalCashIn)} hint="Deposit + costs + refurb + holding + interest" />
-                <MetricCard label="New loan @ refi" value={fmtGBP(r.newLoan)} hint={`${fmtPct(inputs.refiLtv, 0)} of GDV`} />
-                <MetricCard
-                  label="Cash released"
-                  value={fmtGBP(r.cashReleased)}
-                  hint={inputs.useBridge ? "New loan − bridge redemption − refi fees" : "New loan − purchase loan − refi fees"}
-                  tone={r.cashReleased >= 0 ? "positive" : "negative"}
-                />
-                <MetricCard
-                  label="Cash left in deal"
-                  value={fmtGBP(Math.max(0, r.cashLeftIn))}
-                  hint={r.cashLeftIn <= 0 ? "Full BRRR" : `${fmtPct(r.capitalRecycledPct, 0)} recycled`}
-                  tone={r.cashLeftIn <= 0 ? "positive" : "accent"}
-                />
+                {method === "brrr" && (
+                  <>
+                    <MetricCard label="New loan @ refi" value={fmtGBP(r.newLoan)} hint={`${fmtPct(inputs.refiLtv, 0)} of GDV`} />
+                    <MetricCard
+                      label="Cash released"
+                      value={fmtGBP(r.cashReleased)}
+                      hint={effectiveInputs.useBridge ? "New loan − bridge redemption − refi fees" : "New loan − purchase loan − refi fees"}
+                      tone={r.cashReleased >= 0 ? "positive" : "negative"}
+                    />
+                    <MetricCard
+                      label="Cash left in deal"
+                      value={fmtGBP(Math.max(0, r.cashLeftIn))}
+                      hint={r.cashLeftIn <= 0 ? "Full BRRR" : `${fmtPct(r.capitalRecycledPct, 0)} recycled`}
+                      tone={r.cashLeftIn <= 0 ? "positive" : "accent"}
+                    />
+                  </>
+                )}
               </div>
             </div>
 
-            {inputs.useBridge && (
+            {effectiveInputs.useBridge && (
               <div>
                 <h2 className="text-sm font-medium uppercase tracking-wider text-muted-foreground">Bridging finance</h2>
                 <div className="mt-3 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
