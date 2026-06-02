@@ -205,17 +205,49 @@ function RefinancePage() {
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b border-border bg-card/50 backdrop-blur">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-5">
-          <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary text-primary-foreground font-bold">
-              ↻
+        <div className="mx-auto flex max-w-7xl flex-col gap-4 px-6 py-5">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary text-primary-foreground font-bold">
+                ↻
+              </div>
+              <div>
+                <h1 className="text-lg font-semibold leading-tight">Refinance / BRRR Calculator</h1>
+                <p className="text-xs text-muted-foreground">Buy · Refurb · Refinance · Rent</p>
+              </div>
             </div>
-            <div>
-              <h1 className="text-lg font-semibold leading-tight">Refinance / BRRR Calculator</h1>
-              <p className="text-xs text-muted-foreground">Buy · Refurb · Refinance · Rent</p>
+            <Button variant="outline" size="sm" onClick={reset}>New / Reset</Button>
+          </div>
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
+            <div className="flex-1">
+              <label htmlFor="propname" className="mb-1 block text-xs font-medium text-muted-foreground">
+                Property name
+              </label>
+              <Input
+                id="propname"
+                placeholder="e.g. 12 High Street, Leeds"
+                value={propertyName}
+                onChange={(e) => setPropertyName(e.target.value)}
+              />
+            </div>
+            <div className="flex gap-2">
+              <Button size="sm" onClick={() => doSave(false)} disabled={saving}>
+                {saving ? "Saving…" : propertyId ? "Save" : "Save deal"}
+              </Button>
+              {propertyId && (
+                <Button size="sm" variant="outline" onClick={() => doSave(true)} disabled={saving}>
+                  Save as new
+                </Button>
+              )}
             </div>
           </div>
-          <Button variant="outline" size="sm" onClick={reset}>Reset</Button>
+          {(savedAt || loadError) && (
+            <p className={`text-xs ${loadError ? "text-destructive" : "text-muted-foreground"}`}>
+              {loadError
+                ? loadError
+                : `Last saved ${savedAt?.toLocaleTimeString()}${propertyId ? " · syncing changes will update this deal" : ""}`}
+            </p>
+          )}
         </div>
       </header>
 
