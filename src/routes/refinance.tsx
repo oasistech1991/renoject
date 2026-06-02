@@ -729,42 +729,50 @@ function RefinancePage() {
               <h2 className="text-sm font-medium uppercase tracking-wider text-muted-foreground">Deal summary</h2>
               <div className="mt-3 overflow-hidden rounded-xl border border-border bg-card">
                 <Row label="Deposit" value={fmtGBP(r.depositAmount)} />
-                {!inputs.useBridge && <Row label="Purchase loan" value={fmtGBP(r.purchaseLoan)} />}
+                {!effectiveInputs.useBridge && method !== "cash" && <Row label="Purchase loan" value={fmtGBP(r.purchaseLoan)} />}
                 <Row label="Stamp duty + legal + survey" value={fmtGBP(inputs.stampDuty + inputs.legalFees + inputs.surveyFees)} />
                 {r.additionalAcquisitionCosts > 0 && (
                   <Row label="Additional acquisition costs" value={fmtGBP(r.additionalAcquisitionCosts)} />
                 )}
-                <Row label="Refurb cost" value={fmtGBP(inputs.refurbCost)} />
-                {inputs.useBridge && inputs.bridgeFundsRefurb && (
-                  <Row label="Less: refurb funded by bridge" value={`− ${fmtGBP(inputs.refurbCost)}`} />
+                {(method === "brrr" || method === "bridge") && (
+                  <>
+                    <Row label="Refurb cost" value={fmtGBP(effectiveInputs.refurbCost)} />
+                    {effectiveInputs.useBridge && effectiveInputs.bridgeFundsRefurb && (
+                      <Row label="Less: refurb funded by bridge" value={`− ${fmtGBP(effectiveInputs.refurbCost)}`} />
+                    )}
+                    <Row label={`Holding costs (${effectiveInputs.refurbMonths} mo)`} value={fmtGBP(r.holdingCostsTotal)} />
+                    {!effectiveInputs.useBridge && (
+                      <Row label={`Purchase interest during refurb (${effectiveInputs.refurbMonths} mo)`} value={fmtGBP(r.purchaseInterestDuringRefurb)} />
+                    )}
+                  </>
                 )}
-                <Row label={`Holding costs (${inputs.refurbMonths} mo)`} value={fmtGBP(r.holdingCostsTotal)} />
-                {!inputs.useBridge && (
-                  <Row label={`Purchase interest during refurb (${inputs.refurbMonths} mo)`} value={fmtGBP(r.purchaseInterestDuringRefurb)} />
-                )}
-                {inputs.useBridge && (
+                {effectiveInputs.useBridge && (
                   <>
                     <Row label="Bridge loan drawn" value={fmtGBP(r.bridgeLoan)} />
-                    <Row label={`Bridge arrangement fee (${fmtPct(inputs.bridgeArrangementPct, 1)})`} value={fmtGBP(r.bridgeArrangementFee)} />
+                    <Row label={`Bridge arrangement fee (${fmtPct(effectiveInputs.bridgeArrangementPct, 1)})`} value={fmtGBP(r.bridgeArrangementFee)} />
                     <Row
-                      label={`Bridge interest (${inputs.bridgeTermMonths} mo · ${inputs.bridgeInterestRolled ? "rolled" : "serviced"})`}
+                      label={`Bridge interest (${effectiveInputs.bridgeTermMonths} mo · ${effectiveInputs.bridgeInterestRolled ? "rolled" : "serviced"})`}
                       value={fmtGBP(r.bridgeInterestTotal)}
                     />
-                    <Row label={`Bridge exit fee (${fmtPct(inputs.bridgeExitPct, 1)})`} value={fmtGBP(r.bridgeExitFee)} />
+                    <Row label={`Bridge exit fee (${fmtPct(effectiveInputs.bridgeExitPct, 1)})`} value={fmtGBP(r.bridgeExitFee)} />
                   </>
                 )}
                 <Row label="Total cash in" value={fmtGBP(r.totalCashIn)} bold />
-                <Row label="Post-refurb valuation (GDV)" value={fmtGBP(inputs.gdv)} />
-                <Row label={`New loan @ ${fmtPct(inputs.refiLtv, 0)} LTV`} value={fmtGBP(r.newLoan)} />
-                {inputs.useBridge ? (
-                  <Row label="Less: bridge redemption (loan + interest + fees)" value={`− ${fmtGBP(r.bridgeRepaymentTotal)}`} bold tone="negative" />
-                ) : (
-                  <Row label="Less: original loan repaid" value={`− ${fmtGBP(r.purchaseLoan)}`} />
+                {method === "brrr" && (
+                  <>
+                    <Row label="Post-refurb valuation (GDV)" value={fmtGBP(inputs.gdv)} />
+                    <Row label={`New loan @ ${fmtPct(inputs.refiLtv, 0)} LTV`} value={fmtGBP(r.newLoan)} />
+                    {effectiveInputs.useBridge ? (
+                      <Row label="Less: bridge redemption (loan + interest + fees)" value={`− ${fmtGBP(r.bridgeRepaymentTotal)}`} bold tone="negative" />
+                    ) : (
+                      <Row label="Less: original loan repaid" value={`− ${fmtGBP(r.purchaseLoan)}`} />
+                    )}
+                    <Row label="Less: refi fees" value={`− ${fmtGBP(inputs.refiFees)}`} />
+                    <Row label="Cash released on refi" value={fmtGBP(r.cashReleased)} bold tone={r.cashReleased >= 0 ? "positive" : "negative"} />
+                    <Row label="Cash left in deal" value={fmtGBP(Math.max(0, r.cashLeftIn))} bold tone={r.cashLeftIn <= 0 ? "positive" : undefined} />
+                  </>
                 )}
-                <Row label="Less: refi fees" value={`− ${fmtGBP(inputs.refiFees)}`} />
-                <Row label="Cash released on refi" value={fmtGBP(r.cashReleased)} bold tone={r.cashReleased >= 0 ? "positive" : "negative"} />
-                <Row label="Cash left in deal" value={fmtGBP(Math.max(0, r.cashLeftIn))} bold tone={r.cashLeftIn <= 0 ? "positive" : undefined} />
-                <Row label="Break-even rent" value={fmtGBP(r.breakEvenRent)} />
+                {method !== "cash" && <Row label="Break-even rent" value={fmtGBP(r.breakEvenRent)} />}
                 <Row label="Annual cashflow (IO)" value={fmtGBP(r.annualCashflowIO)} bold tone={r.annualCashflowIO >= 0 ? "positive" : "negative"} />
               </div>
             </div>
