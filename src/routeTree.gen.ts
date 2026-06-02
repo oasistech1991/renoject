@@ -9,10 +9,16 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as RefinanceRouteImport } from './routes/refinance'
 import { Route as HmoComplianceRouteImport } from './routes/hmo-compliance'
 import { Route as ConditionRouteImport } from './routes/condition'
 import { Route as IndexRouteImport } from './routes/index'
 
+const RefinanceRoute = RefinanceRouteImport.update({
+  id: '/refinance',
+  path: '/refinance',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const HmoComplianceRoute = HmoComplianceRouteImport.update({
   id: '/hmo-compliance',
   path: '/hmo-compliance',
@@ -33,34 +39,45 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/condition': typeof ConditionRoute
   '/hmo-compliance': typeof HmoComplianceRoute
+  '/refinance': typeof RefinanceRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/condition': typeof ConditionRoute
   '/hmo-compliance': typeof HmoComplianceRoute
+  '/refinance': typeof RefinanceRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/condition': typeof ConditionRoute
   '/hmo-compliance': typeof HmoComplianceRoute
+  '/refinance': typeof RefinanceRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/condition' | '/hmo-compliance'
+  fullPaths: '/' | '/condition' | '/hmo-compliance' | '/refinance'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/condition' | '/hmo-compliance'
-  id: '__root__' | '/' | '/condition' | '/hmo-compliance'
+  to: '/' | '/condition' | '/hmo-compliance' | '/refinance'
+  id: '__root__' | '/' | '/condition' | '/hmo-compliance' | '/refinance'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ConditionRoute: typeof ConditionRoute
   HmoComplianceRoute: typeof HmoComplianceRoute
+  RefinanceRoute: typeof RefinanceRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/refinance': {
+      id: '/refinance'
+      path: '/refinance'
+      fullPath: '/refinance'
+      preLoaderRoute: typeof RefinanceRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/hmo-compliance': {
       id: '/hmo-compliance'
       path: '/hmo-compliance'
@@ -89,17 +106,8 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ConditionRoute: ConditionRoute,
   HmoComplianceRoute: HmoComplianceRoute,
+  RefinanceRoute: RefinanceRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}

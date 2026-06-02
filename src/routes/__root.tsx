@@ -143,6 +143,9 @@ function TopNav() {
         <Link to="/condition" className={linkBase} activeProps={{ className: `${linkBase} ${activeCls}` }}>
           Renovation Calculator
         </Link>
+        <Link to="/refinance" className={linkBase} activeProps={{ className: `${linkBase} ${activeCls}` }}>
+          Refinance / BRRR
+        </Link>
       </nav>
     </div>
   );
