@@ -1,9 +1,12 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useEffect, useRef, useState } from "react";
+import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { fmtGBP, fmtPct } from "@/lib/btl";
-import { fmtROI } from "@/lib/refinance";
+import { calcStampDuty } from "@/lib/btl";
+import { calculateRefinance, fmtROI, type RefinanceInputs } from "@/lib/refinance";
+import { parsePropertyPdf } from "@/lib/import-deal.functions";
 
 export const Route = createFileRoute("/properties")({
   head: () => ({
@@ -30,6 +33,11 @@ function PropertiesPage() {
   const [rows, setRows] = useState<PropertyRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [importing, setImporting] = useState(false);
+  const [importMsg, setImportMsg] = useState<string | null>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
+  const navigate = useNavigate();
+  const parsePdf = useServerFn(parsePropertyPdf);
 
   const load = async () => {
     setLoading(true);
@@ -45,6 +53,55 @@ function PropertiesPage() {
   useEffect(() => {
     load();
   }, []);
+
+  const onPickFile = () => fileRef.current?.click();
+
+  const onFileChosen = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    if (file.type !== "application/pdf" && !file.name.toLowerCase().endsWith(".pdf")) {
+      setImportMsg("Please choose a PDF file.");
+      return;
+    }
+    if (file.size > 15 * 1024 * 1024) {
+      setImportMsg("PDF is too large (max 15 MB).");
+      return;
+    }
+    setImporting(true);
+    setImportMsg("Reading PDF and extracting deal details…");
+    try {
+      const buf = new Uint8Array(await file.arrayBuffer());
+      let bin = "";
+      for (let i = 0; i < buf.length; i++) bin += String.fromCharCode(buf[i]);
+      const pdfBase64 = btoa(bin);
+      const { extracted, warning } = await parsePdf({
+        data: { pdfBase64, filename: file.name },
+      });
+      if (warning) {
+        setImportMsg(warning);
+        setImporting(false);
+        return;
+      }
+      const inputs = mergeDefaults(extracted);
+      const name =
+        (typeof extracted.propertyName === "string" && extracted.propertyName.trim()) ||
+        file.name.replace(/\.pdf$/i, "");
+      const metrics = snapshotMetrics(calculateRefinance(inputs));
+      const { data, error } = await supabase
+        .from("properties")
+        .insert({ name, inputs: inputs as any, metrics: metrics as any })
+        .select()
+        .single();
+      if (error) throw error;
+      setImportMsg(null);
+      setImporting(false);
+      navigate({ to: "/refinance", search: { id: data.id } });
+    } catch (err: any) {
+      setImporting(false);
+      setImportMsg(err?.message ?? "Failed to import PDF.");
+    }
+  };
 
   const remove = async (id: string, name: string) => {
     if (!confirm(`Delete "${name}"? This can't be undone.`)) return;
@@ -64,10 +121,25 @@ function PropertiesPage() {
             <h1 className="text-lg font-semibold leading-tight">Saved properties</h1>
             <p className="text-xs text-muted-foreground">All your BRRR / refinance deals</p>
           </div>
-          <Link to="/refinance">
-            <Button size="sm">+ New property</Button>
-          </Link>
+          <div className="flex items-center gap-2">
+            <input
+              ref={fileRef}
+              type="file"
+              accept="application/pdf,.pdf"
+              className="hidden"
+              onChange={onFileChosen}
+            />
+            <Button size="sm" variant="outline" onClick={onPickFile} disabled={importing}>
+              {importing ? "Importing…" : "Import from PDF"}
+            </Button>
+            <Link to="/refinance">
+              <Button size="sm">+ New property</Button>
+            </Link>
+          </div>
         </div>
+        {importMsg && (
+          <div className="mx-auto max-w-7xl px-6 pb-4 text-xs text-muted-foreground">{importMsg}</div>
+        )}
       </header>
 
       <main className="mx-auto max-w-7xl px-6 py-8">
