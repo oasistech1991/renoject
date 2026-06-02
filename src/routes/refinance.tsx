@@ -262,7 +262,12 @@ function RefinancePage() {
             </InputGroup>
 
             <InputGroup title="Rental (post-refi)">
-              <NumberField id="rent" label="Monthly rent" prefix="£"
+              <NumberField id="units" label="Lettable units" step={1}
+                value={inputs.lettableUnits} onChange={(v) => set("lettableUnits", v)} />
+              <NumberField id="currentRent" label="Current monthly rent" prefix="£"
+                value={inputs.currentMonthlyRent} onChange={(v) => set("currentMonthlyRent", v)}
+                hint="Rent being achieved today (pre-refurb)" />
+              <NumberField id="rent" label="Achievable monthly rent" prefix="£"
                 value={inputs.monthlyRent} onChange={(v) => set("monthlyRent", v)} />
               <NumberField id="mgmt" label="Management fee" suffix="%"
                 value={inputs.managementPct} onChange={(v) => set("managementPct", v)} />
@@ -276,6 +281,28 @@ function RefinancePage() {
                 value={inputs.groundRent} onChange={(v) => set("groundRent", v)} />
               <NumberField id="other" label="Other / month" prefix="£"
                 value={inputs.otherMonthly} onChange={(v) => set("otherMonthly", v)} />
+            </InputGroup>
+
+            <InputGroup title="Flip / sale exit (optional)">
+              <label className="flex items-center justify-between gap-3 rounded-md border border-border bg-background px-3 py-2 text-sm">
+                <span>Model a flip / resale instead of refi?</span>
+                <input
+                  type="checkbox"
+                  className="h-4 w-4 accent-primary"
+                  checked={inputs.flipEnabled}
+                  onChange={(e) => set("flipEnabled", e.target.checked)}
+                />
+              </label>
+              {inputs.flipEnabled && (
+                <>
+                  <NumberField id="flipPrice" label="Sale price achieved" prefix="£" step={1000}
+                    value={inputs.flipSalePrice} onChange={(v) => set("flipSalePrice", v)} />
+                  <NumberField id="flipLegal" label="Sale legal fees" prefix="£"
+                    value={inputs.flipLegalFees} onChange={(v) => set("flipLegalFees", v)} />
+                  <NumberField id="flipAgency" label="Agency fee" prefix="£"
+                    value={inputs.flipAgencyFee} onChange={(v) => set("flipAgencyFee", v)} />
+                </>
+              )}
             </InputGroup>
           </section>
 
