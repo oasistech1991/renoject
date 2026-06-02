@@ -435,3 +435,22 @@ function FilterPill({
     </button>
   );
 }
+
+function SummaryCard({
+  label,
+  value,
+  tone,
+}: {
+  label: string;
+  value: string;
+  tone?: "positive" | "negative";
+}) {
+  const toneClass =
+    tone === "positive" ? "text-primary" : tone === "negative" ? "text-destructive" : "text-foreground";
+  return (
+    <div className="rounded-xl border border-border bg-card p-5">
+      <p className="text-xs uppercase tracking-wider text-muted-foreground">{label}</p>
+      <p className={`mt-2 text-2xl font-semibold tabular-nums ${toneClass}`}>{value}</p>
+    </div>
+  );
+}
