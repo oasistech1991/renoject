@@ -201,7 +201,19 @@ function RefinancePage() {
         setLoadError("Property not found");
         return;
       }
-      setInputs({ ...defaults, ...(data.inputs as unknown as RefinanceInputs) });
+      const rawInputs = (data.inputs ?? {}) as any;
+      const rawMetrics = (data.metrics ?? {}) as any;
+      const { __btl, ...refInputs } = rawInputs;
+      setInputs({ ...defaults, ...(refInputs as RefinanceInputs) });
+      const savedMethod: CalcMethod =
+        rawMetrics.method === "btl" ||
+        rawMetrics.method === "cash" ||
+        rawMetrics.method === "mortgage" ||
+        rawMetrics.method === "brrr"
+          ? rawMetrics.method
+          : "brrr";
+      setMethod(savedMethod);
+      setBtlInputs({ ...btlDefaults, ...((__btl ?? {}) as Partial<BTLInputs>) });
       setPropertyName(data.name);
       setPropertyId(data.id);
       setSource(((data as any).source as PropertySource) ?? "");
@@ -212,21 +224,53 @@ function RefinancePage() {
     };
   }, [search.id]);
 
-  const metricsSnapshot = () => ({
-    cashLeftIn: r.cashLeftIn,
-    cashReleased: r.cashReleased,
-    newLoan: r.newLoan,
-    totalCashIn: r.totalCashIn,
-    monthlyCashflowIO: r.monthlyCashflowIO,
-    annualCashflowIO: r.annualCashflowIO,
-    grossYield: r.grossYield,
-    netYield: r.netYield,
-    roiOnCashLeftIn: isFinite(r.roiOnCashLeftIn) ? r.roiOnCashLeftIn : null,
-    capitalRecycledPct: r.capitalRecycledPct,
-    profitOnPaper: r.profitOnPaper,
-    verdict: r.verdict,
-    verdictLabel: r.verdictLabel,
-  });
+  const metricsSnapshot = () => {
+    if (method === "btl") {
+      const stressOk = btl.stressICR125;
+      const cashflowOk = btl.monthlyCashflowIO >= 0;
+      const verdict: "full" | "partial" | "fail" =
+        stressOk && cashflowOk ? "full" : "fail";
+      const verdictLabel = !cashflowOk
+        ? "Negative cashflow"
+        : !stressOk
+          ? "Fails lender stress"
+          : "Stacks as BTL";
+      return {
+        method,
+        purchasePrice: btlInputs.purchasePrice,
+        loanAmount: btl.loanAmount,
+        totalCashIn: btl.totalCashIn,
+        monthlyCashflowIO: btl.monthlyCashflowIO,
+        annualCashflowIO: btl.annualCashflowIO,
+        grossYield: btl.grossYield,
+        netYield: btl.netYield,
+        roiIO: btl.roiIO,
+        icr: btl.icr,
+        stressICR125: btl.stressICR125,
+        verdict,
+        verdictLabel,
+      };
+    }
+    return {
+      method,
+      purchasePrice: inputs.purchasePrice,
+      cashLeftIn: r.cashLeftIn,
+      cashReleased: r.cashReleased,
+      newLoan: r.newLoan,
+      totalCashIn: r.totalCashIn,
+      monthlyCashflowIO: r.monthlyCashflowIO,
+      annualCashflowIO: r.annualCashflowIO,
+      grossYield: r.grossYield,
+      netYield: r.netYield,
+      roiOnCashLeftIn: isFinite(r.roiOnCashLeftIn) ? r.roiOnCashLeftIn : null,
+      roiIO: isFinite(r.roiOnCashLeftIn) ? r.roiOnCashLeftIn : null,
+      icr: r.icr,
+      capitalRecycledPct: r.capitalRecycledPct,
+      profitOnPaper: r.profitOnPaper,
+      verdict: r.verdict,
+      verdictLabel: r.verdictLabel,
+    };
+  };
 
   const doSave = async (forceNew = false) => {
     if (!propertyName.trim()) {
@@ -234,9 +278,11 @@ function RefinancePage() {
       return;
     }
     setSaving(true);
+    const inputsPayload: any = { ...inputs };
+    if (method === "btl") inputsPayload.__btl = btlInputs;
     const payload = {
       name: propertyName.trim(),
-      inputs: inputs as any,
+      inputs: inputsPayload,
       metrics: metricsSnapshot() as any,
       source: source || null,
     } as any;
