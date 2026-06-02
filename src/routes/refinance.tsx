@@ -395,7 +395,7 @@ function RefinancePage() {
             </InputGroup>
             )}
 
-            {(method === "brrr" || method === "bridge") && (
+            {method === "brrr" && (
             <InputGroup title="Refurb">
               <NumberField id="refurb" label="Refurb cost" prefix="£" step={500}
                 value={inputs.refurbCost} onChange={(v) => set("refurbCost", v)} />
@@ -407,7 +407,7 @@ function RefinancePage() {
             </InputGroup>
             )}
 
-            {(method === "brrr" || method === "bridge") && (
+            {method === "brrr" && (
             <InputGroup title="Bridging finance">
               <label className="flex items-center justify-between gap-3 rounded-md border border-border bg-background px-3 py-2 text-sm">
                 <span>Fund purchase with a bridge?</span>
@@ -723,7 +723,7 @@ function RefinancePage() {
                 {r.additionalAcquisitionCosts > 0 && (
                   <Row label="Additional acquisition costs" value={fmtGBP(r.additionalAcquisitionCosts)} />
                 )}
-                {(method === "brrr" || method === "bridge") && (
+                {method === "brrr" && (
                   <>
                     <Row label="Refurb cost" value={fmtGBP(effectiveInputs.refurbCost)} />
                     {effectiveInputs.useBridge && effectiveInputs.bridgeFundsRefurb && (
