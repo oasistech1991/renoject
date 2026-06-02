@@ -21,6 +21,7 @@ export type Database = {
           inputs: Json
           metrics: Json
           name: string
+          source: string | null
           updated_at: string
         }
         Insert: {
@@ -29,6 +30,7 @@ export type Database = {
           inputs: Json
           metrics: Json
           name: string
+          source?: string | null
           updated_at?: string
         }
         Update: {
@@ -37,6 +39,7 @@ export type Database = {
           inputs?: Json
           metrics?: Json
           name?: string
+          source?: string | null
           updated_at?: string
         }
         Relationships: []

@@ -7,6 +7,7 @@ import { fmtGBP, fmtPct } from "@/lib/btl";
 import { calcStampDuty } from "@/lib/btl";
 import { calculateRefinance, fmtROI, type RefinanceInputs } from "@/lib/refinance";
 import { parsePropertyPdf } from "@/lib/import-deal.functions";
+import { PROPERTY_SOURCES, sourceBadgeClass, sourceLabel, type PropertySource } from "@/lib/sources";
 
 export const Route = createFileRoute("/properties")({
   head: () => ({
@@ -25,6 +26,7 @@ type PropertyRow = {
   name: string;
   inputs: any;
   metrics: any;
+  source: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -86,6 +88,7 @@ function PropertiesPage() {
   const [error, setError] = useState<string | null>(null);
   const [importing, setImporting] = useState(false);
   const [importMsg, setImportMsg] = useState<string | null>(null);
+  const [filter, setFilter] = useState<"all" | PropertySource | "none">("all");
   const fileRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
   const parsePdf = useServerFn(parsePropertyPdf);
@@ -141,7 +144,7 @@ function PropertiesPage() {
       const metrics = snapshotMetrics(calculateRefinance(inputs));
       const { data, error } = await supabase
         .from("properties")
-        .insert({ name, inputs: inputs as any, metrics: metrics as any })
+        .insert({ name, inputs: inputs as any, metrics: metrics as any, source: null } as any)
         .select()
         .single();
       if (error) throw error;
@@ -163,6 +166,17 @@ function PropertiesPage() {
     }
     setRows((p) => p.filter((r) => r.id !== id));
   };
+
+  const visibleRows = rows.filter((r) => {
+    if (filter === "all") return true;
+    if (filter === "none") return !r.source;
+    return r.source === filter;
+  });
+  const counts = rows.reduce<Record<string, number>>((acc, r) => {
+    const k = r.source ?? "none";
+    acc[k] = (acc[k] ?? 0) + 1;
+    return acc;
+  }, {});
 
   return (
     <div className="min-h-screen bg-background">
@@ -194,6 +208,32 @@ function PropertiesPage() {
       </header>
 
       <main className="mx-auto max-w-7xl px-6 py-8">
+        {!loading && rows.length > 0 && (
+          <div className="mb-6 flex flex-wrap items-center gap-2">
+            <FilterPill active={filter === "all"} onClick={() => setFilter("all")}>
+              All <span className="ml-1 opacity-60">{rows.length}</span>
+            </FilterPill>
+            {PROPERTY_SOURCES.map((s) => {
+              const n = counts[s.value] ?? 0;
+              if (n === 0) return null;
+              return (
+                <FilterPill
+                  key={s.value}
+                  active={filter === s.value}
+                  onClick={() => setFilter(s.value)}
+                  className={sourceBadgeClass(s.value)}
+                >
+                  {s.label} <span className="ml-1 opacity-60">{n}</span>
+                </FilterPill>
+              );
+            })}
+            {(counts["none"] ?? 0) > 0 && (
+              <FilterPill active={filter === "none"} onClick={() => setFilter("none")}>
+                Unspecified <span className="ml-1 opacity-60">{counts["none"]}</span>
+              </FilterPill>
+            )}
+          </div>
+        )}
         {loading && <p className="text-sm text-muted-foreground">Loading…</p>}
         {error && <p className="text-sm text-destructive">{error}</p>}
         {!loading && !error && rows.length === 0 && (
@@ -209,9 +249,9 @@ function PropertiesPage() {
             </div>
           </div>
         )}
-        {!loading && rows.length > 0 && (
+        {!loading && visibleRows.length > 0 && (
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-            {rows.map((r) => {
+            {visibleRows.map((r) => {
               const m = r.metrics ?? {};
               const verdict: string = m.verdictLabel ?? "—";
               const verdictTone =
@@ -231,6 +271,11 @@ function PropertiesPage() {
                     </div>
                     <span className={`shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide ${verdictTone}`}>
                       {verdict}
+                    </span>
+                  </div>
+                  <div className="mt-3">
+                    <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide ${sourceBadgeClass(r.source)}`}>
+                      {sourceLabel(r.source)}
                     </span>
                   </div>
                    <dl className="mt-4 grid grid-cols-2 gap-y-2 text-sm">
@@ -260,7 +305,36 @@ function PropertiesPage() {
             })}
           </div>
         )}
+        {!loading && rows.length > 0 && visibleRows.length === 0 && (
+          <p className="text-sm text-muted-foreground">No deals match this filter.</p>
+        )}
       </main>
     </div>
+  );
+}
+
+function FilterPill({
+  active,
+  onClick,
+  className = "",
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  className?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
+        active
+          ? "border-foreground bg-foreground text-background"
+          : `hover:bg-accent ${className || "border-border bg-card text-foreground"}`
+      }`}
+    >
+      {children}
+    </button>
   );
 }
