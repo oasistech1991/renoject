@@ -38,11 +38,10 @@ async function uploadImage(propertyId: string, blob: Blob, filename: string) {
 async function renderPdfPagesToImages(file: File): Promise<Blob[]> {
   // Load pdf.js from a CDN at runtime so the bundler never touches it
   // (avoids SSR module-resolution failures with the worker ?url import).
-  const pdfjs: any = await import(
-    /* @vite-ignore */ "https://cdn.jsdelivr.net/npm/pdfjs-dist@4.7.76/build/pdf.min.mjs"
-  );
-  pdfjs.GlobalWorkerOptions.workerSrc =
-    "https://cdn.jsdelivr.net/npm/pdfjs-dist@4.7.76/build/pdf.worker.min.mjs";
+  const PDFJS_URL = "https://cdn.jsdelivr.net/npm/pdfjs-dist@4.7.76/build/pdf.min.mjs";
+  const WORKER_URL = "https://cdn.jsdelivr.net/npm/pdfjs-dist@4.7.76/build/pdf.worker.min.mjs";
+  const pdfjs: any = await import(/* @vite-ignore */ PDFJS_URL);
+  pdfjs.GlobalWorkerOptions.workerSrc = WORKER_URL;
 
   const buf = await file.arrayBuffer();
   const doc = await pdfjs.getDocument({ data: buf }).promise;
