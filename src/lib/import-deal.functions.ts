@@ -49,7 +49,10 @@ const FIELDS: Record<string, typeof numberOrNull | typeof boolOrNull | typeof st
 
 export const parsePropertyPdf = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => InputSchema.parse(data))
-  .handler(async ({ data }) => {
+  .handler(async ({ data }): Promise<{
+    extracted: Record<string, number | string | boolean>;
+    warning: string | null;
+  }> => {
     const apiKey = process.env.LOVABLE_API_KEY;
     if (!apiKey) throw new Error("AI gateway not configured");
 
@@ -60,7 +63,7 @@ export const parsePropertyPdf = createServerFn({ method: "POST" })
     const { text } = await extractText(pdf, { mergePages: true });
     const trimmed = (Array.isArray(text) ? text.join("\n") : text).slice(0, 60_000);
     if (!trimmed.trim()) {
-      return { extracted: {}, raw: "", warning: "No text could be read from this PDF." };
+      return { extracted: {}, warning: "No text could be read from this PDF." };
     }
 
     const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
@@ -111,13 +114,13 @@ export const parsePropertyPdf = createServerFn({ method: "POST" })
     const json = await res.json();
     const call = json?.choices?.[0]?.message?.tool_calls?.[0];
     if (!call?.function?.arguments) {
-      return { extracted: {}, raw: trimmed.slice(0, 500), warning: "AI returned no structured data." };
+      return { extracted: {}, warning: "AI returned no structured data." };
     }
     let extracted: Record<string, unknown> = {};
     try {
       extracted = JSON.parse(call.function.arguments);
     } catch {
-      return { extracted: {}, raw: trimmed.slice(0, 500), warning: "Failed to parse AI response." };
+      return { extracted: {}, warning: "Failed to parse AI response." };
     }
     // Strip nulls and coerce to a serializable shape
     const clean: Record<string, number | string | boolean> = {};
@@ -127,5 +130,5 @@ export const parsePropertyPdf = createServerFn({ method: "POST" })
         clean[k] = v;
       }
     }
-    return { extracted: clean, raw: "", warning: null as string | null };
+    return { extracted: clean, warning: null };
   });
