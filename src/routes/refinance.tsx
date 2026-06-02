@@ -7,6 +7,7 @@ import { NumberField } from "@/components/btl/NumberField";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
+import { PROPERTY_SOURCES, type PropertySource } from "@/lib/sources";
 
 export const Route = createFileRoute("/refinance")({
   validateSearch: (s: Record<string, unknown>) => ({
@@ -80,6 +81,7 @@ function RefinancePage() {
   const [inputs, setInputs] = useState<RefinanceInputs>(defaults);
   const [propertyName, setPropertyName] = useState("");
   const [propertyId, setPropertyId] = useState<string | null>(null);
+  const [source, setSource] = useState<PropertySource | "">("");
   const [saving, setSaving] = useState(false);
   const [savedAt, setSavedAt] = useState<Date | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -93,6 +95,7 @@ function RefinancePage() {
     setInputs(defaults);
     setPropertyName("");
     setPropertyId(null);
+    setSource("");
     setSavedAt(null);
     navigate({ search: { id: undefined }, replace: true });
   };
@@ -121,6 +124,7 @@ function RefinancePage() {
       setInputs({ ...defaults, ...(data.inputs as unknown as RefinanceInputs) });
       setPropertyName(data.name);
       setPropertyId(data.id);
+      setSource(((data as any).source as PropertySource) ?? "");
       setSavedAt(new Date(data.updated_at));
     })();
     return () => {
@@ -154,7 +158,8 @@ function RefinancePage() {
       name: propertyName.trim(),
       inputs: inputs as any,
       metrics: metricsSnapshot() as any,
-    };
+      source: source || null,
+    } as any;
     if (propertyId && !forceNew) {
       const { error } = await supabase
         .from("properties")
@@ -229,6 +234,22 @@ function RefinancePage() {
                 value={propertyName}
                 onChange={(e) => setPropertyName(e.target.value)}
               />
+            </div>
+            <div className="sm:w-56">
+              <label htmlFor="propsource" className="mb-1 block text-xs font-medium text-muted-foreground">
+                Deal source
+              </label>
+              <select
+                id="propsource"
+                value={source}
+                onChange={(e) => setSource(e.target.value as PropertySource | "")}
+                className="flex h-9 w-full rounded-md border border-input bg-background px-3 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              >
+                <option value="">Unspecified</option>
+                {PROPERTY_SOURCES.map((s) => (
+                  <option key={s.value} value={s.value}>{s.label}</option>
+                ))}
+              </select>
             </div>
             <div className="flex gap-2">
               <Button size="sm" onClick={() => doSave(false)} disabled={saving}>
