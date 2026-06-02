@@ -31,6 +31,8 @@ export interface RefinanceInputs {
   bridgeRateIsPCM: boolean; // input mode toggle
   bridgeTermMonths: number; // bridge term until refi (>= refurbMonths)
   bridgeArrangementPct: number; // % of bridge loan
+  bridgeArrangementIsPct: boolean;
+  bridgeArrangementAmount: number; // £ flat fee
   bridgeExitPct: number; // % of bridge loan
   bridgeInterestRolled: boolean; // true = rolled up & compounded, false = serviced monthly
   // Refinance
