@@ -190,7 +190,7 @@ export function PropertyMedia({ propertyId }: { propertyId: string }) {
         <div>
           <h2 className="text-sm font-semibold">Gallery & attachments</h2>
           <p className="text-xs text-muted-foreground">
-            Upload images or PDFs. Mark one image as the hero banner.
+            Upload images or a PDF — every PDF page is added to the gallery as an image. Mark one image as the hero banner.
           </p>
         </div>
         <div className="flex items-center gap-2">
