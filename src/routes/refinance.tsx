@@ -628,6 +628,22 @@ function RefinancePage() {
                       onChange={(e) => set("bridgeFundsRefurb", e.target.checked)}
                     />
                   </label>
+                  <label className="flex items-center justify-between gap-3 rounded-md border border-border bg-background px-3 py-2 text-sm">
+                    <span>Bridge refurb only (no purchase finance)</span>
+                    <input
+                      type="checkbox"
+                      className="h-4 w-4 accent-primary"
+                      checked={inputs.bridgeLoanPct === 0 && inputs.bridgeFundsRefurb}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          set("bridgeLoanPct", 0);
+                          set("bridgeFundsRefurb", true);
+                        } else {
+                          set("bridgeLoanPct", 75);
+                        }
+                      }}
+                    />
+                  </label>
                   <div className="flex items-end gap-2">
                     <div className="flex-1">
                       <NumberField
