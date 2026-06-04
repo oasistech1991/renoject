@@ -593,6 +593,66 @@ function PropertiesPage() {
                     </Link>
                     <Button size="sm" variant="outline" onClick={() => remove(r.id, r.name)}>Delete</Button>
                   </div>
+                  {(() => {
+                    const attached = analyses.filter((a) => a.property_id === r.id);
+                    if (attached.length === 0) return null;
+                    const isOpen = !!expanded[r.id];
+                    return (
+                      <div className="mt-3 rounded-md border border-border bg-background/40">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setExpanded((p) => ({ ...p, [r.id]: !p[r.id] }))
+                          }
+                          className="flex w-full items-center justify-between px-3 py-2 text-xs font-medium"
+                        >
+                          <span>HMO analyses ({attached.length})</span>
+                          <span className="text-muted-foreground">{isOpen ? "▲" : "▼"}</span>
+                        </button>
+                        {isOpen && (
+                          <ul className="space-y-1.5 border-t border-border px-3 py-2">
+                            {attached.map((a) => (
+                              <li
+                                key={a.id}
+                                className="flex items-center gap-2 text-xs"
+                              >
+                                <div className="min-w-0 flex-1">
+                                  <p className="truncate font-medium">{a.label}</p>
+                                  <p className="text-[10px] text-muted-foreground">
+                                    {a.result?.verdict ?? "—"} ·{" "}
+                                    {a.result?.maxCompliantBedrooms ?? "—"} beds ·{" "}
+                                    {new Date(a.created_at).toLocaleDateString()}
+                                  </p>
+                                </div>
+                                <Link
+                                  to="/hmo-compliance"
+                                  search={{ analysis: a.id } as any}
+                                >
+                                  <Button size="sm" variant="outline">
+                                    View
+                                  </Button>
+                                </Link>
+                                <button
+                                  type="button"
+                                  onClick={() => detachAnalysis(a.id)}
+                                  className="rounded border border-border px-2 py-1 text-[10px] hover:bg-accent"
+                                >
+                                  Detach
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => deleteAnalysis(a.id, a.label)}
+                                  className="rounded border border-border px-2 py-1 text-[10px] hover:bg-destructive/10 hover:text-destructive"
+                                >
+                                  ✕
+                                </button>
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                      </div>
+                    );
+                  })()}
                   <label className="mt-3 flex cursor-pointer items-center gap-2 rounded-md border border-border bg-background/40 px-3 py-2 text-xs font-medium select-none">
                     <input
                       type="checkbox"
