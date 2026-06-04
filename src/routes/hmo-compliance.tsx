@@ -149,7 +149,7 @@ function HMOCompliancePage() {
         .single();
       if (error || !data) return;
       const inputs = (data.inputs ?? {}) as any;
-      setViewData(data.result as AnalysisResult);
+      setViewData(data.result as unknown as AnalysisResult);
       setViewMeta({
         id: data.id,
         label: data.label,
