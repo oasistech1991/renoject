@@ -440,6 +440,9 @@ function ReportView({
   data: Awaited<ReturnType<typeof analyseFloorplan>>;
   proposed: number;
 }) {
+  const [activeScenario, setActiveScenario] = useState<"maxSingles" | "balanced" | "maxDoubles">(
+    "balanced",
+  );
   const verdictTone =
     data.verdict === "PASS"
       ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30"
@@ -455,6 +458,14 @@ function ReportView({
         ? `You asked for ${proposed} — there's room for ${delta} more.`
         : `You asked for ${proposed} — that's ${Math.abs(delta)} too many to be compliant.`;
 
+  const scenarios = data.scenarios;
+  const active = scenarios?.[activeScenario];
+  const scenarioMeta: { key: "maxSingles" | "balanced" | "maxDoubles"; label: string; sub: string }[] = [
+    { key: "maxSingles", label: "Max singles", sub: "Most rooms" },
+    { key: "balanced", label: "Balanced", sub: "Recommended" },
+    { key: "maxDoubles", label: "Max doubles", sub: "Best £/room" },
+  ];
+
   return (
     <div className="space-y-5">
       {/* Hero */}
@@ -462,7 +473,7 @@ function ReportView({
         <div className="flex items-start justify-between gap-4">
           <div>
             <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-              Max compliant bedrooms
+              Max compliant bedrooms (balanced)
             </p>
             <p className="mt-1 text-5xl font-semibold tracking-tight text-foreground">
               {data.maxCompliantBedrooms}
@@ -483,12 +494,183 @@ function ReportView({
         </div>
       </div>
 
+      {/* Scenario comparison */}
+      {scenarios && (
+        <div className="rounded-xl border border-border bg-card p-5">
+          <div className="flex items-center justify-between gap-3">
+            <h3 className="text-sm font-semibold">Capacity scenarios</h3>
+            <p className="text-xs text-muted-foreground">
+              Three layouts fitted into the same bedroom-available area
+            </p>
+          </div>
+          <div className="mt-3 grid gap-3 sm:grid-cols-3">
+            {scenarioMeta.map((m) => {
+              const s = scenarios[m.key];
+              const isActive = activeScenario === m.key;
+              const tone =
+                s.verdict === "PASS"
+                  ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
+                  : s.verdict === "REVIEW"
+                    ? "border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-300"
+                    : "border-destructive/30 bg-destructive/10 text-destructive";
+              return (
+                <button
+                  key={m.key}
+                  type="button"
+                  onClick={() => setActiveScenario(m.key)}
+                  className={`rounded-lg border p-3 text-left transition ${
+                    isActive
+                      ? "border-primary bg-primary/5 ring-1 ring-primary"
+                      : "border-border bg-muted/20 hover:bg-muted/40"
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                      {m.label}
+                    </p>
+                    <span className={`rounded-full border px-1.5 py-0.5 text-[10px] font-semibold ${tone}`}>
+                      {s.verdict}
+                    </span>
+                  </div>
+                  <p className="mt-1 text-3xl font-semibold tabular-nums">{s.bedroomCount}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {s.mix.singles}S / {s.mix.doubles}D · {m.sub}
+                  </p>
+                  <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-muted">
+                    <div
+                      className="h-full bg-primary"
+                      style={{ width: `${Math.max(0, Math.min(100, s.estRentIndex))}%` }}
+                    />
+                  </div>
+                  <p className="mt-1 text-[10px] uppercase tracking-wide text-muted-foreground">
+                    Rent index {s.estRentIndex}/100
+                  </p>
+                  {!s.physicallyAchievable && (
+                    <p className="mt-2 text-[11px] text-destructive">
+                      Not physically achievable — capped
+                    </p>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+
+          {active && (
+            <div className="mt-5 space-y-4 rounded-lg border border-border bg-muted/10 p-4">
+              {active.tradeoffs.length > 0 && (
+                <ul className="space-y-1 text-xs text-foreground">
+                  {active.tradeoffs.map((t, i) => (
+                    <li key={i} className="flex gap-2">
+                      <span className="mt-1 h-1 w-1 shrink-0 rounded-full bg-primary" />
+                      <span>{t}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+
+              {active.physicalNote && !active.physicallyAchievable && (
+                <p className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-xs text-destructive">
+                  {active.physicalNote}
+                </p>
+              )}
+
+              {active.rooms.length > 0 && (
+                <div>
+                  <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    Proposed layout
+                  </h4>
+                  <div className="mt-2 overflow-hidden rounded-md border border-border">
+                    <table className="w-full text-sm">
+                      <thead className="bg-muted/40 text-xs uppercase tracking-wide text-muted-foreground">
+                        <tr>
+                          <th className="px-3 py-2 text-left font-medium">Room</th>
+                          <th className="px-3 py-2 text-right font-medium">Est. sqm</th>
+                          <th className="px-3 py-2 text-right font-medium">Min</th>
+                          <th className="px-3 py-2 text-center font-medium">OK</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {active.rooms.map((r, i) => (
+                          <tr key={i} className="border-t border-border">
+                            <td className="px-3 py-2">
+                              <div className="font-medium">{r.label}</div>
+                              {r.note && (
+                                <div className="text-xs text-muted-foreground">{r.note}</div>
+                              )}
+                            </td>
+                            <td className="px-3 py-2 text-right tabular-nums">
+                              {r.estimatedSqm.toFixed(1)}
+                            </td>
+                            <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">
+                              {r.minRequiredSqm.toFixed(2)}
+                            </td>
+                            <td className="px-3 py-2 text-center">
+                              <span
+                                className={`inline-block h-2.5 w-2.5 rounded-full ${
+                                  r.compliant ? "bg-emerald-500" : "bg-destructive"
+                                }`}
+                              />
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+              {active.reconfiguration.length > 0 && (
+                <div>
+                  <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    Reconfiguration to hit this layout
+                  </h4>
+                  <ol className="mt-2 space-y-2">
+                    {active.reconfiguration.map((step, i) => (
+                      <li
+                        key={i}
+                        className="rounded-md border border-border bg-card px-3 py-2 text-sm"
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <span className="font-medium">
+                            {i + 1}. {step.change}
+                          </span>
+                          <ComplexityBadge complexity={step.complexity} />
+                        </div>
+                        {step.impact && (
+                          <p className="mt-1 text-xs text-muted-foreground">{step.impact}</p>
+                        )}
+                      </li>
+                    ))}
+                  </ol>
+                </div>
+              )}
+
+              {active.issues.length > 0 && (
+                <div>
+                  <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    Scenario issues
+                  </h4>
+                  <ul className="mt-1.5 space-y-1 text-sm">
+                    {active.issues.map((iss, i) => (
+                      <li key={i} className="flex gap-2">
+                        <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />
+                        <span>{iss}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Capacity calculation */}
       {data.capacity && (
         <div className="rounded-xl border border-border bg-card p-5">
           <div className="flex items-center justify-between gap-3">
             <h3 className="text-sm font-semibold">
-              How we got to {data.maxCompliantBedrooms} bedrooms
+              How we got to the bedroom-available area
             </h3>
             <span
               className={`rounded-full border px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide ${
@@ -556,50 +738,6 @@ function ReportView({
               </li>
             ))}
           </ul>
-        </div>
-      )}
-
-      {/* Rooms table */}
-      {data.rooms.length > 0 && (
-        <div className="rounded-xl border border-border bg-card p-5">
-          <h3 className="text-sm font-semibold">Bedroom assessment</h3>
-          <div className="mt-3 overflow-hidden rounded-md border border-border">
-            <table className="w-full text-sm">
-              <thead className="bg-muted/40 text-xs uppercase tracking-wide text-muted-foreground">
-                <tr>
-                  <th className="px-3 py-2 text-left font-medium">Room</th>
-                  <th className="px-3 py-2 text-right font-medium">Est. sqm</th>
-                  <th className="px-3 py-2 text-right font-medium">Min</th>
-                  <th className="px-3 py-2 text-center font-medium">OK</th>
-                </tr>
-              </thead>
-              <tbody>
-                {data.rooms.map((r, i) => (
-                  <tr key={i} className="border-t border-border">
-                    <td className="px-3 py-2">
-                      <div className="font-medium">{r.label}</div>
-                      {r.note && (
-                        <div className="text-xs text-muted-foreground">{r.note}</div>
-                      )}
-                    </td>
-                    <td className="px-3 py-2 text-right tabular-nums">
-                      {r.estimatedSqm.toFixed(1)}
-                    </td>
-                    <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">
-                      {r.minRequiredSqm.toFixed(2)}
-                    </td>
-                    <td className="px-3 py-2 text-center">
-                      <span
-                        className={`inline-block h-2.5 w-2.5 rounded-full ${
-                          r.compliant ? "bg-emerald-500" : "bg-destructive"
-                        }`}
-                      />
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
         </div>
       )}
 
