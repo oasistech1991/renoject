@@ -1,10 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation } from "@tanstack/react-query";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { analyseFloorplan } from "@/lib/hmo.functions";
 import { Button } from "@/components/ui/button";
 import { NumberField } from "@/components/btl/NumberField";
+import { supabase } from "@/integrations/supabase/client";
 import {
   Accordion,
   AccordionContent,
@@ -31,6 +32,34 @@ export const Route = createFileRoute("/hmo-compliance")({
   component: HMOCompliancePage,
 });
 
+type AnalysisResult = Awaited<ReturnType<typeof analyseFloorplan>>;
+
+type SavedMeta = { id: string; label: string; createdAt: string; propertyId: string | null };
+
+async function downscaleDataUrl(dataUrl: string, maxDim = 400): Promise<string> {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      const scale = Math.min(1, maxDim / Math.max(img.width, img.height));
+      const w = Math.max(1, Math.round(img.width * scale));
+      const h = Math.max(1, Math.round(img.height * scale));
+      const canvas = document.createElement("canvas");
+      canvas.width = w;
+      canvas.height = h;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return resolve(dataUrl);
+      ctx.drawImage(img, 0, 0, w, h);
+      try {
+        resolve(canvas.toDataURL("image/jpeg", 0.7));
+      } catch {
+        resolve(dataUrl);
+      }
+    };
+    img.onerror = () => resolve(dataUrl);
+    img.src = dataUrl;
+  });
+}
+
 function HMOCompliancePage() {
   const analyse = useServerFn(analyseFloorplan);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -53,6 +82,16 @@ function HMOCompliancePage() {
   const [requireLivingRoom, setRequireLivingRoom] = useState(false);
   const [circulationPct, setCirculationPct] = useState(17);
   const [showAmenity, setShowAmenity] = useState(false);
+
+  // Saved-analysis state
+  const [propertiesList, setPropertiesList] = useState<{ id: string; name: string }[]>([]);
+  const [label, setLabel] = useState("");
+  const [attachId, setAttachId] = useState<string>(""); // "" = unattached
+  const [savedMeta, setSavedMeta] = useState<SavedMeta | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [viewData, setViewData] = useState<AnalysisResult | null>(null);
+  const [viewMeta, setViewMeta] = useState<SavedMeta | null>(null);
 
   const mutation = useMutation({
     mutationFn: () => {
@@ -80,6 +119,53 @@ function HMOCompliancePage() {
       });
     },
   });
+
+  // Load existing properties for the attach dropdown
+  useEffect(() => {
+    let cancelled = false;
+    supabase
+      .from("properties")
+      .select("id,name")
+      .order("updated_at", { ascending: false })
+      .then(({ data }) => {
+        if (!cancelled && data) setPropertiesList(data as { id: string; name: string }[]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Hydrate from ?analysis=<id> for read-only view
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const id = params.get("analysis");
+    if (!id) return;
+    (async () => {
+      const { data, error } = await supabase
+        .from("hmo_analyses")
+        .select("*")
+        .eq("id", id)
+        .single();
+      if (error || !data) return;
+      const inputs = (data.inputs ?? {}) as any;
+      setViewData(data.result as AnalysisResult);
+      setViewMeta({
+        id: data.id,
+        label: data.label,
+        createdAt: data.created_at,
+        propertyId: data.property_id,
+      });
+      if (typeof inputs.location === "string") setLocation(inputs.location);
+      if (typeof inputs.targetBedrooms === "number") setTargetBedrooms(inputs.targetBedrooms);
+      if (typeof inputs.currentBedrooms === "number") setCurrentBedrooms(inputs.currentBedrooms);
+      if (typeof inputs.storeys === "number") setStoreys(inputs.storeys);
+      if (typeof inputs.occupants === "number") setOccupants(inputs.occupants);
+      if (typeof inputs.notes === "string") setNotes(inputs.notes);
+      if (data.thumbnail) setImageBase64(data.thumbnail);
+      setFileName(data.label);
+    })();
+  }, []);
 
   const onFile = async (f: File | null) => {
     if (!f) return;
@@ -137,6 +223,69 @@ function HMOCompliancePage() {
 
   const canSubmit = !!imageBase64 && location.trim().length > 0 && !mutation.isPending;
 
+  const displayData: AnalysisResult | null = viewData ?? mutation.data ?? null;
+
+  const resetForNew = () => {
+    setViewData(null);
+    setViewMeta(null);
+    setSavedMeta(null);
+    setSaveError(null);
+    setImageBase64(null);
+    setFileName("");
+    mutation.reset();
+    if (typeof window !== "undefined" && window.location.search) {
+      window.history.replaceState(null, "", window.location.pathname);
+    }
+  };
+
+  const handleSave = async () => {
+    if (!mutation.data || !imageBase64) return;
+    setSaving(true);
+    setSaveError(null);
+    try {
+      const thumb = await downscaleDataUrl(imageBase64, 400);
+      const inputs = {
+        location,
+        targetBedrooms,
+        currentBedrooms,
+        storeys,
+        occupants,
+        notes,
+        floorArea,
+        areaUnit,
+        scaleReference,
+        bathRatio,
+        kitchenSizing,
+        requireLivingRoom,
+        circulationPct,
+      };
+      const finalLabel = label.trim() || location.trim() || "HMO analysis";
+      const { data, error } = await supabase
+        .from("hmo_analyses")
+        .insert({
+          property_id: attachId || null,
+          label: finalLabel,
+          location: location || null,
+          inputs: inputs as any,
+          result: mutation.data as any,
+          thumbnail: thumb,
+        } as any)
+        .select()
+        .single();
+      if (error) throw error;
+      setSavedMeta({
+        id: data.id,
+        label: data.label,
+        createdAt: data.created_at,
+        propertyId: data.property_id,
+      });
+    } catch (err: any) {
+      setSaveError(err?.message ?? "Failed to save analysis");
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b border-border bg-card/50 backdrop-blur">
@@ -152,10 +301,24 @@ function HMOCompliancePage() {
               </p>
             </div>
           </div>
+          {viewMeta && (
+            <Button size="sm" variant="outline" onClick={resetForNew}>
+              Run new check
+            </Button>
+          )}
         </div>
       </header>
 
       <main className="mx-auto max-w-7xl px-6 py-8">
+        {viewMeta && (
+          <div className="mb-6 rounded-lg border border-primary/30 bg-primary/5 px-4 py-3 text-sm">
+            <span className="font-medium">Viewing saved analysis:</span>{" "}
+            <span className="text-foreground">{viewMeta.label}</span>{" "}
+            <span className="text-muted-foreground">
+              · saved {new Date(viewMeta.createdAt).toLocaleString()}
+            </span>
+          </div>
+        )}
         <div className="grid gap-8 lg:grid-cols-[400px_1fr]">
           {/* Inputs */}
           <section className="space-y-5 rounded-xl border border-border bg-card p-5">
