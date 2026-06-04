@@ -38,7 +38,8 @@ function HMOCompliancePage() {
   const [imageBase64, setImageBase64] = useState<string | null>(null);
   const [fileName, setFileName] = useState<string>("");
   const [location, setLocation] = useState("");
-  const [bedrooms, setBedrooms] = useState(5);
+  const [currentBedrooms, setCurrentBedrooms] = useState(3);
+  const [targetBedrooms, setTargetBedrooms] = useState(5);
   const [storeys, setStoreys] = useState(2);
   const [occupants, setOccupants] = useState(5);
   const [notes, setNotes] = useState("");
@@ -49,10 +50,10 @@ function HMOCompliancePage() {
         data: {
           imageBase64: imageBase64!,
           location,
-          bedrooms,
+          bedrooms: targetBedrooms,
           storeys,
           occupants,
-          notes,
+          notes: `Current bedrooms on floorplan: ${currentBedrooms}. ${notes}`.trim(),
         },
       }),
   });
@@ -148,10 +149,35 @@ function HMOCompliancePage() {
               </p>
             </div>
 
-            <div className="grid grid-cols-3 gap-3">
-              <NumberField id="beds" label="Bedrooms" value={bedrooms} onChange={setBedrooms} step={1} />
-              <NumberField id="storeys" label="Storeys" value={storeys} onChange={setStoreys} step={1} />
-              <NumberField id="occ" label="Occupants" value={occupants} onChange={setOccupants} step={1} />
+            <div className="space-y-3">
+              <div>
+                <NumberField
+                  id="target-beds"
+                  label="Target HMO bedrooms"
+                  value={targetBedrooms}
+                  onChange={setTargetBedrooms}
+                  step={1}
+                />
+                <p className="mt-1 text-xs text-muted-foreground">
+                  How many lettable bedrooms you want this property to provide once
+                  converted. The AI checks whether the floorplan can support that many
+                  under UK HMO rules.
+                </p>
+              </div>
+              <div className="grid grid-cols-3 gap-3">
+                <NumberField
+                  id="current-beds"
+                  label="Current beds"
+                  value={currentBedrooms}
+                  onChange={setCurrentBedrooms}
+                  step={1}
+                />
+                <NumberField id="storeys" label="Storeys" value={storeys} onChange={setStoreys} step={1} />
+                <NumberField id="occ" label="Occupants" value={occupants} onChange={setOccupants} step={1} />
+              </div>
+              <p className="-mt-1 text-xs text-muted-foreground">
+                "Current beds" = bedrooms shown on the existing floorplan (context only).
+              </p>
             </div>
 
             <div>
@@ -208,7 +234,7 @@ function HMOCompliancePage() {
             )}
 
             {mutation.data && (
-              <ReportView data={mutation.data} proposed={bedrooms} />
+              <ReportView data={mutation.data} proposed={targetBedrooms} />
             )}
           </section>
         </div>
