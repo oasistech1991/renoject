@@ -564,7 +564,7 @@ function HMOCompliancePage() {
 
           {/* Results */}
           <section className="rounded-xl border border-border bg-card p-6">
-            {!mutation.data && !mutation.isPending && (
+            {!displayData && !mutation.isPending && (
               <div className="flex h-full min-h-[400px] flex-col items-center justify-center text-center text-muted-foreground">
                 <h2 className="text-lg font-semibold text-foreground">Compliance report</h2>
                 <p className="mt-2 max-w-md text-sm">
@@ -586,8 +586,77 @@ function HMOCompliancePage() {
               </div>
             )}
 
-            {mutation.data && (
-              <ReportView data={mutation.data} proposed={targetBedrooms} />
+            {displayData && (
+              <>
+                <ReportView data={displayData} proposed={targetBedrooms} />
+                {mutation.data && !viewMeta && (
+                  <div className="mt-6 rounded-xl border border-border bg-muted/20 p-5">
+                    {savedMeta ? (
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <p className="text-sm font-semibold text-foreground">
+                            ✓ Saved as "{savedMeta.label}"
+                          </p>
+                          <p className="mt-0.5 text-xs text-muted-foreground">
+                            {savedMeta.propertyId
+                              ? "Attached to property — view it in Properties."
+                              : "Saved unattached — attach to a property anytime from Properties."}
+                          </p>
+                        </div>
+                        <Button size="sm" variant="outline" onClick={() => setSavedMeta(null)}>
+                          Save another copy
+                        </Button>
+                      </div>
+                    ) : (
+                      <>
+                        <h3 className="text-sm font-semibold">Save this analysis</h3>
+                        <p className="mt-0.5 text-xs text-muted-foreground">
+                          Attach to an existing property now, or save unattached and link it
+                          later when you set the deal up.
+                        </p>
+                        <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                          <div>
+                            <label className="text-xs font-medium">Label</label>
+                            <input
+                              type="text"
+                              value={label}
+                              onChange={(e) => setLabel(e.target.value)}
+                              placeholder={location.trim() || "HMO analysis"}
+                              className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                            />
+                          </div>
+                          <div>
+                            <label className="text-xs font-medium">Attach to</label>
+                            <select
+                              value={attachId}
+                              onChange={(e) => setAttachId(e.target.value)}
+                              className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                            >
+                              <option value="">— Save unattached (link later) —</option>
+                              {propertiesList.map((p) => (
+                                <option key={p.id} value={p.id}>
+                                  {p.name}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                        </div>
+                        {saveError && (
+                          <p className="mt-2 text-xs text-destructive">{saveError}</p>
+                        )}
+                        <Button
+                          className="mt-3"
+                          size="sm"
+                          disabled={saving}
+                          onClick={handleSave}
+                        >
+                          {saving ? "Saving…" : "Save analysis"}
+                        </Button>
+                      </>
+                    )}
+                  </div>
+                )}
+              </>
             )}
           </section>
         </div>
