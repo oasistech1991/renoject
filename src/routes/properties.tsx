@@ -33,6 +33,16 @@ type PropertyRow = {
   updated_at: string;
 };
 
+type HmoAnalysisRow = {
+  id: string;
+  property_id: string | null;
+  label: string;
+  location: string | null;
+  result: any;
+  thumbnail: string | null;
+  created_at: string;
+};
+
 // Infer the purchase method for legacy deals that didn't persist `method`.
 // Heuristics on the inputs: BRRR uplifts GDV above purchase and/or has refurb;
 // cash purchases zero out the deposit/rate; BTL has no GDV uplift or refurb.
@@ -114,6 +124,8 @@ function PropertiesPage() {
   const parsePdf = useServerFn(parsePropertyPdf);
   const { colorFor, setColor } = useSourceColors();
   const [heroUrls, setHeroUrls] = useState<Record<string, string>>({});
+  const [analyses, setAnalyses] = useState<HmoAnalysisRow[]>([]);
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
 
   const load = async () => {
     setLoading(true);
@@ -140,11 +152,51 @@ function PropertiesPage() {
       })
     );
     setHeroUrls(map);
+    // Load HMO analyses (both attached and unattached)
+    const { data: a } = await supabase
+      .from("hmo_analyses")
+      .select("id,property_id,label,location,result,thumbnail,created_at")
+      .order("created_at", { ascending: false });
+    setAnalyses((a as HmoAnalysisRow[]) ?? []);
   };
 
   useEffect(() => {
     load();
   }, []);
+
+  const refreshAnalyses = async () => {
+    const { data: a } = await supabase
+      .from("hmo_analyses")
+      .select("id,property_id,label,location,result,thumbnail,created_at")
+      .order("created_at", { ascending: false });
+    setAnalyses((a as HmoAnalysisRow[]) ?? []);
+  };
+
+  const attachAnalysis = async (analysisId: string, propertyId: string) => {
+    if (!propertyId) return;
+    const { error } = await supabase
+      .from("hmo_analyses")
+      .update({ property_id: propertyId } as any)
+      .eq("id", analysisId);
+    if (error) alert(error.message);
+    else refreshAnalyses();
+  };
+
+  const detachAnalysis = async (analysisId: string) => {
+    const { error } = await supabase
+      .from("hmo_analyses")
+      .update({ property_id: null } as any)
+      .eq("id", analysisId);
+    if (error) alert(error.message);
+    else refreshAnalyses();
+  };
+
+  const deleteAnalysis = async (analysisId: string, label: string) => {
+    if (!confirm(`Delete analysis "${label}"? This can't be undone.`)) return;
+    const { error } = await supabase.from("hmo_analyses").delete().eq("id", analysisId);
+    if (error) alert(error.message);
+    else refreshAnalyses();
+  };
 
   const onPickFile = () => fileRef.current?.click();
 
@@ -261,6 +313,67 @@ function PropertiesPage() {
       </header>
 
       <main className="mx-auto max-w-7xl px-6 py-8">
+        {(() => {
+          const unattached = analyses.filter((a) => !a.property_id);
+          if (unattached.length === 0) return null;
+          return (
+            <div className="mb-6 rounded-xl border border-amber-500/30 bg-amber-500/5 p-5">
+              <h2 className="text-sm font-semibold text-foreground">
+                Unattached HMO analyses ({unattached.length})
+              </h2>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                These were saved without a property. Attach each one to an existing deal below.
+              </p>
+              <ul className="mt-3 space-y-2">
+                {unattached.map((a) => (
+                  <li
+                    key={a.id}
+                    className="flex flex-wrap items-center gap-3 rounded-md border border-border bg-card px-3 py-2"
+                  >
+                    {a.thumbnail && (
+                      <img
+                        src={a.thumbnail}
+                        alt=""
+                        className="h-12 w-16 rounded object-cover"
+                      />
+                    )}
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium">{a.label}</p>
+                      <p className="text-[11px] text-muted-foreground">
+                        {a.result?.verdict ?? "—"} · {a.result?.maxCompliantBedrooms ?? "—"} beds ·{" "}
+                        {new Date(a.created_at).toLocaleDateString()}
+                      </p>
+                    </div>
+                    <select
+                      defaultValue=""
+                      onChange={(e) => attachAnalysis(a.id, e.target.value)}
+                      className="rounded-md border border-input bg-background px-2 py-1.5 text-xs"
+                    >
+                      <option value="">Attach to…</option>
+                      {rows.map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.name}
+                        </option>
+                      ))}
+                    </select>
+                    <Link to="/hmo-compliance" search={{ analysis: a.id } as any}>
+                      <Button size="sm" variant="outline">
+                        View
+                      </Button>
+                    </Link>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => deleteAnalysis(a.id, a.label)}
+                    >
+                      Delete
+                    </Button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          );
+        })()}
         {!loading && rows.length > 0 && (
           <div className="mb-6 flex flex-wrap items-center gap-2">
             <FilterPill active={filter === "all"} onClick={() => setFilter("all")}>
@@ -480,6 +593,66 @@ function PropertiesPage() {
                     </Link>
                     <Button size="sm" variant="outline" onClick={() => remove(r.id, r.name)}>Delete</Button>
                   </div>
+                  {(() => {
+                    const attached = analyses.filter((a) => a.property_id === r.id);
+                    if (attached.length === 0) return null;
+                    const isOpen = !!expanded[r.id];
+                    return (
+                      <div className="mt-3 rounded-md border border-border bg-background/40">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setExpanded((p) => ({ ...p, [r.id]: !p[r.id] }))
+                          }
+                          className="flex w-full items-center justify-between px-3 py-2 text-xs font-medium"
+                        >
+                          <span>HMO analyses ({attached.length})</span>
+                          <span className="text-muted-foreground">{isOpen ? "▲" : "▼"}</span>
+                        </button>
+                        {isOpen && (
+                          <ul className="space-y-1.5 border-t border-border px-3 py-2">
+                            {attached.map((a) => (
+                              <li
+                                key={a.id}
+                                className="flex items-center gap-2 text-xs"
+                              >
+                                <div className="min-w-0 flex-1">
+                                  <p className="truncate font-medium">{a.label}</p>
+                                  <p className="text-[10px] text-muted-foreground">
+                                    {a.result?.verdict ?? "—"} ·{" "}
+                                    {a.result?.maxCompliantBedrooms ?? "—"} beds ·{" "}
+                                    {new Date(a.created_at).toLocaleDateString()}
+                                  </p>
+                                </div>
+                                <Link
+                                  to="/hmo-compliance"
+                                  search={{ analysis: a.id } as any}
+                                >
+                                  <Button size="sm" variant="outline">
+                                    View
+                                  </Button>
+                                </Link>
+                                <button
+                                  type="button"
+                                  onClick={() => detachAnalysis(a.id)}
+                                  className="rounded border border-border px-2 py-1 text-[10px] hover:bg-accent"
+                                >
+                                  Detach
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => deleteAnalysis(a.id, a.label)}
+                                  className="rounded border border-border px-2 py-1 text-[10px] hover:bg-destructive/10 hover:text-destructive"
+                                >
+                                  ✕
+                                </button>
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                      </div>
+                    );
+                  })()}
                   <label className="mt-3 flex cursor-pointer items-center gap-2 rounded-md border border-border bg-background/40 px-3 py-2 text-xs font-medium select-none">
                     <input
                       type="checkbox"

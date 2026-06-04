@@ -14,6 +14,50 @@ export type Database = {
   }
   public: {
     Tables: {
+      hmo_analyses: {
+        Row: {
+          created_at: string
+          id: string
+          inputs: Json
+          label: string
+          location: string | null
+          property_id: string | null
+          result: Json
+          thumbnail: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          inputs: Json
+          label: string
+          location?: string | null
+          property_id?: string | null
+          result: Json
+          thumbnail?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          inputs?: Json
+          label?: string
+          location?: string | null
+          property_id?: string | null
+          result?: Json
+          thumbnail?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hmo_analyses_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       properties: {
         Row: {
           created_at: string

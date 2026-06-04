@@ -1,10 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation } from "@tanstack/react-query";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { analyseFloorplan } from "@/lib/hmo.functions";
 import { Button } from "@/components/ui/button";
 import { NumberField } from "@/components/btl/NumberField";
+import { supabase } from "@/integrations/supabase/client";
 import {
   Accordion,
   AccordionContent,
@@ -31,6 +32,34 @@ export const Route = createFileRoute("/hmo-compliance")({
   component: HMOCompliancePage,
 });
 
+type AnalysisResult = Awaited<ReturnType<typeof analyseFloorplan>>;
+
+type SavedMeta = { id: string; label: string; createdAt: string; propertyId: string | null };
+
+async function downscaleDataUrl(dataUrl: string, maxDim = 400): Promise<string> {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      const scale = Math.min(1, maxDim / Math.max(img.width, img.height));
+      const w = Math.max(1, Math.round(img.width * scale));
+      const h = Math.max(1, Math.round(img.height * scale));
+      const canvas = document.createElement("canvas");
+      canvas.width = w;
+      canvas.height = h;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return resolve(dataUrl);
+      ctx.drawImage(img, 0, 0, w, h);
+      try {
+        resolve(canvas.toDataURL("image/jpeg", 0.7));
+      } catch {
+        resolve(dataUrl);
+      }
+    };
+    img.onerror = () => resolve(dataUrl);
+    img.src = dataUrl;
+  });
+}
+
 function HMOCompliancePage() {
   const analyse = useServerFn(analyseFloorplan);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -53,6 +82,16 @@ function HMOCompliancePage() {
   const [requireLivingRoom, setRequireLivingRoom] = useState(false);
   const [circulationPct, setCirculationPct] = useState(17);
   const [showAmenity, setShowAmenity] = useState(false);
+
+  // Saved-analysis state
+  const [propertiesList, setPropertiesList] = useState<{ id: string; name: string }[]>([]);
+  const [label, setLabel] = useState("");
+  const [attachId, setAttachId] = useState<string>(""); // "" = unattached
+  const [savedMeta, setSavedMeta] = useState<SavedMeta | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [viewData, setViewData] = useState<AnalysisResult | null>(null);
+  const [viewMeta, setViewMeta] = useState<SavedMeta | null>(null);
 
   const mutation = useMutation({
     mutationFn: () => {
@@ -80,6 +119,53 @@ function HMOCompliancePage() {
       });
     },
   });
+
+  // Load existing properties for the attach dropdown
+  useEffect(() => {
+    let cancelled = false;
+    supabase
+      .from("properties")
+      .select("id,name")
+      .order("updated_at", { ascending: false })
+      .then(({ data }) => {
+        if (!cancelled && data) setPropertiesList(data as { id: string; name: string }[]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Hydrate from ?analysis=<id> for read-only view
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const id = params.get("analysis");
+    if (!id) return;
+    (async () => {
+      const { data, error } = await supabase
+        .from("hmo_analyses")
+        .select("*")
+        .eq("id", id)
+        .single();
+      if (error || !data) return;
+      const inputs = (data.inputs ?? {}) as any;
+      setViewData(data.result as unknown as AnalysisResult);
+      setViewMeta({
+        id: data.id,
+        label: data.label,
+        createdAt: data.created_at,
+        propertyId: data.property_id,
+      });
+      if (typeof inputs.location === "string") setLocation(inputs.location);
+      if (typeof inputs.targetBedrooms === "number") setTargetBedrooms(inputs.targetBedrooms);
+      if (typeof inputs.currentBedrooms === "number") setCurrentBedrooms(inputs.currentBedrooms);
+      if (typeof inputs.storeys === "number") setStoreys(inputs.storeys);
+      if (typeof inputs.occupants === "number") setOccupants(inputs.occupants);
+      if (typeof inputs.notes === "string") setNotes(inputs.notes);
+      if (data.thumbnail) setImageBase64(data.thumbnail);
+      setFileName(data.label);
+    })();
+  }, []);
 
   const onFile = async (f: File | null) => {
     if (!f) return;
@@ -137,6 +223,69 @@ function HMOCompliancePage() {
 
   const canSubmit = !!imageBase64 && location.trim().length > 0 && !mutation.isPending;
 
+  const displayData: AnalysisResult | null = viewData ?? mutation.data ?? null;
+
+  const resetForNew = () => {
+    setViewData(null);
+    setViewMeta(null);
+    setSavedMeta(null);
+    setSaveError(null);
+    setImageBase64(null);
+    setFileName("");
+    mutation.reset();
+    if (typeof window !== "undefined" && window.location.search) {
+      window.history.replaceState(null, "", window.location.pathname);
+    }
+  };
+
+  const handleSave = async () => {
+    if (!mutation.data || !imageBase64) return;
+    setSaving(true);
+    setSaveError(null);
+    try {
+      const thumb = await downscaleDataUrl(imageBase64, 400);
+      const inputs = {
+        location,
+        targetBedrooms,
+        currentBedrooms,
+        storeys,
+        occupants,
+        notes,
+        floorArea,
+        areaUnit,
+        scaleReference,
+        bathRatio,
+        kitchenSizing,
+        requireLivingRoom,
+        circulationPct,
+      };
+      const finalLabel = label.trim() || location.trim() || "HMO analysis";
+      const { data, error } = await supabase
+        .from("hmo_analyses")
+        .insert({
+          property_id: attachId || null,
+          label: finalLabel,
+          location: location || null,
+          inputs: inputs as any,
+          result: mutation.data as any,
+          thumbnail: thumb,
+        } as any)
+        .select()
+        .single();
+      if (error) throw error;
+      setSavedMeta({
+        id: data.id,
+        label: data.label,
+        createdAt: data.created_at,
+        propertyId: data.property_id,
+      });
+    } catch (err: any) {
+      setSaveError(err?.message ?? "Failed to save analysis");
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b border-border bg-card/50 backdrop-blur">
@@ -152,10 +301,24 @@ function HMOCompliancePage() {
               </p>
             </div>
           </div>
+          {viewMeta && (
+            <Button size="sm" variant="outline" onClick={resetForNew}>
+              Run new check
+            </Button>
+          )}
         </div>
       </header>
 
       <main className="mx-auto max-w-7xl px-6 py-8">
+        {viewMeta && (
+          <div className="mb-6 rounded-lg border border-primary/30 bg-primary/5 px-4 py-3 text-sm">
+            <span className="font-medium">Viewing saved analysis:</span>{" "}
+            <span className="text-foreground">{viewMeta.label}</span>{" "}
+            <span className="text-muted-foreground">
+              · saved {new Date(viewMeta.createdAt).toLocaleString()}
+            </span>
+          </div>
+        )}
         <div className="grid gap-8 lg:grid-cols-[400px_1fr]">
           {/* Inputs */}
           <section className="space-y-5 rounded-xl border border-border bg-card p-5">
@@ -401,7 +564,7 @@ function HMOCompliancePage() {
 
           {/* Results */}
           <section className="rounded-xl border border-border bg-card p-6">
-            {!mutation.data && !mutation.isPending && (
+            {!displayData && !mutation.isPending && (
               <div className="flex h-full min-h-[400px] flex-col items-center justify-center text-center text-muted-foreground">
                 <h2 className="text-lg font-semibold text-foreground">Compliance report</h2>
                 <p className="mt-2 max-w-md text-sm">
@@ -423,8 +586,77 @@ function HMOCompliancePage() {
               </div>
             )}
 
-            {mutation.data && (
-              <ReportView data={mutation.data} proposed={targetBedrooms} />
+            {displayData && (
+              <>
+                <ReportView data={displayData} proposed={targetBedrooms} />
+                {mutation.data && !viewMeta && (
+                  <div className="mt-6 rounded-xl border border-border bg-muted/20 p-5">
+                    {savedMeta ? (
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <p className="text-sm font-semibold text-foreground">
+                            ✓ Saved as "{savedMeta.label}"
+                          </p>
+                          <p className="mt-0.5 text-xs text-muted-foreground">
+                            {savedMeta.propertyId
+                              ? "Attached to property — view it in Properties."
+                              : "Saved unattached — attach to a property anytime from Properties."}
+                          </p>
+                        </div>
+                        <Button size="sm" variant="outline" onClick={() => setSavedMeta(null)}>
+                          Save another copy
+                        </Button>
+                      </div>
+                    ) : (
+                      <>
+                        <h3 className="text-sm font-semibold">Save this analysis</h3>
+                        <p className="mt-0.5 text-xs text-muted-foreground">
+                          Attach to an existing property now, or save unattached and link it
+                          later when you set the deal up.
+                        </p>
+                        <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                          <div>
+                            <label className="text-xs font-medium">Label</label>
+                            <input
+                              type="text"
+                              value={label}
+                              onChange={(e) => setLabel(e.target.value)}
+                              placeholder={location.trim() || "HMO analysis"}
+                              className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                            />
+                          </div>
+                          <div>
+                            <label className="text-xs font-medium">Attach to</label>
+                            <select
+                              value={attachId}
+                              onChange={(e) => setAttachId(e.target.value)}
+                              className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                            >
+                              <option value="">— Save unattached (link later) —</option>
+                              {propertiesList.map((p) => (
+                                <option key={p.id} value={p.id}>
+                                  {p.name}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                        </div>
+                        {saveError && (
+                          <p className="mt-2 text-xs text-destructive">{saveError}</p>
+                        )}
+                        <Button
+                          className="mt-3"
+                          size="sm"
+                          disabled={saving}
+                          onClick={handleSave}
+                        >
+                          {saving ? "Saving…" : "Save analysis"}
+                        </Button>
+                      </>
+                    )}
+                  </div>
+                )}
+              </>
             )}
           </section>
         </div>
