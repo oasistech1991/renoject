@@ -5,6 +5,12 @@ import { useRef, useState } from "react";
 import { analyseFloorplan } from "@/lib/hmo.functions";
 import { Button } from "@/components/ui/button";
 import { NumberField } from "@/components/btl/NumberField";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 
 export const Route = createFileRoute("/hmo-compliance")({
   head: () => ({
@@ -202,13 +208,160 @@ function HMOCompliancePage() {
             )}
 
             {mutation.data && (
-              <article className="prose prose-sm max-w-none whitespace-pre-wrap text-sm leading-relaxed text-foreground">
-                {mutation.data.markdown}
-              </article>
+              <ReportView data={mutation.data} proposed={bedrooms} />
             )}
           </section>
         </div>
       </main>
+    </div>
+  );
+}
+
+function ReportView({
+  data,
+  proposed,
+}: {
+  data: Awaited<ReturnType<typeof analyseFloorplan>>;
+  proposed: number;
+}) {
+  const verdictTone =
+    data.verdict === "PASS"
+      ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30"
+      : data.verdict === "REVIEW"
+        ? "bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30"
+        : "bg-destructive/15 text-destructive border-destructive/30";
+
+  const delta = data.maxCompliantBedrooms - proposed;
+  const deltaMsg =
+    delta === 0
+      ? `Matches your target of ${proposed}.`
+      : delta > 0
+        ? `You asked for ${proposed} — there's room for ${delta} more.`
+        : `You asked for ${proposed} — that's ${Math.abs(delta)} too many to be compliant.`;
+
+  return (
+    <div className="space-y-5">
+      {/* Hero */}
+      <div className="rounded-xl border border-border bg-gradient-to-br from-muted/40 to-transparent p-6">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              Max compliant bedrooms
+            </p>
+            <p className="mt-1 text-5xl font-semibold tracking-tight text-foreground">
+              {data.maxCompliantBedrooms}
+            </p>
+            <p className="mt-1 text-sm text-muted-foreground">{deltaMsg}</p>
+          </div>
+          <span
+            className={`rounded-full border px-3 py-1 text-xs font-semibold ${verdictTone}`}
+          >
+            {data.verdict}
+          </span>
+        </div>
+        <p className="mt-4 text-sm text-foreground">{data.headline}</p>
+        <div className="mt-4 rounded-md border border-border bg-card px-3 py-2 text-xs text-muted-foreground">
+          <span className="font-medium text-foreground">{data.licensing.type}</span>
+          {data.licensing.required ? " · required" : " · not required"} —{" "}
+          {data.licensing.note}
+        </div>
+      </div>
+
+      {/* Top issues */}
+      {data.topIssues.length > 0 && (
+        <div className="rounded-xl border border-border bg-card p-5">
+          <h3 className="text-sm font-semibold">Top issues</h3>
+          <ul className="mt-2 space-y-1.5 text-sm text-foreground">
+            {data.topIssues.map((issue, i) => (
+              <li key={i} className="flex gap-2">
+                <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />
+                <span>{issue}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {/* Rooms table */}
+      {data.rooms.length > 0 && (
+        <div className="rounded-xl border border-border bg-card p-5">
+          <h3 className="text-sm font-semibold">Bedroom assessment</h3>
+          <div className="mt-3 overflow-hidden rounded-md border border-border">
+            <table className="w-full text-sm">
+              <thead className="bg-muted/40 text-xs uppercase tracking-wide text-muted-foreground">
+                <tr>
+                  <th className="px-3 py-2 text-left font-medium">Room</th>
+                  <th className="px-3 py-2 text-right font-medium">Est. sqm</th>
+                  <th className="px-3 py-2 text-right font-medium">Min</th>
+                  <th className="px-3 py-2 text-center font-medium">OK</th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.rooms.map((r, i) => (
+                  <tr key={i} className="border-t border-border">
+                    <td className="px-3 py-2">
+                      <div className="font-medium">{r.label}</div>
+                      {r.note && (
+                        <div className="text-xs text-muted-foreground">{r.note}</div>
+                      )}
+                    </td>
+                    <td className="px-3 py-2 text-right tabular-nums">
+                      {r.estimatedSqm.toFixed(1)}
+                    </td>
+                    <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">
+                      {r.minRequiredSqm.toFixed(2)}
+                    </td>
+                    <td className="px-3 py-2 text-center">
+                      <span
+                        className={`inline-block h-2.5 w-2.5 rounded-full ${
+                          r.compliant ? "bg-emerald-500" : "bg-destructive"
+                        }`}
+                      />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* Detail */}
+      <Accordion type="single" collapsible className="rounded-xl border border-border bg-card px-5">
+        <AccordionItem value="detail" className="border-b-0">
+          <AccordionTrigger className="text-sm font-semibold">
+            See full compliance detail
+          </AccordionTrigger>
+          <AccordionContent>
+            <div className="space-y-4 pb-2 text-sm leading-relaxed text-foreground">
+              <DetailBlock title="Fire safety" body={data.details.fireSafety} />
+              <DetailBlock title="Amenities" body={data.details.amenities} />
+              <DetailBlock title="Local authority rules" body={data.details.localAuthority} />
+              <DetailBlock title="Planning" body={data.details.planning} />
+              {data.details.actions.length > 0 && (
+                <div>
+                  <h4 className="text-sm font-semibold">Prioritised actions</h4>
+                  <ol className="mt-1.5 list-decimal space-y-1 pl-5">
+                    {data.details.actions.map((a, i) => (
+                      <li key={i}>{a}</li>
+                    ))}
+                  </ol>
+                </div>
+              )}
+            </div>
+          </AccordionContent>
+        </AccordionItem>
+      </Accordion>
+    </div>
+  );
+}
+
+function DetailBlock({ title, body }: { title: string; body: string }) {
+  if (!body) return null;
+  return (
+    <div>
+      <h4 className="text-sm font-semibold">{title}</h4>
+      <p className="mt-1 whitespace-pre-wrap text-sm text-muted-foreground">{body}</p>
     </div>
   );
 }
