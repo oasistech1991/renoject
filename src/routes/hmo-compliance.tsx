@@ -309,6 +309,81 @@ function HMOCompliancePage() {
               />
             </div>
 
+            <div className="rounded-md border border-border">
+              <button
+                type="button"
+                onClick={() => setShowAmenity((v) => !v)}
+                className="flex w-full items-center justify-between px-3 py-2 text-sm font-medium"
+              >
+                <span>Amenity standards</span>
+                <span className="text-xs text-muted-foreground">
+                  {showAmenity ? "Hide" : "Customise"}
+                </span>
+              </button>
+              {showAmenity && (
+                <div className="space-y-3 border-t border-border px-3 py-3">
+                  <div>
+                    <label className="text-xs font-medium">Bath/WC ratio</label>
+                    <select
+                      value={bathRatio}
+                      onChange={(e) => setBathRatio(Number(e.target.value) as 3 | 4 | 5)}
+                      className="mt-1 w-full rounded-md border border-input bg-background px-2 py-1.5 text-xs"
+                    >
+                      <option value={5}>1 per 5 occupants (England standard)</option>
+                      <option value={4}>1 per 4 occupants (stricter)</option>
+                      <option value={3}>1 per 3 occupants (premium)</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium">Kitchen sizing</label>
+                    <select
+                      value={kitchenSizing}
+                      onChange={(e) =>
+                        setKitchenSizing(e.target.value as "standard" | "kitchen-diner" | "large")
+                      }
+                      className="mt-1 w-full rounded-md border border-input bg-background px-2 py-1.5 text-xs"
+                    >
+                      <option value="standard">Standard kitchen (7-12 sqm)</option>
+                      <option value="kitchen-diner">Kitchen-diner combined (12-16 sqm)</option>
+                      <option value="large">Large kitchen (11-14 sqm)</option>
+                    </select>
+                  </div>
+                  <label className="flex items-center gap-2 text-xs">
+                    <input
+                      type="checkbox"
+                      checked={requireLivingRoom}
+                      onChange={(e) => setRequireLivingRoom(e.target.checked)}
+                      disabled={kitchenSizing === "kitchen-diner"}
+                    />
+                    <span>
+                      Separate living room required
+                      {kitchenSizing === "kitchen-diner" && (
+                        <span className="text-muted-foreground"> (covered by diner)</span>
+                      )}
+                    </span>
+                  </label>
+                  <div>
+                    <div className="flex items-center justify-between text-xs">
+                      <label className="font-medium">Circulation %</label>
+                      <span className="tabular-nums text-muted-foreground">{circulationPct}%</span>
+                    </div>
+                    <input
+                      type="range"
+                      min={12}
+                      max={22}
+                      step={1}
+                      value={circulationPct}
+                      onChange={(e) => setCirculationPct(Number(e.target.value))}
+                      className="mt-1 w-full"
+                    />
+                    <p className="mt-1 text-[11px] text-muted-foreground">
+                      Hallways, landings, stairs and internal walls as % of total area.
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+
             <Button
               className="w-full"
               disabled={!canSubmit}
