@@ -313,6 +313,67 @@ function PropertiesPage() {
       </header>
 
       <main className="mx-auto max-w-7xl px-6 py-8">
+        {(() => {
+          const unattached = analyses.filter((a) => !a.property_id);
+          if (unattached.length === 0) return null;
+          return (
+            <div className="mb-6 rounded-xl border border-amber-500/30 bg-amber-500/5 p-5">
+              <h2 className="text-sm font-semibold text-foreground">
+                Unattached HMO analyses ({unattached.length})
+              </h2>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                These were saved without a property. Attach each one to an existing deal below.
+              </p>
+              <ul className="mt-3 space-y-2">
+                {unattached.map((a) => (
+                  <li
+                    key={a.id}
+                    className="flex flex-wrap items-center gap-3 rounded-md border border-border bg-card px-3 py-2"
+                  >
+                    {a.thumbnail && (
+                      <img
+                        src={a.thumbnail}
+                        alt=""
+                        className="h-12 w-16 rounded object-cover"
+                      />
+                    )}
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium">{a.label}</p>
+                      <p className="text-[11px] text-muted-foreground">
+                        {a.result?.verdict ?? "—"} · {a.result?.maxCompliantBedrooms ?? "—"} beds ·{" "}
+                        {new Date(a.created_at).toLocaleDateString()}
+                      </p>
+                    </div>
+                    <select
+                      defaultValue=""
+                      onChange={(e) => attachAnalysis(a.id, e.target.value)}
+                      className="rounded-md border border-input bg-background px-2 py-1.5 text-xs"
+                    >
+                      <option value="">Attach to…</option>
+                      {rows.map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.name}
+                        </option>
+                      ))}
+                    </select>
+                    <Link to="/hmo-compliance" search={{ analysis: a.id } as any}>
+                      <Button size="sm" variant="outline">
+                        View
+                      </Button>
+                    </Link>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => deleteAnalysis(a.id, a.label)}
+                    >
+                      Delete
+                    </Button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          );
+        })()}
         {!loading && rows.length > 0 && (
           <div className="mb-6 flex flex-wrap items-center gap-2">
             <FilterPill active={filter === "all"} onClick={() => setFilter("all")}>
