@@ -33,6 +33,16 @@ type PropertyRow = {
   updated_at: string;
 };
 
+type HmoAnalysisRow = {
+  id: string;
+  property_id: string | null;
+  label: string;
+  location: string | null;
+  result: any;
+  thumbnail: string | null;
+  created_at: string;
+};
+
 // Infer the purchase method for legacy deals that didn't persist `method`.
 // Heuristics on the inputs: BRRR uplifts GDV above purchase and/or has refurb;
 // cash purchases zero out the deposit/rate; BTL has no GDV uplift or refurb.
@@ -114,6 +124,8 @@ function PropertiesPage() {
   const parsePdf = useServerFn(parsePropertyPdf);
   const { colorFor, setColor } = useSourceColors();
   const [heroUrls, setHeroUrls] = useState<Record<string, string>>({});
+  const [analyses, setAnalyses] = useState<HmoAnalysisRow[]>([]);
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
 
   const load = async () => {
     setLoading(true);
@@ -140,11 +152,51 @@ function PropertiesPage() {
       })
     );
     setHeroUrls(map);
+    // Load HMO analyses (both attached and unattached)
+    const { data: a } = await supabase
+      .from("hmo_analyses")
+      .select("id,property_id,label,location,result,thumbnail,created_at")
+      .order("created_at", { ascending: false });
+    setAnalyses((a as HmoAnalysisRow[]) ?? []);
   };
 
   useEffect(() => {
     load();
   }, []);
+
+  const refreshAnalyses = async () => {
+    const { data: a } = await supabase
+      .from("hmo_analyses")
+      .select("id,property_id,label,location,result,thumbnail,created_at")
+      .order("created_at", { ascending: false });
+    setAnalyses((a as HmoAnalysisRow[]) ?? []);
+  };
+
+  const attachAnalysis = async (analysisId: string, propertyId: string) => {
+    if (!propertyId) return;
+    const { error } = await supabase
+      .from("hmo_analyses")
+      .update({ property_id: propertyId } as any)
+      .eq("id", analysisId);
+    if (error) alert(error.message);
+    else refreshAnalyses();
+  };
+
+  const detachAnalysis = async (analysisId: string) => {
+    const { error } = await supabase
+      .from("hmo_analyses")
+      .update({ property_id: null } as any)
+      .eq("id", analysisId);
+    if (error) alert(error.message);
+    else refreshAnalyses();
+  };
+
+  const deleteAnalysis = async (analysisId: string, label: string) => {
+    if (!confirm(`Delete analysis "${label}"? This can't be undone.`)) return;
+    const { error } = await supabase.from("hmo_analyses").delete().eq("id", analysisId);
+    if (error) alert(error.message);
+    else refreshAnalyses();
+  };
 
   const onPickFile = () => fileRef.current?.click();
 
