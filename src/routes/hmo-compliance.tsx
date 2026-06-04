@@ -45,10 +45,19 @@ function HMOCompliancePage() {
   const [storeys, setStoreys] = useState(2);
   const [occupants, setOccupants] = useState(5);
   const [notes, setNotes] = useState("");
+  const [floorArea, setFloorArea] = useState<string>("");
+  const [areaUnit, setAreaUnit] = useState<"sqm" | "sqft">("sqm");
+  const [scaleReference, setScaleReference] = useState("");
 
   const mutation = useMutation({
-    mutationFn: () =>
-      analyse({
+    mutationFn: () => {
+      const parsed = parseFloat(floorArea);
+      const totalFloorAreaSqm = Number.isFinite(parsed) && parsed > 0
+        ? areaUnit === "sqft"
+          ? parsed * 0.092903
+          : parsed
+        : undefined;
+      return analyse({
         data: {
           imageBase64: imageBase64!,
           location,
@@ -56,8 +65,11 @@ function HMOCompliancePage() {
           storeys,
           occupants,
           notes: `Current bedrooms on floorplan: ${currentBedrooms}. ${notes}`.trim(),
+          totalFloorAreaSqm,
+          scaleReference: scaleReference.trim() || undefined,
         },
-      }),
+      });
+    },
   });
 
   const onFile = async (f: File | null) => {
@@ -199,6 +211,48 @@ function HMOCompliancePage() {
               <p className="mt-1 text-xs text-muted-foreground">
                 Used to identify local licensing, Article 4 directions etc.
               </p>
+            </div>
+
+            <div>
+              <label className="text-sm font-medium">Total floor area</label>
+              <div className="mt-1 flex gap-2">
+                <input
+                  type="number"
+                  min={0}
+                  step="0.1"
+                  value={floorArea}
+                  onChange={(e) => setFloorArea(e.target.value)}
+                  placeholder="e.g. 95"
+                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                />
+                <div className="inline-flex rounded-md border border-input bg-background p-0.5 text-xs">
+                  <button
+                    type="button"
+                    onClick={() => setAreaUnit("sqm")}
+                    className={`px-2 py-1 rounded ${areaUnit === "sqm" ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}
+                  >
+                    sqm
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setAreaUnit("sqft")}
+                    className={`px-2 py-1 rounded ${areaUnit === "sqft" ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}
+                  >
+                    sqft
+                  </button>
+                </div>
+              </div>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Usually shown on the floorplan. Lets us calculate true bedroom capacity
+                instead of guessing from the image.
+              </p>
+              <input
+                type="text"
+                value={scaleReference}
+                onChange={(e) => setScaleReference(e.target.value)}
+                placeholder="Scale reference (optional) — e.g. 1cm = 1m"
+                className="mt-2 w-full rounded-md border border-input bg-background px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-ring"
+              />
             </div>
 
             <div className="space-y-3">
