@@ -48,6 +48,11 @@ function HMOCompliancePage() {
   const [floorArea, setFloorArea] = useState<string>("");
   const [areaUnit, setAreaUnit] = useState<"sqm" | "sqft">("sqm");
   const [scaleReference, setScaleReference] = useState("");
+  const [bathRatio, setBathRatio] = useState<3 | 4 | 5>(5);
+  const [kitchenSizing, setKitchenSizing] = useState<"standard" | "kitchen-diner" | "large">("standard");
+  const [requireLivingRoom, setRequireLivingRoom] = useState(false);
+  const [circulationPct, setCirculationPct] = useState(17);
+  const [showAmenity, setShowAmenity] = useState(false);
 
   const mutation = useMutation({
     mutationFn: () => {
@@ -67,6 +72,10 @@ function HMOCompliancePage() {
           notes: `Current bedrooms on floorplan: ${currentBedrooms}. ${notes}`.trim(),
           totalFloorAreaSqm,
           scaleReference: scaleReference.trim() || undefined,
+          bathRatio,
+          kitchenSizing,
+          requireLivingRoom,
+          circulationPct,
         },
       });
     },
