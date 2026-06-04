@@ -1,75 +1,32 @@
 ## Goal
 
-Rework the HMO floorplan checker so it returns **three side-by-side capacity scenarios** (max singles, max doubles, balanced) using England national minimums, with **user-configurable amenity ratios**, and have the AI **suggest wall reconfigurations** to hit each scenario's max.
+Drop the Google OAuth sign-in flow and replace it with a simple username + password gate (`HARTS` / `TAYLOR`) that unlocks the whole app.
 
-## 1. Inputs (left panel)
+## Security caveat (acknowledge once)
 
-Add a collapsible "Amenity standards" section so power users can tune assumptions while defaults stay sensible:
+Credentials in client code are visible to anyone who inspects the bundle. This is a soft gate, not authentication. Real users / per-user data / RLS are not changed by this — the Supabase backend is untouched. If you ever need real protection, switch to email+password Supabase auth.
 
-- **Bath/WC ratio** — select: `1 per 5 occupants` (default) / `1 per 4` / `1 per 3`
-- **Kitchen sizing** — select: `Standard (7-12 sqm)` (default) / `Kitchen-diner combined` / `Large (11-14 sqm)`
-- **Separate living room required** — toggle (default off; on adds ~10-14 sqm)
-- **Circulation %** — slider 12-22% (default 17%)
+## Changes — `src/routes/__root.tsx` only
 
-Existing fields (total floor area, scale ref, storeys, occupants, notes) stay as-is. Drop the "target bedrooms" field's prominence — it becomes a sanity-check input ("how many do you currently propose?") and the tool's headline output is the three scenarios.
+1. **Remove Google sign-in**
+   - Delete the `handleGoogle` function and the "Continue with Google" button.
+   - Drop the `import { lovable } from "@/integrations/lovable"` import (no longer used).
 
-## 2. Server logic (`src/lib/hmo.functions.ts`)
+2. **Replace `AuthGate` session logic**
+   - Remove the `supabase.auth.getSession()` + `onAuthStateChange` wiring (no Supabase session is needed for this gate).
+   - Track unlock state with `useState(false)` initialised from `sessionStorage.getItem("hh_unlocked") === "1"` so a refresh inside the same tab stays signed in but closing the tab requires re-entry.
 
-Extend the input schema with the amenity options above. Rewrite the prompt so the model returns **three scenarios** plus a shared capacity baseline:
+3. **Rewrite `SignInScreen`**
+   - Two inputs: Username + Password, plus a Sign-in button.
+   - On submit: if `username.trim().toUpperCase() === "HARTS"` and `password === "TAYLOR"`, set `sessionStorage.hh_unlocked = "1"` and flip the unlocked state. Otherwise show "Invalid credentials".
+   - Keep the existing HARTSTONE HOLDINGS card styling.
 
-```
-scenarios: {
-  maxSingles:  { bedroomCount, mix: {singles, doubles}, estRentIndex, ... }
-  maxDoubles:  { bedroomCount, mix, estRentIndex, ... }
-  balanced:    { bedroomCount, mix, estRentIndex, ... }   // recommended
-}
-```
+4. **TopNav sign-out**
+   - Replace `onSignOut={() => supabase.auth.signOut()}` with a handler that clears `sessionStorage.hh_unlocked` and flips state back to locked.
+   - Drop the user-email display in the nav (no email to show); keep the Sign out button.
 
-Each scenario contains:
-- `bedroomCount` + mix of singles/doubles
-- `rooms[]` — proposed layout (Bedroom 1..N with sqm)
-- `reconfiguration[]` — ordered list of wall changes needed vs the current drawn floorplan (e.g. "Remove non-load-bearing wall between current Bed 3 and Bed 4 to create one 11 sqm double", "Steal 1.2m from oversized landing to widen Bed 2 to 7 sqm"). Each item: `{change, impact, complexity: "cosmetic"|"minor works"|"structural"}`.
-- `verdict` PASS/REVIEW/FAIL relative to the user's proposed bedroom count
-- `tradeoffs` — 1-2 short bullets ("Highest room count but tight common space", "Best £/room but only 4 lettable rooms")
+## Out of scope
 
-Shared `capacity` block stays (total area, non-bedroom allocation breakdown, bedroom-available area, assumptions) — the three scenarios fit into the same available area, they just allocate it differently.
-
-**Footprint constraint:** the prompt instructs the model to (a) read the drawn walls, (b) propose reconfiguration to reach each scenario, (c) flag if a scenario is physically impossible on this footprint regardless of area math (sets `physicallyAchievable: false` + reason).
-
-`maxCompliantBedrooms` at the top level becomes the **balanced** scenario's count (the recommended one) so existing UI bits that read it still work.
-
-## 3. UI (`src/routes/hmo-compliance.tsx`)
-
-Replace the single "How we got to N bedrooms" card with a **3-column scenario comparison** card:
-
-```text
-┌─ Max singles ─┬─ Balanced (rec) ─┬─ Max doubles ─┐
-│   7 bedrooms  │    6 bedrooms    │   5 bedrooms  │
-│   7S / 0D     │    3S / 3D       │   1S / 4D     │
-│   [PASS]      │    [PASS]        │   [REVIEW]    │
-│  tradeoff…    │   tradeoff…      │  tradeoff…    │
-│  [View layout]│   [View layout]  │  [View layout]│
-└───────────────┴──────────────────┴───────────────┘
-```
-
-Clicking a scenario expands below into:
-- Proposed room list (the existing rooms table)
-- **Reconfiguration steps** — ordered list with complexity badges (cosmetic / minor works / structural)
-- Scenario-specific issues
-
-Shared sections stay: capacity breakdown ("How we got to the bedroom-available area"), licensing, fire safety, amenities, local authority, planning, actions.
-
-Default-selected scenario = balanced.
-
-## 4. Out of scope
-
-- Per-council standards lookup (sticking with England national minimums as you specified)
-- Saving results to DB
-- Other tabs
-- Pixel-accurate wall measurement beyond what Gemini already does from the image
-
-## Technical notes
-
-- Schema change to `HMOComplianceResult` is additive (`scenarios` object) but reshuffles `rooms` under each scenario. UI changes are in the report view only — input form gets the new amenity section but keeps the same submit flow.
-- Prompt becomes noticeably longer; keep `google/gemini-2.5-flash` but consider bumping to `gemini-2.5-pro` if reconfiguration suggestions come back weak (one-line model swap).
-- `estRentIndex` is a relative 0-100 score the model assigns, not a £ figure — avoids inventing local rents.
+- No Supabase auth changes, no removal of `supabase` from the rest of the app (other files still use it for data calls — leaving those alone).
+- No `_authenticated/` route restructure.
+- No removal of the Google provider in the Lovable Cloud backend (irrelevant once the UI no longer uses it; can be disabled later from settings if you want).
