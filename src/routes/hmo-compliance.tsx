@@ -698,6 +698,23 @@ function ReportView({
     { key: "maxDoubles", label: "Max doubles", sub: "Best £/room" },
   ];
 
+  // GDV (Gross Development Value) — HMO investment valuation
+  const [rentPerRoom, setRentPerRoom] = useState(600);
+  const [opexPct, setOpexPct] = useState(20);
+  const [yieldPct, setYieldPct] = useState(8);
+  const gdvRooms = active?.bedroomCount ?? data.maxCompliantBedrooms;
+  const grossMonthly = rentPerRoom * gdvRooms;
+  const grossAnnual = grossMonthly * 12;
+  const opex = grossAnnual * (opexPct / 100);
+  const netAdjusted = grossAnnual - opex;
+  const gdv = yieldPct > 0 ? netAdjusted / (yieldPct / 100) : 0;
+  const fmtGBP0 = (n: number) =>
+    new Intl.NumberFormat("en-GB", {
+      style: "currency",
+      currency: "GBP",
+      maximumFractionDigits: 0,
+    }).format(isFinite(n) ? n : 0);
+
   return (
     <div className="space-y-5">
       {/* Hero */}
