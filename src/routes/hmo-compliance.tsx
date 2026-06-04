@@ -37,6 +37,8 @@ function HMOCompliancePage() {
 
   const [imageBase64, setImageBase64] = useState<string | null>(null);
   const [fileName, setFileName] = useState<string>("");
+  const [isConverting, setIsConverting] = useState(false);
+  const [convertError, setConvertError] = useState<string | null>(null);
   const [location, setLocation] = useState("");
   const [currentBedrooms, setCurrentBedrooms] = useState(3);
   const [targetBedrooms, setTargetBedrooms] = useState(5);
@@ -58,18 +60,58 @@ function HMOCompliancePage() {
       }),
   });
 
-  const onFile = (f: File | null) => {
+  const onFile = async (f: File | null) => {
     if (!f) return;
-    if (f.size > 8 * 1024 * 1024) {
-      alert("Image must be under 8MB");
+    setConvertError(null);
+    if (f.size > 15 * 1024 * 1024) {
+      setConvertError("File must be under 15MB");
       return;
     }
-    const reader = new FileReader();
-    reader.onload = () => {
-      setImageBase64(reader.result as string);
-      setFileName(f.name);
-    };
-    reader.readAsDataURL(f);
+    const isPdf = f.type === "application/pdf" || f.name.toLowerCase().endsWith(".pdf");
+    const isImage = f.type.startsWith("image/");
+    if (!isPdf && !isImage) {
+      setConvertError("Unsupported file. Upload an image (PNG/JPG) or a PDF floorplan.");
+      return;
+    }
+
+    if (isImage) {
+      const reader = new FileReader();
+      reader.onload = () => {
+        setImageBase64(reader.result as string);
+        setFileName(f.name);
+      };
+      reader.readAsDataURL(f);
+      return;
+    }
+
+    // PDF: render the first page to a PNG data URL using pdfjs-dist
+    try {
+      setIsConverting(true);
+      const pdfjs = await import("pdfjs-dist");
+      // Use bundled worker via Vite ?url import
+      const workerSrc = (await import("pdfjs-dist/build/pdf.worker.min.mjs?url")).default;
+      pdfjs.GlobalWorkerOptions.workerSrc = workerSrc;
+
+      const buf = await f.arrayBuffer();
+      const doc = await pdfjs.getDocument({ data: buf }).promise;
+      const page = await doc.getPage(1);
+      const viewport = page.getViewport({ scale: 2 });
+      const canvas = document.createElement("canvas");
+      canvas.width = viewport.width;
+      canvas.height = viewport.height;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) throw new Error("Could not create canvas context");
+      await page.render({ canvasContext: ctx, viewport, canvas }).promise;
+      const dataUrl = canvas.toDataURL("image/png");
+      setImageBase64(dataUrl);
+      setFileName(f.name + " (page 1)");
+    } catch (err) {
+      setConvertError(
+        err instanceof Error ? `Couldn't read PDF: ${err.message}` : "Couldn't read PDF",
+      );
+    } finally {
+      setIsConverting(false);
+    }
   };
 
   const canSubmit = !!imageBase64 && location.trim().length > 0 && !mutation.isPending;
@@ -107,7 +149,12 @@ function HMOCompliancePage() {
                 }}
                 className="mt-2 flex cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-border bg-muted/30 p-6 text-center transition-colors hover:bg-muted/50"
               >
-                {imageBase64 ? (
+                {isConverting ? (
+                  <>
+                    <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+                    <p className="mt-2 text-xs text-muted-foreground">Reading PDF…</p>
+                  </>
+                ) : imageBase64 ? (
                   <>
                     <img
                       src={imageBase64}
@@ -119,17 +166,22 @@ function HMOCompliancePage() {
                 ) : (
                   <>
                     <p className="text-sm font-medium">Click or drag floorplan here</p>
-                    <p className="mt-1 text-xs text-muted-foreground">PNG, JPG up to 8MB</p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      PNG, JPG or PDF up to 15MB (PDF: first page is used)
+                    </p>
                   </>
                 )}
                 <input
                   ref={fileRef}
                   type="file"
-                  accept="image/*"
+                  accept="image/*,application/pdf,.pdf"
                   className="hidden"
                   onChange={(e) => onFile(e.target.files?.[0] ?? null)}
                 />
               </div>
+              {convertError && (
+                <p className="mt-2 text-xs text-destructive">{convertError}</p>
+              )}
             </div>
 
             <div>
