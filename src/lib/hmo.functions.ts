@@ -1,8 +1,28 @@
 import { createServerFn } from "@tanstack/react-start";
 
+export interface RoomAssessment {
+  label: string;
+  estimatedSqm: number;
+  minRequiredSqm: number;
+  compliant: boolean;
+  note?: string;
+}
+
 export interface HMOComplianceResult {
-  summary: string;
-  markdown: string;
+  verdict: "PASS" | "REVIEW" | "FAIL";
+  maxCompliantBedrooms: number;
+  proposedBedrooms: number;
+  headline: string;
+  rooms: RoomAssessment[];
+  topIssues: string[];
+  licensing: { type: string; required: boolean; note: string };
+  details: {
+    fireSafety: string;
+    amenities: string;
+    localAuthority: string;
+    planning: string;
+    actions: string[];
+  };
 }
 
 export const analyseFloorplan = createServerFn({ method: "POST" })
@@ -28,17 +48,23 @@ export const analyseFloorplan = createServerFn({ method: "POST" })
     const apiKey = process.env.LOVABLE_API_KEY;
     if (!apiKey) throw new Error("LOVABLE_API_KEY not configured");
 
-    const system = `You are a UK HMO (Houses in Multiple Occupation) compliance expert. You analyse a property floorplan image plus property details, and produce a detailed compliance assessment covering:
-- Whether the property likely falls under mandatory HMO licensing (5+ occupants from 2+ households) or additional/selective licensing schemes that may apply in the given local authority area
-- Minimum room size requirements (England: 6.51 sqm single adult, 10.22 sqm double, under-10s 4.64 sqm)
-- Amenity standards: kitchen, bathroom/WC ratios per occupant (typical 1 bathroom per 5 occupants)
-- Fire safety: escape routes, fire doors (FD30), interlinked smoke/heat alarms (Grade D LD2/LD3), emergency lighting
-- Means of escape and protected escape routes
-- Ventilation, natural light, heating
-- Local authority-specific rules where you can identify them from the location (e.g. Article 4 directions, additional licensing in cities like Manchester, Liverpool, Birmingham, Nottingham, Leeds, London boroughs)
-- Planning (C3 vs C4 use class, sui generis for 7+)
+    const system = `You are a UK HMO (Houses in Multiple Occupation) compliance expert. You analyse a property floorplan image plus property details and return STRUCTURED JSON ONLY (no prose around it) matching the requested schema.
 
-Estimate room sizes from the floorplan visually where possible and flag any that look below minimum. Be specific, cite numeric standards, and end with a clear PASS / REVIEW / FAIL verdict and a prioritised action list. Use UK English. Format the response as Markdown with clear headings.`;
+Your most important job: estimate the MAXIMUM number of bedrooms the floorplan can lawfully provide as HMO bedrooms in the given location, given UK rules.
+
+Apply England HMO minimum room sizes (6.51 sqm single adult, 10.22 sqm double, 4.64 sqm under-10s) and amenity ratios (typically 1 bathroom per 5 occupants, adequate kitchen facilities). Consider mandatory HMO licensing (5+ occupants / 2+ households), additional/selective licensing in the given local authority, Article 4 directions, fire safety (FD30 doors, Grade D LD2/LD3 interlinked alarms, protected escape), and planning use class (C3 / C4 / sui generis for 7+).
+
+Estimate each potential bedroom's floor area from the floorplan. Mark a room compliant only if it meets the minimum for its intended use AND the overall property meets amenity + fire-safety baselines for that occupant count.
+
+Set verdict to:
+- PASS if the proposed bedroom count is fully achievable as-is
+- REVIEW if achievable with minor changes or licensing actions
+- FAIL if the proposed count cannot be reached even after reasonable works
+
+headline: one concise sentence stating the bottom line.
+topIssues: 3-5 short bullets, most important first.
+details: longer prose for each section (Markdown allowed inside strings).
+Use UK English. Return JSON only.`;
 
     const userText = `Property location: ${data.location}
 Bedrooms: ${data.bedrooms}
@@ -46,7 +72,73 @@ Storeys: ${data.storeys}
 Intended occupants: ${data.occupants}
 Additional notes: ${data.notes || "(none)"}
 
-Please analyse the attached floorplan image and provide a full HMO compliance report for this property at the above location.`;
+Please analyse the attached floorplan and return the structured HMO compliance JSON for this property at the above location.`;
+
+    const tool = {
+      type: "function",
+      function: {
+        name: "hmo_compliance_report",
+        description: "Return the structured HMO compliance assessment.",
+        parameters: {
+          type: "object",
+          properties: {
+            verdict: { type: "string", enum: ["PASS", "REVIEW", "FAIL"] },
+            maxCompliantBedrooms: { type: "number" },
+            proposedBedrooms: { type: "number" },
+            headline: { type: "string" },
+            rooms: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  label: { type: "string" },
+                  estimatedSqm: { type: "number" },
+                  minRequiredSqm: { type: "number" },
+                  compliant: { type: "boolean" },
+                  note: { type: "string" },
+                },
+                required: ["label", "estimatedSqm", "minRequiredSqm", "compliant"],
+                additionalProperties: false,
+              },
+            },
+            topIssues: { type: "array", items: { type: "string" } },
+            licensing: {
+              type: "object",
+              properties: {
+                type: { type: "string" },
+                required: { type: "boolean" },
+                note: { type: "string" },
+              },
+              required: ["type", "required", "note"],
+              additionalProperties: false,
+            },
+            details: {
+              type: "object",
+              properties: {
+                fireSafety: { type: "string" },
+                amenities: { type: "string" },
+                localAuthority: { type: "string" },
+                planning: { type: "string" },
+                actions: { type: "array", items: { type: "string" } },
+              },
+              required: ["fireSafety", "amenities", "localAuthority", "planning", "actions"],
+              additionalProperties: false,
+            },
+          },
+          required: [
+            "verdict",
+            "maxCompliantBedrooms",
+            "proposedBedrooms",
+            "headline",
+            "rooms",
+            "topIssues",
+            "licensing",
+            "details",
+          ],
+          additionalProperties: false,
+        },
+      },
+    };
 
     const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -66,6 +158,8 @@ Please analyse the attached floorplan image and provide a full HMO compliance re
             ],
           },
         ],
+        tools: [tool],
+        tool_choice: { type: "function", function: { name: "hmo_compliance_report" } },
       }),
     });
 
@@ -77,9 +171,20 @@ Please analyse the attached floorplan image and provide a full HMO compliance re
     }
 
     const json = (await res.json()) as {
-      choices?: { message?: { content?: string } }[];
+      choices?: {
+        message?: {
+          content?: string;
+          tool_calls?: { function?: { name?: string; arguments?: string } }[];
+        };
+      }[];
     };
-    const markdown = json.choices?.[0]?.message?.content?.trim() || "No response from model.";
-    const summary = markdown.split("\n").find((l) => l.trim().length > 0) || "Analysis complete";
-    return { markdown, summary };
+    const args = json.choices?.[0]?.message?.tool_calls?.[0]?.function?.arguments;
+    if (!args) throw new Error("Model did not return a structured report.");
+    let parsed: HMOComplianceResult;
+    try {
+      parsed = JSON.parse(args) as HMOComplianceResult;
+    } catch {
+      throw new Error("Failed to parse model response.");
+    }
+    return parsed;
   });
