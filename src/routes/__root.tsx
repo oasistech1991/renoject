@@ -10,9 +10,6 @@ import {
 
 import appCss from "../styles.css?url";
 import { useEffect, useState } from "react";
-import type { Session } from "@supabase/supabase-js";
-import { supabase } from "@/integrations/supabase/client";
-import { lovable } from "@/integrations/lovable";
 import { Button } from "@/components/ui/button";
 
 function NotFoundComponent() {
@@ -128,68 +125,84 @@ function RootComponent() {
 }
 
 function AuthGate() {
-  const [session, setSession] = useState<Session | null>(null);
-  const [ready, setReady] = useState(false);
+  const [unlocked, setUnlocked] = useState(false);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      setSession(data.session);
-      setReady(true);
-    });
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, s) => {
-      setSession(s);
-    });
-    return () => subscription.unsubscribe();
+    if (typeof window !== "undefined" && sessionStorage.getItem("hh_unlocked") === "1") {
+      setUnlocked(true);
+    }
   }, []);
 
-  if (!ready) {
-    return <div className="flex min-h-screen items-center justify-center text-sm text-muted-foreground">Loading…</div>;
-  }
-
-  if (!session) {
-    return <SignInScreen />;
+  if (!unlocked) {
+    return <SignInScreen onUnlock={() => setUnlocked(true)} />;
   }
 
   return (
     <>
-      <TopNav onSignOut={() => supabase.auth.signOut()} email={session.user.email ?? ""} />
+      <TopNav
+        onSignOut={() => {
+          sessionStorage.removeItem("hh_unlocked");
+          setUnlocked(false);
+        }}
+      />
       <Outlet />
     </>
   );
 }
 
-function SignInScreen() {
-  const [loading, setLoading] = useState(false);
+function SignInScreen({ onUnlock }: { onUnlock: () => void }) {
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
 
-  const handleGoogle = async () => {
-    setLoading(true);
-    setError(null);
-    const result: any = await lovable.auth.signInWithOAuth("google", {
-      redirect_uri: window.location.origin,
-    });
-    if (result?.error) {
-      const msg = result.error?.message ?? (typeof result.error === "string" ? result.error : "Sign-in failed");
-      setError(msg);
-      setLoading(false);
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (username.trim().toUpperCase() === "HARTS" && password === "TAYLOR") {
+      sessionStorage.setItem("hh_unlocked", "1");
+      setError(null);
+      onUnlock();
+    } else {
+      setError("Invalid credentials");
     }
   };
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
-      <div className="w-full max-w-sm rounded-lg border border-border bg-card p-8 shadow-sm">
+      <form
+        onSubmit={handleSubmit}
+        className="w-full max-w-sm rounded-lg border border-border bg-card p-8 shadow-sm"
+      >
         <h1 className="text-xl font-bold tracking-wide text-foreground">HARTSTONE HOLDINGS</h1>
         <p className="mt-2 text-sm text-muted-foreground">Sign in to access your property tools.</p>
-        <Button onClick={handleGoogle} disabled={loading} className="mt-6 w-full">
-          {loading ? "Signing in…" : "Continue with Google"}
+
+        <label className="mt-6 block text-xs font-medium text-foreground">Username</label>
+        <input
+          type="text"
+          autoComplete="username"
+          value={username}
+          onChange={(e) => setUsername(e.target.value)}
+          className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+        />
+
+        <label className="mt-4 block text-xs font-medium text-foreground">Password</label>
+        <input
+          type="password"
+          autoComplete="current-password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+        />
+
+        <Button type="submit" className="mt-6 w-full">
+          Sign in
         </Button>
         {error && <p className="mt-3 text-xs text-destructive">{error}</p>}
-      </div>
+      </form>
     </div>
   );
 }
 
-function TopNav({ onSignOut, email }: { onSignOut: () => void; email: string }) {
+function TopNav({ onSignOut }: { onSignOut: () => void }) {
   const linkBase =
     "px-4 py-2 text-sm font-medium rounded-md transition-colors text-muted-foreground hover:text-foreground hover:bg-accent/50";
   const activeCls = "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground";
@@ -218,7 +231,6 @@ function TopNav({ onSignOut, email }: { onSignOut: () => void; email: string }) 
           Forecast
         </Link>
         <div className="ml-auto flex items-center gap-2">
-          <span className="text-xs text-muted-foreground">{email}</span>
           <Button variant="outline" size="sm" onClick={onSignOut}>Sign out</Button>
         </div>
       </nav>
