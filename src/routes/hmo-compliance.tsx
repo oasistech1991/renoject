@@ -791,3 +791,23 @@ function Stat({ label, value }: { label: string; value: string }) {
     </div>
   );
 }
+
+function ComplexityBadge({
+  complexity,
+}: {
+  complexity: "cosmetic" | "minor works" | "structural";
+}) {
+  const tone =
+    complexity === "cosmetic"
+      ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
+      : complexity === "minor works"
+        ? "border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-300"
+        : "border-destructive/30 bg-destructive/10 text-destructive";
+  return (
+    <span
+      className={`shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide ${tone}`}
+    >
+      {complexity}
+    </span>
+  );
+}
