@@ -22,12 +22,38 @@ export interface CapacityCalculation {
   assumptions: string[];
 }
 
+export type ScenarioKey = "maxSingles" | "balanced" | "maxDoubles";
+
+export interface ReconfigurationStep {
+  change: string;
+  impact: string;
+  complexity: "cosmetic" | "minor works" | "structural";
+}
+
+export interface CapacityScenario {
+  bedroomCount: number;
+  mix: { singles: number; doubles: number };
+  verdict: "PASS" | "REVIEW" | "FAIL";
+  physicallyAchievable: boolean;
+  physicalNote?: string;
+  estRentIndex: number; // 0-100 relative
+  tradeoffs: string[];
+  rooms: RoomAssessment[];
+  reconfiguration: ReconfigurationStep[];
+  issues: string[];
+}
+
 export interface HMOComplianceResult {
   verdict: "PASS" | "REVIEW" | "FAIL";
   maxCompliantBedrooms: number;
   proposedBedrooms: number;
   headline: string;
   capacity: CapacityCalculation;
+  scenarios: {
+    maxSingles: CapacityScenario;
+    balanced: CapacityScenario;
+    maxDoubles: CapacityScenario;
+  };
   rooms: RoomAssessment[];
   topIssues: string[];
   licensing: { type: string; required: boolean; note: string };
@@ -51,6 +77,10 @@ export const analyseFloorplan = createServerFn({ method: "POST" })
       notes?: string;
       totalFloorAreaSqm?: number; // user-provided ground truth, optional
       scaleReference?: string;
+      bathRatio?: 3 | 4 | 5; // 1 bath per N occupants
+      kitchenSizing?: "standard" | "kitchen-diner" | "large";
+      requireLivingRoom?: boolean;
+      circulationPct?: number; // 12-22
     }) => {
       if (!input.imageBase64?.startsWith("data:image/")) {
         throw new Error("Invalid image data");
@@ -66,6 +96,12 @@ export const analyseFloorplan = createServerFn({ method: "POST" })
       ) {
         throw new Error("Total floor area must be between 0 and 2000 sqm");
       }
+      if (
+        input.circulationPct !== undefined &&
+        (input.circulationPct < 10 || input.circulationPct > 25)
+      ) {
+        throw new Error("Circulation % must be between 10 and 25");
+      }
       return input;
     },
   )
@@ -75,41 +111,50 @@ export const analyseFloorplan = createServerFn({ method: "POST" })
 
     const system = `You are a UK HMO (Houses in Multiple Occupation) compliance expert. You analyse a property floorplan image plus property details and return STRUCTURED JSON ONLY (no prose around it) matching the requested schema.
 
-Your PRIMARY JOB is a CAPACITY CALCULATION, not a room audit. Do NOT just count the bedrooms drawn on the floorplan. Work out, from the total internal floor area, how many HMO-compliant bedrooms can realistically fit alongside the required kitchen, bathrooms and circulation.
+Your PRIMARY JOB is a CAPACITY CALCULATION with THREE SCENARIOS, not a room audit. Do NOT just count the bedrooms drawn on the floorplan. From the total internal floor area work out a shared non-bedroom allocation, then fit THREE distinct bedroom layouts into the remaining bedroom-available area: (1) maxSingles — pack the most lettable rooms favouring singles; (2) maxDoubles — favour 10.22+ sqm doubles even if room count drops; (3) balanced — the realistic mix a UK council would licence.
 
 METHOD (follow in order):
 1. Determine total internal floor area in sqm.
    - If the user provides totalFloorAreaSqm, use it as ground truth (areaSource = "user").
    - Otherwise estimate it from the floorplan, scale references, dimensions or stated sqft/sqm on the image (areaSource = "estimated"). State your assumption.
-2. Allocate NON-BEDROOM space for the proposed occupant count:
-   - Kitchen: 7-12 sqm (scale with occupants; >5 occupants needs ~11-12 sqm or two prep areas).
-   - Bathrooms/WCs: ~4 sqm each, 1 per 5 occupants (England HMO amenity standard). Round up.
-   - Communal living room: include ~10-14 sqm UNLESS kitchen is large enough to be a kitchen/diner.
-   - Circulation (hallways, landings, stairs, internal walls): 15-20% of total internal area.
-3. The remainder is the "bedroom-available area". Fit compliant bedrooms into it using England HMO minimums:
+2. Allocate NON-BEDROOM space using the USER-SUPPLIED amenity settings:
+   - Kitchen sizing setting controls kitchen sqm: "standard" 7-12 sqm, "kitchen-diner" 12-16 sqm (covers communal eating, no separate living room needed), "large" 11-14 sqm.
+   - Bath/WC ratio setting: 1 bath/WC (~4 sqm) per N occupants (3/4/5). Round up.
+   - requireLivingRoom: if true add a separate communal living room ~10-14 sqm. If kitchen sizing is "kitchen-diner", do NOT add a separate living room.
+   - Circulation: use circulationPct exactly as provided (default 17%) applied to total internal area.
+3. The remainder is the "bedroom-available area" — shared by all three scenarios. Fit compliant bedrooms into it using England HMO national minimums:
    - Single adult: 6.51 sqm minimum (aim 7-9 sqm realistic)
    - Double: 10.22 sqm minimum (aim 11-13 sqm realistic)
    - Add ~10% loss for internal walls between bedrooms.
-   Choose a sensible mix that maximises lettable rooms without dropping below minimums.
-4. maxCompliantBedrooms = the count from step 3, capped by what is physically plausible given the building's footprint and storeys.
+4. Build THREE scenarios into the SAME bedroom-available area:
+   - maxSingles: maximise lettable room count, mostly 6.51-7.5 sqm singles.
+   - maxDoubles: favour 10.22-13 sqm doubles; fewer rooms but higher £/room.
+   - balanced: a realistic mix of singles + doubles a council would licence and a landlord would actually let.
+5. For EACH scenario also assess PHYSICAL ACHIEVABILITY against the drawn floorplan:
+   - Look at the actual walls, room shapes, window positions, stairs and structural elements.
+   - If a scenario needs wall changes, list them in reconfiguration[] as ordered steps with complexity "cosmetic" (paint/door swap), "minor works" (stud wall add/remove, non-load-bearing), or "structural" (load-bearing wall, RSJ, stairs move).
+   - If the scenario is physically impossible even with reconfiguration (e.g. footprint too narrow, can't get window in every bedroom), set physicallyAchievable=false with physicalNote explaining why and cap bedroomCount accordingly.
+   - estRentIndex: a relative 0-100 score for total monthly rent potential of this scenario vs the others (not £ — just the relative ranking).
+6. maxCompliantBedrooms (top level) = the BALANCED scenario's bedroomCount.
 
 Also apply: mandatory HMO licensing (5+ occupants), additional/selective licensing in the local authority, Article 4 directions, fire safety (FD30 doors, Grade D LD2/LD3 interlinked alarms, protected escape), planning use class (C3 / C4 / sui generis for 7+).
 
 Populate the capacity object transparently:
 - breakdown lists each non-bedroom item with its sqm (e.g. {"item":"Kitchen/diner","sqm":11}, {"item":"2x bathroom","sqm":8}, {"item":"Circulation (17%)","sqm":18}).
-- assumptions: 2-4 short bullets the user can sanity-check (e.g. "Assumed 17% circulation", "Estimated total area from scale bar").
+- assumptions: 2-4 short bullets the user can sanity-check (e.g. "Used your 17% circulation setting", "1 bath/WC per 5 occupants per your setting").
 - nonBedroomAllocationSqm = sum of breakdown items.
 - bedroomAvailableSqm = totalFloorAreaSqm - nonBedroomAllocationSqm.
 
-rooms[]: the PROPOSED compliant bedroom layout (Bedroom 1..N) with the sqm you've allocated to each, NOT a list of rooms currently drawn on the plan.
+Top-level rooms[]: MIRROR scenarios.balanced.rooms (kept for backward compatibility).
 
-Verdict:
-- PASS if proposedBedrooms <= maxCompliantBedrooms with no material works.
-- REVIEW if achievable with minor reconfiguration or licensing actions.
-- FAIL if proposedBedrooms > maxCompliantBedrooms even after reasonable works.
+Per-scenario verdict (vs the user's proposedBedrooms):
+- PASS if proposedBedrooms <= scenario.bedroomCount with no material works (only cosmetic reconfig).
+- REVIEW if achievable with minor works.
+- FAIL if scenario.bedroomCount < proposedBedrooms or only achievable with structural works.
+Top-level verdict = balanced scenario verdict.
 
 headline: one concise sentence stating the bottom line.
-topIssues: 3-5 short bullets, most important first.
+topIssues: 3-5 short bullets across all scenarios, most important first.
 details: longer prose for each section (Markdown allowed inside strings).
 Use UK English. Return JSON only.`;
 
@@ -119,6 +164,10 @@ Use UK English. Return JSON only.`;
     const scaleLine = data.scaleReference
       ? `Scale reference: ${data.scaleReference}`
       : "";
+    const bathRatio = data.bathRatio ?? 5;
+    const kitchenSizing = data.kitchenSizing ?? "standard";
+    const requireLivingRoom = data.requireLivingRoom ?? false;
+    const circulationPct = data.circulationPct ?? 17;
 
     const userText = `Property location: ${data.location}
 Proposed/target HMO bedrooms: ${data.bedrooms}
@@ -126,9 +175,83 @@ Storeys: ${data.storeys}
 Intended occupants: ${data.occupants}
 ${areaLine}
 ${scaleLine}
+
+Amenity standards (user-configured):
+- Bath/WC ratio: 1 per ${bathRatio} occupants
+- Kitchen sizing: ${kitchenSizing}
+- Separate living room required: ${requireLivingRoom ? "yes" : "no"}
+- Circulation %: ${circulationPct}
+
 Additional notes: ${data.notes || "(none)"}
 
-Run the capacity calculation as described and return the structured HMO compliance JSON.`;
+Run the three-scenario capacity calculation as described and return the structured HMO compliance JSON.`;
+
+    const roomsSchema = {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          label: { type: "string" },
+          estimatedSqm: { type: "number" },
+          minRequiredSqm: { type: "number" },
+          compliant: { type: "boolean" },
+          note: { type: "string" },
+        },
+        required: ["label", "estimatedSqm", "minRequiredSqm", "compliant"],
+        additionalProperties: false,
+      },
+    } as const;
+
+    const scenarioSchema = {
+      type: "object",
+      properties: {
+        bedroomCount: { type: "number" },
+        mix: {
+          type: "object",
+          properties: {
+            singles: { type: "number" },
+            doubles: { type: "number" },
+          },
+          required: ["singles", "doubles"],
+          additionalProperties: false,
+        },
+        verdict: { type: "string", enum: ["PASS", "REVIEW", "FAIL"] },
+        physicallyAchievable: { type: "boolean" },
+        physicalNote: { type: "string" },
+        estRentIndex: { type: "number" },
+        tradeoffs: { type: "array", items: { type: "string" } },
+        rooms: roomsSchema,
+        reconfiguration: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: {
+              change: { type: "string" },
+              impact: { type: "string" },
+              complexity: {
+                type: "string",
+                enum: ["cosmetic", "minor works", "structural"],
+              },
+            },
+            required: ["change", "impact", "complexity"],
+            additionalProperties: false,
+          },
+        },
+        issues: { type: "array", items: { type: "string" } },
+      },
+      required: [
+        "bedroomCount",
+        "mix",
+        "verdict",
+        "physicallyAchievable",
+        "estRentIndex",
+        "tradeoffs",
+        "rooms",
+        "reconfiguration",
+        "issues",
+      ],
+      additionalProperties: false,
+    } as const;
 
     const tool = {
       type: "function",
@@ -173,21 +296,17 @@ Run the capacity calculation as described and return the structured HMO complian
               ],
               additionalProperties: false,
             },
-            rooms: {
-              type: "array",
-              items: {
-                type: "object",
-                properties: {
-                  label: { type: "string" },
-                  estimatedSqm: { type: "number" },
-                  minRequiredSqm: { type: "number" },
-                  compliant: { type: "boolean" },
-                  note: { type: "string" },
-                },
-                required: ["label", "estimatedSqm", "minRequiredSqm", "compliant"],
-                additionalProperties: false,
+            scenarios: {
+              type: "object",
+              properties: {
+                maxSingles: scenarioSchema,
+                balanced: scenarioSchema,
+                maxDoubles: scenarioSchema,
               },
+              required: ["maxSingles", "balanced", "maxDoubles"],
+              additionalProperties: false,
             },
+            rooms: roomsSchema,
             topIssues: { type: "array", items: { type: "string" } },
             licensing: {
               type: "object",
@@ -218,6 +337,7 @@ Run the capacity calculation as described and return the structured HMO complian
             "proposedBedrooms",
             "headline",
             "capacity",
+            "scenarios",
             "rooms",
             "topIssues",
             "licensing",
