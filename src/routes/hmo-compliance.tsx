@@ -698,6 +698,23 @@ function ReportView({
     { key: "maxDoubles", label: "Max doubles", sub: "Best £/room" },
   ];
 
+  // GDV (Gross Development Value) — HMO investment valuation
+  const [rentPerRoom, setRentPerRoom] = useState(600);
+  const [opexPct, setOpexPct] = useState(20);
+  const [yieldPct, setYieldPct] = useState(8);
+  const gdvRooms = active?.bedroomCount ?? data.maxCompliantBedrooms;
+  const grossMonthly = rentPerRoom * gdvRooms;
+  const grossAnnual = grossMonthly * 12;
+  const opex = grossAnnual * (opexPct / 100);
+  const netAdjusted = grossAnnual - opex;
+  const gdv = yieldPct > 0 ? netAdjusted / (yieldPct / 100) : 0;
+  const fmtGBP0 = (n: number) =>
+    new Intl.NumberFormat("en-GB", {
+      style: "currency",
+      currency: "GBP",
+      maximumFractionDigits: 0,
+    }).format(isFinite(n) ? n : 0);
+
   return (
     <div className="space-y-5">
       {/* Hero */}
@@ -896,6 +913,96 @@ function ReportView({
           )}
         </div>
       )}
+
+      {/* GDV — HMO investment valuation */}
+      <div className="rounded-xl border border-border bg-card p-5">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <h3 className="text-sm font-semibold">Estimated GDV (HMO investment value)</h3>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              Income-based valuation using the {scenarioMeta.find((m) => m.key === activeScenario)?.label.toLowerCase()} scenario ({gdvRooms} room{gdvRooms === 1 ? "" : "s"}).
+            </p>
+          </div>
+          <p className="text-3xl font-semibold tabular-nums">{fmtGBP0(gdv)}</p>
+        </div>
+
+        <div className="mt-4 grid gap-3 sm:grid-cols-3">
+          <NumberField
+            id="gdv-rent"
+            label="Rent per room (PCM)"
+            prefix="£"
+            step={25}
+            value={rentPerRoom}
+            onChange={setRentPerRoom}
+          />
+          <NumberField
+            id="gdv-opex"
+            label="Operating costs"
+            suffix="%"
+            step={1}
+            value={opexPct}
+            onChange={setOpexPct}
+            hint="Management, voids, maintenance, bills"
+          />
+          <NumberField
+            id="gdv-yield"
+            label="Investor yield"
+            suffix="%"
+            step={0.25}
+            value={yieldPct}
+            onChange={setYieldPct}
+            hint="Typical HMO: 7–9%"
+          />
+        </div>
+
+        <div className="mt-4 overflow-hidden rounded-md border border-border">
+          <table className="w-full text-sm">
+            <tbody>
+              <tr className="border-b border-border">
+                <td className="px-3 py-2 text-muted-foreground">Gross monthly rent</td>
+                <td className="px-3 py-2 text-right tabular-nums">
+                  {fmtGBP0(rentPerRoom)} × {gdvRooms} rooms
+                </td>
+                <td className="px-3 py-2 text-right font-medium tabular-nums">
+                  {fmtGBP0(grossMonthly)}
+                </td>
+              </tr>
+              <tr className="border-b border-border">
+                <td className="px-3 py-2 text-muted-foreground">Gross annual income</td>
+                <td className="px-3 py-2 text-right tabular-nums">
+                  {fmtGBP0(grossMonthly)} × 12
+                </td>
+                <td className="px-3 py-2 text-right font-medium tabular-nums">
+                  {fmtGBP0(grossAnnual)}
+                </td>
+              </tr>
+              <tr className="border-b border-border">
+                <td className="px-3 py-2 text-muted-foreground">Less operating costs</td>
+                <td className="px-3 py-2 text-right tabular-nums">{opexPct}%</td>
+                <td className="px-3 py-2 text-right font-medium tabular-nums text-destructive">
+                  −{fmtGBP0(opex)}
+                </td>
+              </tr>
+              <tr className="border-b border-border bg-muted/20">
+                <td className="px-3 py-2 font-medium">Net adjusted income</td>
+                <td className="px-3 py-2" />
+                <td className="px-3 py-2 text-right font-semibold tabular-nums">
+                  {fmtGBP0(netAdjusted)}
+                </td>
+              </tr>
+              <tr className="bg-primary/5">
+                <td className="px-3 py-2 font-medium">Estimated GDV</td>
+                <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">
+                  ÷ {yieldPct}% yield
+                </td>
+                <td className="px-3 py-2 text-right text-base font-semibold tabular-nums">
+                  {fmtGBP0(gdv)}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
 
       {/* Capacity calculation */}
       {data.capacity && (
