@@ -619,31 +619,41 @@ function RefinancePage() {
                   <NumberField id="bltv" label="Bridge LTV (of purchase price)" suffix="%" step={1}
                     value={inputs.bridgeLoanPct} onChange={(v) => set("bridgeLoanPct", v)}
                     hint="Typical: 70–75% of purchase price" />
-                  <label className="flex items-center justify-between gap-3 rounded-md border border-border bg-background px-3 py-2 text-sm">
+                  <button
+                    type="button"
+                    onClick={() => set("bridgeFundsRefurb", !inputs.bridgeFundsRefurb)}
+                    className="flex w-full items-center justify-between gap-3 rounded-md border border-border bg-background px-3 py-2 text-left text-sm hover:bg-accent/40"
+                  >
                     <span>Bridge also funds refurb?</span>
                     <input
                       type="checkbox"
-                      className="h-4 w-4 accent-primary"
+                      tabIndex={-1}
+                      readOnly
+                      className="h-4 w-4 accent-primary pointer-events-none"
                       checked={inputs.bridgeFundsRefurb}
-                      onChange={(e) => set("bridgeFundsRefurb", e.target.checked)}
                     />
-                  </label>
-                  <label className="flex items-center justify-between gap-3 rounded-md border border-border bg-background px-3 py-2 text-sm">
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const active = inputs.bridgeLoanPct === 0 && inputs.bridgeFundsRefurb;
+                      if (active) {
+                        set("bridgeLoanPct", 75);
+                      } else {
+                        setInputs((p) => ({ ...p, bridgeLoanPct: 0, bridgeFundsRefurb: true }));
+                      }
+                    }}
+                    className="flex w-full items-center justify-between gap-3 rounded-md border border-border bg-background px-3 py-2 text-left text-sm hover:bg-accent/40"
+                  >
                     <span>Bridge refurb only (no purchase finance)</span>
                     <input
                       type="checkbox"
-                      className="h-4 w-4 accent-primary"
+                      tabIndex={-1}
+                      readOnly
+                      className="h-4 w-4 accent-primary pointer-events-none"
                       checked={inputs.bridgeLoanPct === 0 && inputs.bridgeFundsRefurb}
-                      onChange={(e) => {
-                        if (e.target.checked) {
-                          set("bridgeLoanPct", 0);
-                          set("bridgeFundsRefurb", true);
-                        } else {
-                          set("bridgeLoanPct", 75);
-                        }
-                      }}
                     />
-                  </label>
+                  </button>
                   <div className="flex items-end gap-2">
                     <div className="flex-1">
                       <NumberField
