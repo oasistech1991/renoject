@@ -399,6 +399,67 @@ function ReportView({
         </div>
       </div>
 
+      {/* Capacity calculation */}
+      {data.capacity && (
+        <div className="rounded-xl border border-border bg-card p-5">
+          <div className="flex items-center justify-between gap-3">
+            <h3 className="text-sm font-semibold">
+              How we got to {data.maxCompliantBedrooms} bedrooms
+            </h3>
+            <span
+              className={`rounded-full border px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide ${
+                data.capacity.areaSource === "user"
+                  ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
+                  : "border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-300"
+              }`}
+            >
+              {data.capacity.areaSource === "user" ? "Your area" : "Estimated area"}
+            </span>
+          </div>
+          <div className="mt-3 grid grid-cols-3 gap-3 text-sm">
+            <Stat label="Total area" value={`${data.capacity.totalFloorAreaSqm.toFixed(1)} sqm`} />
+            <Stat
+              label="Non-bedroom"
+              value={`${data.capacity.nonBedroomAllocationSqm.toFixed(1)} sqm`}
+            />
+            <Stat
+              label="Bedroom-available"
+              value={`${data.capacity.bedroomAvailableSqm.toFixed(1)} sqm`}
+            />
+          </div>
+          {data.capacity.breakdown.length > 0 && (
+            <div className="mt-4 overflow-hidden rounded-md border border-border">
+              <table className="w-full text-sm">
+                <thead className="bg-muted/40 text-xs uppercase tracking-wide text-muted-foreground">
+                  <tr>
+                    <th className="px-3 py-2 text-left font-medium">Non-bedroom allocation</th>
+                    <th className="px-3 py-2 text-right font-medium">sqm</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.capacity.breakdown.map((b, i) => (
+                    <tr key={i} className="border-t border-border">
+                      <td className="px-3 py-2">{b.item}</td>
+                      <td className="px-3 py-2 text-right tabular-nums">{b.sqm.toFixed(1)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+          {data.capacity.assumptions.length > 0 && (
+            <ul className="mt-3 space-y-1 text-xs text-muted-foreground">
+              {data.capacity.assumptions.map((a, i) => (
+                <li key={i} className="flex gap-2">
+                  <span className="mt-1 h-1 w-1 shrink-0 rounded-full bg-muted-foreground" />
+                  <span>{a}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
+
       {/* Top issues */}
       {data.topIssues.length > 0 && (
         <div className="rounded-xl border border-border bg-card p-5">
