@@ -62,6 +62,26 @@ function ForecastPage() {
     await supabase.from("properties").update({ in_portfolio: false } as any).eq("id", id);
   };
 
+  const duplicate = async (r: Row) => {
+    const newName = `${r.name} (copy)`;
+    const { data, error } = await supabase
+      .from("properties")
+      .insert({
+        name: newName,
+        inputs: r.inputs,
+        metrics: r.metrics,
+        source: r.source,
+        in_portfolio: true,
+      } as any)
+      .select("*")
+      .single();
+    if (error) {
+      setError(error.message);
+      return;
+    }
+    setRows((p) => [data as Row, ...p]);
+  };
+
   const totals = rows.reduce(
     (acc, r) => {
       const m = r.metrics ?? {};
@@ -271,7 +291,10 @@ function ForecastPage() {
                           {off ? `M${off.startMonth}` : "—"}
                         </td>
                         <td className="px-4 py-3 text-right">
-                          <Button size="sm" variant="ghost" onClick={() => toggle(r.id)}>Remove</Button>
+                          <div className="flex justify-end gap-1">
+                            <Button size="sm" variant="ghost" onClick={() => duplicate(r)}>Duplicate</Button>
+                            <Button size="sm" variant="ghost" onClick={() => toggle(r.id)}>Remove</Button>
+                          </div>
                         </td>
                       </tr>
                     );
