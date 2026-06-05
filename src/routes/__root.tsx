@@ -11,6 +11,7 @@ import {
 import appCss from "../styles.css?url";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Toaster } from "@/components/ui/sonner";
 
 function NotFoundComponent() {
   return (
@@ -146,6 +147,7 @@ function AuthGate() {
         }}
       />
       <Outlet />
+      <Toaster />
     </>
   );
 }
