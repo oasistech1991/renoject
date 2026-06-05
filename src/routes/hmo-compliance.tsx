@@ -795,6 +795,47 @@ function ReportView({
     setGeneratedFloorplans({ maxSingles: null, balanced: null, maxDoubles: null });
     setGenError(null);
   }, [data]);
+
+  // Auto-generate AI floorplan when scenario becomes active (once per scenario per report)
+  useEffect(() => {
+    if (!originalImageBase64) return;
+    const s = scenarios?.[activeScenario];
+    if (!s || s.rooms.length === 0) return;
+    if (generatedFloorplans[activeScenario]) return;
+    if (generatingScenario !== null) return;
+
+    let cancelled = false;
+    (async () => {
+      setGenError(null);
+      setGeneratingScenario(activeScenario);
+      try {
+        const label = scenarioMeta.find((m) => m.key === activeScenario)?.label ?? activeScenario;
+        const res = await generateFloorplan({
+          data: {
+            imageBase64: originalImageBase64,
+            scenarioLabel: label,
+            rooms: s.rooms.map((r) => ({ label: r.label, estimatedSqm: r.estimatedSqm })),
+            totalFloorAreaSqm: data.capacity?.totalFloorAreaSqm,
+            reconfiguration: s.reconfiguration.map((r) => ({
+              change: r.change,
+              complexity: r.complexity,
+            })),
+          },
+        });
+        if (!cancelled) {
+          setGeneratedFloorplans((prev) => ({ ...prev, [activeScenario]: res.imageBase64 }));
+        }
+      } catch (e: any) {
+        if (!cancelled) setGenError(e?.message ?? "Failed to generate floorplan");
+      } finally {
+        if (!cancelled) setGeneratingScenario(null);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeScenario, data, originalImageBase64]);
   const verdictTone =
     data.verdict === "PASS"
       ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30"
