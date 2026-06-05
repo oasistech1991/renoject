@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   MOCK_LISTINGS,
   applyFilters,
@@ -315,40 +315,116 @@ function Metric({ label, value, tone }: { label: string; value: string; tone?: s
 }
 
 function MapPlaceholder({ rows, selectedId, onPick }: { rows: Row[]; selectedId: string | null; onPick: (id: string) => void }) {
-  // Visual placeholder until the Google Maps connector is linked.
-  // Markers laid out on a UK-shape gradient by relative lat/lng.
-  const minLat = 51, maxLat = 55.5, minLng = -3.5, maxLng = -0.2;
-  const proj = (lat: number, lng: number) => ({
-    x: ((lng - minLng) / (maxLng - minLng)) * 100,
-    y: 100 - ((lat - minLat) / (maxLat - minLat)) * 100,
-  });
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const mapRef = useRef<google.maps.Map | null>(null);
+  const markersRef = useRef<Map<string, google.maps.Marker>>(new Map());
+  const [ready, setReady] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Load the Google Maps JS API once.
+  useEffect(() => {
+    const key = import.meta.env.VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_BROWSER_KEY;
+    const channel = import.meta.env.VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_TRACKING_ID;
+    if (!key) {
+      setError("Google Maps key missing");
+      return;
+    }
+    const w = window as unknown as { google?: { maps?: unknown }; __initMarketMap?: () => void };
+    if (w.google?.maps) {
+      setReady(true);
+      return;
+    }
+    w.__initMarketMap = () => setReady(true);
+    const existing = document.querySelector<HTMLScriptElement>("script[data-market-gmaps]");
+    if (existing) return;
+    const s = document.createElement("script");
+    s.src = `https://maps.googleapis.com/maps/api/js?key=${key}&loading=async&callback=__initMarketMap${channel ? `&channel=${channel}` : ""}`;
+    s.async = true;
+    s.defer = true;
+    s.dataset.marketGmaps = "1";
+    s.onerror = () => setError("Failed to load Google Maps");
+    document.head.appendChild(s);
+  }, []);
+
+  // Init map once API is ready.
+  useEffect(() => {
+    if (!ready || !containerRef.current || mapRef.current) return;
+    mapRef.current = new google.maps.Map(containerRef.current, {
+      center: { lat: 53.2, lng: -2.0 },
+      zoom: 6,
+      mapTypeControl: false,
+      streetViewControl: false,
+      fullscreenControl: false,
+      styles: [
+        { elementType: "geometry", stylers: [{ color: "#1f2937" }] },
+        { elementType: "labels.text.stroke", stylers: [{ color: "#1f2937" }] },
+        { elementType: "labels.text.fill", stylers: [{ color: "#9ca3af" }] },
+        { featureType: "water", elementType: "geometry", stylers: [{ color: "#0f172a" }] },
+        { featureType: "road", elementType: "geometry", stylers: [{ color: "#374151" }] },
+        { featureType: "poi", stylers: [{ visibility: "off" }] },
+      ],
+    });
+  }, [ready]);
+
+  // Sync markers with rows.
+  useEffect(() => {
+    if (!ready || !mapRef.current) return;
+    const map = mapRef.current;
+    const next = new Map<string, google.maps.Marker>();
+    const bounds = new google.maps.LatLngBounds();
+
+    for (const r of rows) {
+      const y_ = r.m.grossYieldHmo;
+      const color = y_ >= 12 ? "#10b981" : y_ >= 9 ? "#a3e635" : y_ >= 7 ? "#facc15" : "#fb923c";
+      const isActive = r.id === selectedId;
+      const existing = markersRef.current.get(r.id);
+      const marker =
+        existing ??
+        new google.maps.Marker({
+          position: { lat: r.lat, lng: r.lng },
+          map,
+          title: `${r.town} · ${fmtPct(r.m.grossYieldHmo)}`,
+        });
+      marker.setIcon({
+        path: google.maps.SymbolPath.CIRCLE,
+        scale: isActive ? 10 : 7,
+        fillColor: color,
+        fillOpacity: 0.95,
+        strokeColor: isActive ? "#ffffff" : "#0f172a",
+        strokeWeight: 2,
+      });
+      marker.setZIndex(isActive ? 999 : 1);
+      if (!existing) marker.addListener("click", () => onPick(r.id));
+      next.set(r.id, marker);
+      bounds.extend({ lat: r.lat, lng: r.lng });
+    }
+    // Remove markers that are no longer in rows.
+    for (const [id, m] of markersRef.current) {
+      if (!next.has(id)) m.setMap(null);
+    }
+    markersRef.current = next;
+    if (rows.length > 0 && !selectedId) {
+      map.fitBounds(bounds, 64);
+    } else if (selectedId) {
+      const sel = rows.find((r) => r.id === selectedId);
+      if (sel) map.panTo({ lat: sel.lat, lng: sel.lng });
+    }
+  }, [ready, rows, selectedId, onPick]);
+
   return (
-    <div className="relative h-full w-full bg-[radial-gradient(circle_at_30%_40%,hsl(var(--muted))_0%,hsl(var(--background))_70%)]">
-      <div className="absolute left-3 top-3 z-10 rounded-md border border-border bg-card/90 px-3 py-2 text-xs backdrop-blur">
-        <p className="font-semibold">Map view</p>
-        <p className="text-muted-foreground">Demo projection — connect Google Maps for live tiles.</p>
-      </div>
-      <svg viewBox="0 0 100 100" className="absolute inset-0 h-full w-full opacity-20" preserveAspectRatio="none">
-        <path d="M50,5 L70,20 L75,45 L65,70 L70,90 L40,95 L20,75 L25,50 L15,30 Z" fill="none" stroke="currentColor" strokeWidth="0.5" />
-      </svg>
-      {rows.map((r) => {
-        const { x, y } = proj(r.lat, r.lng);
-        const active = r.id === selectedId;
-        const y_ = r.m.grossYieldHmo;
-        const color = y_ >= 12 ? "bg-emerald-500" : y_ >= 9 ? "bg-lime-400" : y_ >= 7 ? "bg-yellow-400" : "bg-orange-400";
-        return (
-          <button
-            key={r.id}
-            onClick={() => onPick(r.id)}
-            className={`absolute -translate-x-1/2 -translate-y-1/2 rounded-full ring-2 transition-all ${color} ${
-              active ? "z-20 h-5 w-5 ring-foreground" : "h-3 w-3 ring-background hover:scale-150"
-            }`}
-            style={{ left: `${x}%`, top: `${y}%` }}
-            title={`${r.town} · ${fmtPct(r.m.grossYieldHmo)}`}
-          />
-        );
-      })}
-      <div className="absolute bottom-3 left-3 z-10 rounded-md border border-border bg-card/90 px-3 py-2 text-[10px] backdrop-blur">
+    <div className="relative h-full w-full">
+      <div ref={containerRef} className="absolute inset-0" />
+      {!ready && !error && (
+        <div className="absolute inset-0 flex items-center justify-center bg-muted/40 text-sm text-muted-foreground">
+          Loading map…
+        </div>
+      )}
+      {error && (
+        <div className="absolute inset-0 flex items-center justify-center bg-muted/40 px-6 text-center text-sm text-destructive">
+          {error}
+        </div>
+      )}
+      <div className="pointer-events-none absolute bottom-3 left-3 z-10 rounded-md border border-border bg-card/90 px-3 py-2 text-[10px] backdrop-blur">
         <p className="mb-1 font-semibold uppercase tracking-wider text-muted-foreground">HMO yield</p>
         <div className="flex items-center gap-2">
           <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-orange-400" /> &lt;7%</span>
