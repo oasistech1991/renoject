@@ -232,6 +232,9 @@ function TopNav({ onSignOut }: { onSignOut: () => void }) {
         <Link to="/forecast" className={linkBase} activeProps={{ className: `${linkBase} ${activeCls}` }}>
           Forecast
         </Link>
+        <Link to="/tokenize" className={linkBase} activeProps={{ className: `${linkBase} ${activeCls}` }}>
+          Tokenize
+        </Link>
         <div className="ml-auto flex items-center gap-2">
           <Button variant="outline" size="sm" onClick={onSignOut}>Sign out</Button>
         </div>
