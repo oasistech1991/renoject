@@ -771,15 +771,30 @@ function ReportView({
   proposed,
   checkedAt,
   savedAt,
+  originalImageBase64,
 }: {
   data: Awaited<ReturnType<typeof analyseFloorplan>>;
   proposed: number;
   checkedAt: Date | null;
   savedAt?: string;
+  originalImageBase64?: string | null;
 }) {
   const [activeScenario, setActiveScenario] = useState<"maxSingles" | "balanced" | "maxDoubles">(
     "balanced",
   );
+  const generateFloorplan = useServerFn(generateUpdatedFloorplan);
+  const [generatedFloorplans, setGeneratedFloorplans] = useState<
+    Record<"maxSingles" | "balanced" | "maxDoubles", string | null>
+  >({ maxSingles: null, balanced: null, maxDoubles: null });
+  const [generatingScenario, setGeneratingScenario] = useState<
+    "maxSingles" | "balanced" | "maxDoubles" | null
+  >(null);
+  const [genError, setGenError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setGeneratedFloorplans({ maxSingles: null, balanced: null, maxDoubles: null });
+    setGenError(null);
+  }, [data]);
   const verdictTone =
     data.verdict === "PASS"
       ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30"
