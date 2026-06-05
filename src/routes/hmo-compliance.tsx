@@ -676,9 +676,13 @@ function HMOCompliancePage() {
 function ReportView({
   data,
   proposed,
+  checkedAt,
+  savedAt,
 }: {
   data: Awaited<ReturnType<typeof analyseFloorplan>>;
   proposed: number;
+  checkedAt: Date | null;
+  savedAt?: string;
 }) {
   const [activeScenario, setActiveScenario] = useState<"maxSingles" | "balanced" | "maxDoubles">(
     "balanced",
