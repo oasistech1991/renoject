@@ -1,94 +1,79 @@
-## Market Search — new tab
+## Goal
 
-A new **/market** route giving a Rightmove-style visual search experience tuned for property investors, with a paywalled "Expert Deal Review" feature.
+A new **Tokenize** tab that visually shows how each property in your portfolio could be turned into a blockchain-backed asset — both as a whole-property NFT deed *and* as fractional shares — and how ownership could be transferred to a new party. Fully interactive, fully simulated. No real chain, no real money, no wallet setup needed. Built so the same UI can later plug into Base / Polygon when you're ready.
 
-### 1. Navigation
-- Add **Market Search** link to the top nav in `src/routes/__root.tsx` (between HMO Compliance and Renovation Calculator).
+## What you'll see in the demo
 
-### 2. Data (mock for now)
-- New `src/lib/market-listings.ts` with ~60 seeded UK listings across mixed regions (Manchester, Liverpool, Sheffield, Birmingham, Leeds, NE).
-- Each listing: id, address, postcode, lat/lng, price, beds, baths, propertyType (terraced/semi/detached/flat), tenure, sqft, EPC, listingType (sale/auction/repossession), guidePrice, daysOnMarket, photos, description, agent, sourceUrl.
-- Derived investor metrics computed on the fly: gross yield (using regional avg room rent for HMO potential), estimated ROI, BMV % vs postcode median, Article 4 flag, HMO room potential (using same logic as hmo-compliance), refurb tier guess, GDV potential.
-- Designed so a future swap to a real feed (PropertyData / saved Rightmove URLs) only replaces the loader.
+**1. Portfolio → Token vault**
+- Pulls every row from your existing `properties` table.
+- Each property gets a "token card" with: a generated deed image (address + postcode + a hash that looks like a real on-chain token ID), current owner wallet, mint status, fraction status.
+- Status badges: `Unminted` · `Deed minted` · `Fractionalized` · `Listed for transfer`.
 
-### 3. Layout — Split map + list (`src/routes/market.tsx`)
+**2. Mint Deed (whole-property NFT)**
+- Click *Mint Deed* on any unminted property → animated modal showing:
+  - Metadata being assembled (address, EPC, sqft, GDV, photos).
+  - A fake "broadcasting to Base" progress bar.
+  - A token ID + transaction hash appearing.
+- Result: card flips to show the deed certificate with QR code and a "View on explorer" link (opens a styled fake explorer page inside the app).
+
+**3. Fractionalize (ERC-20-style shares)**
+- On any minted deed, click *Fractionalize* → choose total supply (e.g. 1,000 / 10,000 / 100,000 shares) and price per share (auto-suggested from GDV ÷ supply).
+- Animation: the deed slides into a vault, shares spray out into a grid.
+- Card now shows: shares outstanding, price/share, implied valuation, mini cap-table of holders.
+
+**4. Transfer to new party**
+- Two flows side by side:
+  - **Whole transfer** — pick a property, enter recipient (wallet address or email), animate the NFT moving from your wallet to theirs. Ownership history log updates.
+  - **Sell shares** — pick a fractionalized property, choose quantity + recipient, see cap-table update live.
+- Every transfer writes a row to a new `token_transfers` table so it's auditable inside the app.
+
+**5. Investor view**
+- A secondary tab showing the same vault from a *buyer's* perspective: browse fractionalized properties, see yield + GDV + share price, hit "Buy shares" to simulate a purchase.
+- This is the bridge to a future real marketplace.
+
+## Layout
 
 ```text
-┌──────────────────────────────────────────────────────────────┐
-│  Filter bar (sticky):  postcode · price · beds · type · …    │
-│                        [Investor filters ▾]  [Saved searches]│
-├───────────────────────────────┬──────────────────────────────┤
-│                               │  ┌─ Card ────────────────┐   │
-│                               │  │ photo · price · beds  │   │
-│         MAP                   │  │ Yield 7.2% · BMV 12%  │   │
-│   (markers colour-coded       │  │ HMO 5 rooms · Art.4 ✓ │   │
-│    by yield / BMV)            │  │ [Save] [Analyse]      │   │
-│                               │  └───────────────────────┘   │
-│                               │   …list scrolls…             │
-├───────────────────────────────┴──────────────────────────────┤
-│  Analytics strip:  yield distribution · price vs sqft        │
-│                    BMV heatmap by postcode · deals/week      │
-└──────────────────────────────────────────────────────────────┘
+┌────────────────────────────────────────────────────────┐
+│  Tokenize                          [Owner] [Investor]  │
+├────────────────────────────────────────────────────────┤
+│  Vault summary: 12 properties · 4 minted · 2 fract'd   │
+│  Total GDV £4.2M · Shares outstanding 28,000           │
+├────────────────────────────────────────────────────────┤
+│  ┌──────────┐  ┌──────────┐  ┌──────────┐              │
+│  │ Deed     │  │ Vault    │  │ Unminted │   ← cards    │
+│  │ #0x4a..  │  │ 10,000 sh│  │ Mint →   │              │
+│  │ Transfer │  │ Buy/Sell │  │          │              │
+│  └──────────┘  └──────────┘  └──────────┘              │
+├────────────────────────────────────────────────────────┤
+│  Activity feed: latest mints, transfers, share sales   │
+└────────────────────────────────────────────────────────┘
 ```
 
-- Map: Google Maps JS API via the Lovable-managed Google Maps connector (browser key). Custom markers coloured by gross yield (red→green). Click marker → highlights/scrolls list card; click card → pans map.
-- List: virtualised card grid on the right, synced with map viewport ("Search this area" button when user pans).
-- Selecting a card opens a slide-over panel with full photos, description, full metric breakdown, and CTAs: **Save to deals**, **Send to HMO analysis**, **Send to Property Calculator**, **Request Expert Review** (paywalled).
+## Technical approach (for reference)
 
-### 4. Filters (collapsible groups)
-- **Basics**: postcode/town, min–max price, min beds, property type, tenure, EPC min.
-- **HMO/BTL**: min gross yield %, min projected ROI %, min HMO rooms potential, Article 4 toggle (exclude/only).
-- **Refurb/BMV**: min BMV % vs postcode median, condition tag (turnkey/light/heavy), max £/sqft, refinance uplift potential.
-- **Auction/distressed**: listing type (sale/auction/repossession/probate), max guide price, auction date window.
-- **Saved searches**: persisted to Supabase so users can revisit.
+- **Route**: new `src/routes/tokenize.tsx` + nav link.
+- **DB tables** (new):
+  - `tokens` — property_id, token_id (fake hash), chain (default `base-sim`), owner_wallet, minted_at.
+  - `token_fractions` — token_id, total_supply, price_per_share_pence.
+  - `token_holdings` — token_id, holder (wallet or email), shares.
+  - `token_transfers` — token_id, from, to, amount, tx_hash, created_at.
+- **Wallet simulation**: each signed-in user auto-gets a deterministic fake address `0x` + hash(user_id); recipients are free-text (address or email).
+- **Tx hashes / token IDs**: generated client-side via `crypto.randomUUID()` formatted as `0x…`.
+- **Explorer page**: styled internal route `/tokenize/tx/:hash` that shows from/to/amount/timestamp like Etherscan.
+- **No external dependencies** in v1 — no wagmi, no viem, no wallet connect. Adding real chain support later is a swap of the simulated mint/transfer functions for `viem` calls.
 
-### 5. Analytics strip
-- Yield distribution histogram across current results.
-- BMV % heatmap by postcode (top 10 postcodes in results).
-- Price/sqft scatter with the current selection highlighted.
-- Counters: total matches, avg yield, avg BMV, # under-guide auction lots.
-- All recompute on filter change.
+## Out of scope for v1 (called out so we can sequence it)
 
-### 6. Saved searches + watchlist
-- New Supabase tables `saved_searches` (user_id, name, filters jsonb) and `market_watchlist` (user_id, listing_id, notes). RLS scoped to `auth.uid()`.
-- "Save this search" button in the filter bar; saved searches appear in a dropdown.
-- Watchlisted listings show a star in the list and a tab "Watchlist only".
+- Real on-chain deployment (Base / Polygon) — separate follow-up once you pick the chain.
+- Real wallet connect (MetaMask / Privy embedded wallets).
+- KYC / SPV legal wrapper — flagged with disclaimer banner: *"Demo only — tokens do not confer legal title."*
+- Stripe / fiat onramp for share purchases.
 
-### 7. Paywalled Expert Deal Review (£49 flat fee per deal)
-- New table `expert_reviews` (id, user_id, listing_snapshot jsonb, status: pending_payment/paid/in_review/delivered, stripe_session_id, expert_notes text, deliverable_url, created_at).
-- Flow:
-  1. User clicks **Request Expert Review** on a listing or saved deal.
-  2. Modal collects context (their goal, timeframe, finance status) and shows £49 fee.
-  3. Stripe Checkout (Lovable built-in Stripe payments — `enable_stripe_payments`) opens; product created via `batch_create_product`.
-  4. Webhook at `/api/public/stripe-webhook` marks review as `paid` and emails the operator (you) the full deal pack.
-  5. Operator dashboard at `/expert-inbox` (gated by an `is_expert` flag in a `user_roles` table) lets the expert post written review + Calendly link → status `delivered`.
-  6. User sees the review on a `/expert-reviews/:id` page.
-- Until payment, only a teaser is shown ("Independent expert will assess deal viability, exit options, red flags — typically within 48h").
+## After this ships
 
-### 8. Send-to-existing-tools integrations
-- "Analyse as HMO" → prefills `/hmo-compliance` with address + room count guess via query params.
-- "Run Property Calculator" → prefills `/refinance` with price, rent estimate, postcode.
-- "Save as deal" → existing `properties` table insert, with `source: 'market-search'`.
-
-### 9. Technical notes
-- Route: `src/routes/market.tsx` (TanStack file route, SSR on — public-friendly).
-- Listings loaded via `createServerFn` `searchListings` (filters in input validator). For now reads from mock; swap-point documented.
-- Google Maps: use `VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_BROWSER_KEY` (will prompt to link the Google Maps connector during build).
-- Charts: existing Recharts (already in deps via shadcn `chart`).
-- Stripe: `enable_stripe_payments` tool call during build (will require Pro plan confirmation). Webhook under `src/routes/api/public/stripe-webhook.ts`.
-- Auth: existing session unlock (`hh_unlocked`) gates the page; expert inbox additionally checks a server-validated role.
-
-### 10. Build order
-1. Migrations: `saved_searches`, `market_watchlist`, `expert_reviews`, `user_roles` (+ `has_role` fn).
-2. Mock data + filter/metrics lib.
-3. Market route shell with filter bar, list, analytics strip (no map yet).
-4. Add Google Maps connector + map pane with synced markers.
-5. Slide-over detail panel + send-to-tools integrations.
-6. Saved searches + watchlist UI.
-7. Enable Stripe + expert review checkout + webhook + inbox + delivery pages.
-8. Nav link, polish, mobile responsiveness.
-
-### Open items needing your confirmation before build
-- **Google Maps connector**: I'll prompt to link it (managed key, no setup on your side for *.lovable.app — needed only).
-- **Stripe payments**: needs Pro plan; £49 default — confirm price.
-- **Expert account**: who's the expert (your own email)? I'll seed the `is_expert` role for one user.
+Once you've used the demo and decided it's the right model, the natural next steps are:
+1. Pick chain (recommended: **Base** — low fees, good RWA tooling).
+2. Add wallet connect (recommended: **Privy** — email login auto-creates a wallet, smooth for non-crypto users).
+3. Deploy real ERC-721 + ERC-20 contracts (OpenZeppelin templates).
+4. Layer in KYC + SPV legal structure before any real-money transfers.
