@@ -3,7 +3,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useMutation } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
 import { analyseFloorplan } from "@/lib/hmo.functions";
-import { getHmoSystemPrompt } from "@/lib/hmo.functions";
+import { getHmoSystemPrompt, generateUpdatedFloorplan } from "@/lib/hmo.functions";
 import { Button } from "@/components/ui/button";
 import { NumberField } from "@/components/btl/NumberField";
 import { supabase } from "@/integrations/supabase/client";
@@ -650,7 +650,7 @@ function HMOCompliancePage() {
 
             {displayData && (
               <>
-                <ReportView data={displayData} proposed={targetBedrooms} checkedAt={lastCheckAt} savedAt={viewMeta?.createdAt} />
+                <ReportView data={displayData} proposed={targetBedrooms} checkedAt={lastCheckAt} savedAt={viewMeta?.createdAt} originalImageBase64={imageBase64} />
                 {mutation.data && !viewMeta && (
                   <div className="mt-6 rounded-xl border border-border bg-muted/20 p-5">
                     {savedMeta ? (
@@ -771,15 +771,30 @@ function ReportView({
   proposed,
   checkedAt,
   savedAt,
+  originalImageBase64,
 }: {
   data: Awaited<ReturnType<typeof analyseFloorplan>>;
   proposed: number;
   checkedAt: Date | null;
   savedAt?: string;
+  originalImageBase64?: string | null;
 }) {
   const [activeScenario, setActiveScenario] = useState<"maxSingles" | "balanced" | "maxDoubles">(
     "balanced",
   );
+  const generateFloorplan = useServerFn(generateUpdatedFloorplan);
+  const [generatedFloorplans, setGeneratedFloorplans] = useState<
+    Record<"maxSingles" | "balanced" | "maxDoubles", string | null>
+  >({ maxSingles: null, balanced: null, maxDoubles: null });
+  const [generatingScenario, setGeneratingScenario] = useState<
+    "maxSingles" | "balanced" | "maxDoubles" | null
+  >(null);
+  const [genError, setGenError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setGeneratedFloorplans({ maxSingles: null, balanced: null, maxDoubles: null });
+    setGenError(null);
+  }, [data]);
   const verdictTone =
     data.verdict === "PASS"
       ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30"
@@ -983,17 +998,75 @@ function ReportView({
 
               {active.rooms.length > 0 && (
                 <div>
-                  <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                    Updated floorplan with dimensions
-                  </h4>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    Scale diagram of the {scenarioMeta.find((m) => m.key === activeScenario)?.label.toLowerCase()} layout — each room sized to its sqm. Dimensions in metres.
-                  </p>
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                        Updated floorplan with dimensions
+                      </h4>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        Scale diagram of the {scenarioMeta.find((m) => m.key === activeScenario)?.label.toLowerCase()} layout — each room sized to its sqm. Dimensions in metres.
+                      </p>
+                    </div>
+                    {originalImageBase64 && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={generatingScenario !== null}
+                        onClick={async () => {
+                          setGenError(null);
+                          setGeneratingScenario(activeScenario);
+                          try {
+                            const label = scenarioMeta.find((m) => m.key === activeScenario)?.label ?? activeScenario;
+                            const res = await generateFloorplan({
+                              data: {
+                                imageBase64: originalImageBase64,
+                                scenarioLabel: label,
+                                rooms: active.rooms.map((r) => ({
+                                  label: r.label,
+                                  estimatedSqm: r.estimatedSqm,
+                                })),
+                                totalFloorAreaSqm: data.capacity?.totalFloorAreaSqm,
+                                reconfiguration: active.reconfiguration.map((r) => ({
+                                  change: r.change,
+                                  complexity: r.complexity,
+                                })),
+                              },
+                            });
+                            setGeneratedFloorplans((prev) => ({
+                              ...prev,
+                              [activeScenario]: res.imageBase64,
+                            }));
+                          } catch (e: any) {
+                            setGenError(e?.message ?? "Failed to generate floorplan");
+                          } finally {
+                            setGeneratingScenario(null);
+                          }
+                        }}
+                      >
+                        {generatingScenario === activeScenario
+                          ? "Drawing…"
+                          : generatedFloorplans[activeScenario]
+                            ? "Regenerate AI floorplan"
+                            : "Generate AI floorplan"}
+                      </Button>
+                    )}
+                  </div>
+                  {genError && (
+                    <p className="mt-2 text-xs text-destructive">{genError}</p>
+                  )}
                   <div className="mt-2 rounded-md border border-border bg-muted/10 p-3">
-                    <UpdatedFloorplan
-                      rooms={active.rooms}
-                      totalAreaSqm={data.capacity?.totalFloorAreaSqm}
-                    />
+                    {generatedFloorplans[activeScenario] ? (
+                      <img
+                        src={generatedFloorplans[activeScenario]!}
+                        alt={`AI-generated ${activeScenario} floorplan`}
+                        className="mx-auto h-auto w-full max-w-2xl rounded"
+                      />
+                    ) : (
+                      <UpdatedFloorplan
+                        rooms={active.rooms}
+                        totalAreaSqm={data.capacity?.totalFloorAreaSqm}
+                      />
+                    )}
                   </div>
                 </div>
               )}
