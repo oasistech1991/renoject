@@ -11,6 +11,7 @@ import {
 import appCss from "../styles.css?url";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Toaster } from "@/components/ui/sonner";
 
 function NotFoundComponent() {
   return (
@@ -146,6 +147,7 @@ function AuthGate() {
         }}
       />
       <Outlet />
+      <Toaster />
     </>
   );
 }
@@ -214,6 +216,9 @@ function TopNav({ onSignOut }: { onSignOut: () => void }) {
         </Link>
         <Link to="/hmo-compliance" className={linkBase} activeProps={{ className: `${linkBase} ${activeCls}` }}>
           HMO Floorplan Compliance
+        </Link>
+        <Link to="/market" className={linkBase} activeProps={{ className: `${linkBase} ${activeCls}` }}>
+          Market Search
         </Link>
         <Link to="/condition" className={linkBase} activeProps={{ className: `${linkBase} ${activeCls}` }}>
           Renovation Calculator
