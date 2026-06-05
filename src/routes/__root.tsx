@@ -215,6 +215,9 @@ function TopNav({ onSignOut }: { onSignOut: () => void }) {
         <Link to="/hmo-compliance" className={linkBase} activeProps={{ className: `${linkBase} ${activeCls}` }}>
           HMO Floorplan Compliance
         </Link>
+        <Link to="/market" className={linkBase} activeProps={{ className: `${linkBase} ${activeCls}` }}>
+          Market Search
+        </Link>
         <Link to="/condition" className={linkBase} activeProps={{ className: `${linkBase} ${activeCls}` }}>
           Renovation Calculator
         </Link>
