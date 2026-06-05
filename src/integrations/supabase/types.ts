@@ -383,7 +383,7 @@ export type Database = {
           call_out_fee: number | null
           company: string | null
           created_at: string
-          created_by: string
+          created_by: string | null
           day_rate: number | null
           email: string | null
           id: string
@@ -399,7 +399,7 @@ export type Database = {
           call_out_fee?: number | null
           company?: string | null
           created_at?: string
-          created_by: string
+          created_by?: string | null
           day_rate?: number | null
           email?: string | null
           id?: string
@@ -415,7 +415,7 @@ export type Database = {
           call_out_fee?: number | null
           company?: string | null
           created_at?: string
-          created_by?: string
+          created_by?: string | null
           day_rate?: number | null
           email?: string | null
           id?: string
