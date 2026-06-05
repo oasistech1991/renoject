@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
+import { jsPDF } from "jspdf";
 
 export const Route = createFileRoute("/tokenize")({
   head: () => ({
@@ -35,6 +36,79 @@ function shortHash(h: string) {
 function fmtGBP(p: number) {
   return new Intl.NumberFormat("en-GB", { style: "currency", currency: "GBP", maximumFractionDigits: 0 }).format(p / 100);
 }
+
+function downloadTransferReceipt(tr: Transfer, opts: { propertyName?: string; tokenHash?: string; pricePerSharePence?: number }) {
+  const doc = new jsPDF({ unit: "pt", format: "a4" });
+  const W = doc.internal.pageSize.getWidth();
+  const margin = 48;
+  let y = margin;
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(10);
+  doc.setTextColor(120);
+  doc.text("HARTSTONE HOLDINGS", margin, y);
+  doc.text("base-sim · simulated", W - margin, y, { align: "right" });
+  y += 24;
+
+  doc.setFontSize(20);
+  doc.setTextColor(20);
+  doc.text("Transfer receipt", margin, y);
+  y += 8;
+  doc.setDrawColor(220);
+  doc.line(margin, y, W - margin, y);
+  y += 24;
+
+  const kindLabel = tr.kind === "mint" ? "Mint" : tr.kind === "whole" ? "Whole-property transfer" : "Share transfer";
+  const dt = new Date(tr.created_at);
+  const amountLine =
+    tr.kind === "shares"
+      ? `${tr.amount.toLocaleString()} shares${opts.pricePerSharePence ? ` · ${fmtGBP(tr.amount * opts.pricePerSharePence)} implied`  : ""}`
+      : tr.kind === "whole"
+        ? "1 deed (whole property)"
+        : "1 deed (mint)";
+
+  const rows: Array<[string, string]> = [
+    ["Type", kindLabel],
+    ["Property", opts.propertyName ?? "—"],
+    ["Token", opts.tokenHash ?? "—"],
+    ["From", tr.from_party ?? "— (mint)"],
+    ["To", tr.to_party],
+    ["Amount", amountLine],
+    ["Timestamp (UTC)", dt.toISOString()],
+    ["Timestamp (local)", dt.toLocaleString("en-GB")],
+    ["Tx hash", tr.tx_hash],
+    ["Receipt ID", tr.id],
+    ["Chain", "base-sim (testnet simulation)"],
+  ];
+
+  doc.setFontSize(10);
+  for (const [k, v] of rows) {
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(110);
+    doc.text(k, margin, y);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(20);
+    const wrapped = doc.splitTextToSize(v, W - margin - 160);
+    doc.text(wrapped, margin + 140, y);
+    y += 14 * Math.max(1, wrapped.length) + 4;
+  }
+
+  y += 12;
+  doc.setDrawColor(230);
+  doc.line(margin, y, W - margin, y);
+  y += 18;
+  doc.setFont("helvetica", "italic");
+  doc.setFontSize(8);
+  doc.setTextColor(140);
+  const disclaimer = doc.splitTextToSize(
+    "This receipt documents a simulated transfer on the base-sim testnet. It does not constitute legal title transfer; real-world conveyancing remains subject to UK property law.",
+    W - margin * 2,
+  );
+  doc.text(disclaimer, margin, y);
+
+  doc.save(`transfer-${tr.tx_hash.slice(0, 10)}.pdf`);
+}
+
 function getGDV(p: Property): number {
   const m = p.metrics ?? {};
   const candidates = ["gdv", "estimatedGdv", "ARV", "arv", "valuation"];
