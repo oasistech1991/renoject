@@ -92,6 +92,7 @@ function HMOCompliancePage() {
   const [saveError, setSaveError] = useState<string | null>(null);
   const [viewData, setViewData] = useState<AnalysisResult | null>(null);
   const [viewMeta, setViewMeta] = useState<SavedMeta | null>(null);
+  const [lastCheckAt, setLastCheckAt] = useState<Date | null>(null);
 
   const mutation = useMutation({
     mutationFn: () => {
