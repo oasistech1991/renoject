@@ -225,6 +225,158 @@ export type Database = {
         }
         Relationships: []
       }
+      token_fractions: {
+        Row: {
+          created_at: string
+          price_per_share_pence: number
+          token_id: string
+          total_supply: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          price_per_share_pence: number
+          token_id: string
+          total_supply: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          price_per_share_pence?: number
+          token_id?: string
+          total_supply?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "token_fractions_token_id_fkey"
+            columns: ["token_id"]
+            isOneToOne: true
+            referencedRelation: "tokens"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      token_holdings: {
+        Row: {
+          created_at: string
+          holder: string
+          id: string
+          shares: number
+          token_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          holder: string
+          id?: string
+          shares: number
+          token_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          holder?: string
+          id?: string
+          shares?: number
+          token_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "token_holdings_token_id_fkey"
+            columns: ["token_id"]
+            isOneToOne: false
+            referencedRelation: "tokens"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      token_transfers: {
+        Row: {
+          amount: number
+          created_at: string
+          from_party: string | null
+          id: string
+          kind: string
+          to_party: string
+          token_id: string
+          tx_hash: string
+        }
+        Insert: {
+          amount?: number
+          created_at?: string
+          from_party?: string | null
+          id?: string
+          kind: string
+          to_party: string
+          token_id: string
+          tx_hash: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          from_party?: string | null
+          id?: string
+          kind?: string
+          to_party?: string
+          token_id?: string
+          tx_hash?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "token_transfers_token_id_fkey"
+            columns: ["token_id"]
+            isOneToOne: false
+            referencedRelation: "tokens"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tokens: {
+        Row: {
+          chain: string
+          created_at: string
+          id: string
+          metadata: Json
+          minted_at: string
+          owner_wallet: string
+          property_id: string
+          token_hash: string
+          updated_at: string
+        }
+        Insert: {
+          chain?: string
+          created_at?: string
+          id?: string
+          metadata?: Json
+          minted_at?: string
+          owner_wallet: string
+          property_id: string
+          token_hash: string
+          updated_at?: string
+        }
+        Update: {
+          chain?: string
+          created_at?: string
+          id?: string
+          metadata?: Json
+          minted_at?: string
+          owner_wallet?: string
+          property_id?: string
+          token_hash?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tokens_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           created_at: string
