@@ -835,6 +835,14 @@ function ReportView({
                 </p>
               )}
 
+              {/* Last check status — explains why updates may / may not show */}
+              <CheckStatusBanner
+                verdict={active.verdict}
+                checkedAt={checkedAt}
+                savedAt={savedAt}
+                roomCount={active.rooms.length}
+              />
+
               {active.rooms.length > 0 && (
                 <div>
                   <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
