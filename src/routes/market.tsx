@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import {
   MOCK_LISTINGS,
@@ -413,10 +413,10 @@ function DetailPanel({
         <Button onClick={onSave} variant="default">+ Save to Deals</Button>
         <Button onClick={onWatch} variant="outline">{watched ? "★ Watching" : "☆ Watch"}</Button>
         <Button asChild variant="outline">
-          <Link to="/hmo-compliance" search={{ from: row.id }}>Analyse as HMO</Link>
+          <a href={`/hmo-compliance?from=${row.id}`}>Analyse as HMO</a>
         </Button>
         <Button asChild variant="outline">
-          <Link to="/refinance" search={{ from: row.id }}>Property calculator</Link>
+          <a href={`/refinance?from=${row.id}`}>Property calculator</a>
         </Button>
         <Button onClick={onExpert} className="col-span-2 bg-gradient-to-r from-primary to-primary/70">
           £49 — Request expert deal review
