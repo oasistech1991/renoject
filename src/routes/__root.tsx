@@ -212,9 +212,6 @@ function TopNav({ onSignOut }: { onSignOut: () => void }) {
         <Link to="/" className="mr-4 text-sm font-bold tracking-wide text-foreground">
           HARTSTONE HOLDINGS
         </Link>
-        <Link to="/" className={linkBase} activeOptions={{ exact: true }} activeProps={{ className: `${linkBase} ${activeCls}` }}>
-          BTL Calculator
-        </Link>
         <Link to="/hmo-compliance" className={linkBase} activeProps={{ className: `${linkBase} ${activeCls}` }}>
           HMO Floorplan Compliance
         </Link>
