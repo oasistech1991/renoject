@@ -1,89 +1,94 @@
-## Goal
+## Market Search — new tab
 
-After running an HMO compliance check, let the user **save the result** and either:
-1. **Attach it now** to an existing saved property, or
-2. **Save it standalone** (name only) and **attach later** when the property is set up.
+A new **/market** route giving a Rightmove-style visual search experience tuned for property investors, with a paywalled "Expert Deal Review" feature.
 
-## UX
+### 1. Navigation
+- Add **Market Search** link to the top nav in `src/routes/__root.tsx` (between HMO Compliance and Renovation Calculator).
 
-### On `/hmo-compliance` (after a successful analysis)
+### 2. Data (mock for now)
+- New `src/lib/market-listings.ts` with ~60 seeded UK listings across mixed regions (Manchester, Liverpool, Sheffield, Birmingham, Leeds, NE).
+- Each listing: id, address, postcode, lat/lng, price, beds, baths, propertyType (terraced/semi/detached/flat), tenure, sqft, EPC, listingType (sale/auction/repossession), guidePrice, daysOnMarket, photos, description, agent, sourceUrl.
+- Derived investor metrics computed on the fly: gross yield (using regional avg room rent for HMO potential), estimated ROI, BMV % vs postcode median, Article 4 flag, HMO room potential (using same logic as hmo-compliance), refurb tier guess, GDV potential.
+- Designed so a future swap to a real feed (PropertyData / saved Rightmove URLs) only replaces the loader.
 
-A new "Save analysis" card appears under the results with three controls:
+### 3. Layout — Split map + list (`src/routes/market.tsx`)
 
-- **Label** — free text (defaults to address from location field, e.g. "Selly Oak B29").
-- **Attach to** — dropdown:
-  - "— Save unattached (link later) —" (default)
-  - …list of existing properties (name + source)
-- **Save** button → writes the full analysis payload (all 3 scenarios, inputs, reconfiguration suggestions, image thumbnail data URL) to a new `hmo_analyses` row.
-
-After save: toast + the card flips to "Saved ✓ — view in Properties", with a "Save another copy" link to reset.
-
-### On `/properties` (existing page)
-
-Each property row gets a small **"HMO analyses (N)"** chip. Clicking it expands an inline list showing each saved analysis (label, date, headline verdict, "View" link back to `/hmo-compliance` in read-only mode, "Detach" button).
-
-A new top-of-page section **"Unattached HMO analyses"** lists any rows where `property_id IS NULL`. Each has an **"Attach to…"** dropdown of existing properties + a **Delete** button.
-
-### Viewing a saved analysis
-
-Clicking "View" navigates to `/hmo-compliance?analysis=<id>`. The page loads the stored payload, renders the report read-only (inputs panel disabled, "Saved on <date>" banner, "Run new check" button to reset to blank form).
-
-## Schema (one new table + migration)
-
-```sql
-create table public.hmo_analyses (
-  id uuid primary key default gen_random_uuid(),
-  property_id uuid references public.properties(id) on delete set null,
-  label text not null,
-  location text,
-  inputs jsonb not null,        -- form inputs (target beds, ratios, etc.)
-  result jsonb not null,        -- full server-fn response (3 scenarios)
-  thumbnail text,               -- small data URL of the floorplan (for the list view)
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
-);
-
-grant select, insert, update, delete on public.hmo_analyses to anon, authenticated;
-grant all on public.hmo_analyses to service_role;
-
-alter table public.hmo_analyses enable row level security;
-create policy "Public can read hmo_analyses"   on public.hmo_analyses for select using (true);
-create policy "Public can insert hmo_analyses" on public.hmo_analyses for insert with check (true);
-create policy "Public can update hmo_analyses" on public.hmo_analyses for update using (true) with check (true);
-create policy "Public can delete hmo_analyses" on public.hmo_analyses for delete using (true);
-
-create index hmo_analyses_property_id_idx on public.hmo_analyses(property_id);
-
-create trigger hmo_analyses_set_updated_at
-  before update on public.hmo_analyses
-  for each row execute function public.set_updated_at();
+```text
+┌──────────────────────────────────────────────────────────────┐
+│  Filter bar (sticky):  postcode · price · beds · type · …    │
+│                        [Investor filters ▾]  [Saved searches]│
+├───────────────────────────────┬──────────────────────────────┤
+│                               │  ┌─ Card ────────────────┐   │
+│                               │  │ photo · price · beds  │   │
+│         MAP                   │  │ Yield 7.2% · BMV 12%  │   │
+│   (markers colour-coded       │  │ HMO 5 rooms · Art.4 ✓ │   │
+│    by yield / BMV)            │  │ [Save] [Analyse]      │   │
+│                               │  └───────────────────────┘   │
+│                               │   …list scrolls…             │
+├───────────────────────────────┴──────────────────────────────┤
+│  Analytics strip:  yield distribution · price vs sqft        │
+│                    BMV heatmap by postcode · deals/week      │
+└──────────────────────────────────────────────────────────────┘
 ```
 
-Policies mirror the existing `properties` table (public read/write, no auth — consistent with the soft HARTS/TAYLOR gate). `ON DELETE SET NULL` means deleting a property leaves its analyses as "unattached" rather than vapourising them.
+- Map: Google Maps JS API via the Lovable-managed Google Maps connector (browser key). Custom markers coloured by gross yield (red→green). Click marker → highlights/scrolls list card; click card → pans map.
+- List: virtualised card grid on the right, synced with map viewport ("Search this area" button when user pans).
+- Selecting a card opens a slide-over panel with full photos, description, full metric breakdown, and CTAs: **Save to deals**, **Send to HMO analysis**, **Send to Property Calculator**, **Request Expert Review** (paywalled).
 
-Storing the **thumbnail as a data URL** keeps this self-contained (no Storage bucket needed); we'll downscale to ~400px before saving so rows stay small.
+### 4. Filters (collapsible groups)
+- **Basics**: postcode/town, min–max price, min beds, property type, tenure, EPC min.
+- **HMO/BTL**: min gross yield %, min projected ROI %, min HMO rooms potential, Article 4 toggle (exclude/only).
+- **Refurb/BMV**: min BMV % vs postcode median, condition tag (turnkey/light/heavy), max £/sqft, refinance uplift potential.
+- **Auction/distressed**: listing type (sale/auction/repossession/probate), max guide price, auction date window.
+- **Saved searches**: persisted to Supabase so users can revisit.
 
-## File changes
+### 5. Analytics strip
+- Yield distribution histogram across current results.
+- BMV % heatmap by postcode (top 10 postcodes in results).
+- Price/sqft scatter with the current selection highlighted.
+- Counters: total matches, avg yield, avg BMV, # under-guide auction lots.
+- All recompute on filter change.
 
-- **New migration** — creates `hmo_analyses` with grants/policies/trigger above.
-- **`src/routes/hmo-compliance.tsx`** —
-  - Add "Save analysis" card after results.
-  - Load existing properties list via `supabase.from("properties").select("id,name,source")`.
-  - On save: downscale `imageBase64` → ~400px data URL, insert row with `inputs`, `result`, `property_id` (or null), `label`.
-  - Read `?analysis=<id>` on mount; if present, fetch the row and hydrate `mutation.data` + inputs into read-only mode.
-- **`src/routes/properties.tsx`** —
-  - Fetch counts grouped by `property_id` from `hmo_analyses`.
-  - Add "HMO analyses" chip + expandable list per row, with Detach.
-  - Add "Unattached HMO analyses" section at the top with Attach-to dropdown + Delete.
+### 6. Saved searches + watchlist
+- New Supabase tables `saved_searches` (user_id, name, filters jsonb) and `market_watchlist` (user_id, listing_id, notes). RLS scoped to `auth.uid()`.
+- "Save this search" button in the filter bar; saved searches appear in a dropdown.
+- Watchlisted listings show a star in the list and a tab "Watchlist only".
 
-## Out of scope
+### 7. Paywalled Expert Deal Review (£49 flat fee per deal)
+- New table `expert_reviews` (id, user_id, listing_snapshot jsonb, status: pending_payment/paid/in_review/delivered, stripe_session_id, expert_notes text, deliverable_url, created_at).
+- Flow:
+  1. User clicks **Request Expert Review** on a listing or saved deal.
+  2. Modal collects context (their goal, timeframe, finance status) and shows £49 fee.
+  3. Stripe Checkout (Lovable built-in Stripe payments — `enable_stripe_payments`) opens; product created via `batch_create_product`.
+  4. Webhook at `/api/public/stripe-webhook` marks review as `paid` and emails the operator (you) the full deal pack.
+  5. Operator dashboard at `/expert-inbox` (gated by an `is_expert` flag in a `user_roles` table) lets the expert post written review + Calendly link → status `delivered`.
+  6. User sees the review on a `/expert-reviews/:id` page.
+- Until payment, only a teaser is shown ("Independent expert will assess deal viability, exit options, red flags — typically within 48h").
 
-- No changes to `analyseFloorplan` server fn or the scenario logic.
-- No edge functions, no Storage bucket (thumbnail goes inline).
-- No multi-user ownership — same public-access posture as `properties` today.
+### 8. Send-to-existing-tools integrations
+- "Analyse as HMO" → prefills `/hmo-compliance` with address + room count guess via query params.
+- "Run Property Calculator" → prefills `/refinance` with price, rent estimate, postcode.
+- "Save as deal" → existing `properties` table insert, with `source: 'market-search'`.
 
-## Open questions (optional — say "go" to take the defaults)
+### 9. Technical notes
+- Route: `src/routes/market.tsx` (TanStack file route, SSR on — public-friendly).
+- Listings loaded via `createServerFn` `searchListings` (filters in input validator). For now reads from mock; swap-point documented.
+- Google Maps: use `VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_BROWSER_KEY` (will prompt to link the Google Maps connector during build).
+- Charts: existing Recharts (already in deps via shadcn `chart`).
+- Stripe: `enable_stripe_payments` tool call during build (will require Pro plan confirmation). Webhook under `src/routes/api/public/stripe-webhook.ts`.
+- Auth: existing session unlock (`hh_unlocked`) gates the page; expert inbox additionally checks a server-validated role.
 
-1. **Multiple analyses per property** — assumed yes (history). Want me to cap at 1 most-recent instead?
-2. **Auto-name the label** from the location field, or always make the user type it?
-3. **Detach behaviour** — soft detach (sets `property_id = null`, keeps the row as "unattached") or delete outright?
+### 10. Build order
+1. Migrations: `saved_searches`, `market_watchlist`, `expert_reviews`, `user_roles` (+ `has_role` fn).
+2. Mock data + filter/metrics lib.
+3. Market route shell with filter bar, list, analytics strip (no map yet).
+4. Add Google Maps connector + map pane with synced markers.
+5. Slide-over detail panel + send-to-tools integrations.
+6. Saved searches + watchlist UI.
+7. Enable Stripe + expert review checkout + webhook + inbox + delivery pages.
+8. Nav link, polish, mobile responsiveness.
+
+### Open items needing your confirmation before build
+- **Google Maps connector**: I'll prompt to link it (managed key, no setup on your side for *.lovable.app — needed only).
+- **Stripe payments**: needs Pro plan; £49 default — confirm price.
+- **Expert account**: who's the expert (your own email)? I'll seed the `is_expert` role for one user.
