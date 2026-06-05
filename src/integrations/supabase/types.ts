@@ -377,6 +377,57 @@ export type Database = {
           },
         ]
       }
+      tradesmen: {
+        Row: {
+          area_covered: string | null
+          call_out_fee: number | null
+          company: string | null
+          created_at: string
+          created_by: string | null
+          day_rate: number | null
+          email: string | null
+          id: string
+          lead_time_days: number | null
+          name: string
+          notes: string | null
+          phone: string | null
+          specialities: string[]
+          updated_at: string
+        }
+        Insert: {
+          area_covered?: string | null
+          call_out_fee?: number | null
+          company?: string | null
+          created_at?: string
+          created_by?: string | null
+          day_rate?: number | null
+          email?: string | null
+          id?: string
+          lead_time_days?: number | null
+          name: string
+          notes?: string | null
+          phone?: string | null
+          specialities?: string[]
+          updated_at?: string
+        }
+        Update: {
+          area_covered?: string | null
+          call_out_fee?: number | null
+          company?: string | null
+          created_at?: string
+          created_by?: string | null
+          day_rate?: number | null
+          email?: string | null
+          id?: string
+          lead_time_days?: number | null
+          name?: string
+          notes?: string | null
+          phone?: string | null
+          specialities?: string[]
+          updated_at?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string
