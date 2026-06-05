@@ -235,10 +235,15 @@ function TokenizePage() {
                     <th className="px-3 py-2 text-left font-medium">To</th>
                     <th className="px-3 py-2 text-right font-medium">Amount</th>
                     <th className="px-3 py-2 text-right font-medium">When</th>
+                    <th className="px-3 py-2 text-right font-medium">Receipt</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {transfers.map((tr) => (
+                  {transfers.map((tr) => {
+                    const tok = tokens.find((t) => t.id === tr.token_id);
+                    const prop = tok ? properties.find((p) => p.id === tok.property_id) : undefined;
+                    const fract = fractByToken.get(tr.token_id);
+                    return (
                     <tr key={tr.id} className="border-t border-border">
                       <td className="px-3 py-2 font-mono text-primary">{shortHash(tr.tx_hash)}</td>
                       <td className="px-3 py-2"><Badge variant="outline" className="capitalize">{tr.kind}</Badge></td>
@@ -246,8 +251,19 @@ function TokenizePage() {
                       <td className="px-3 py-2 font-mono">{shortHash(tr.to_party)}</td>
                       <td className="px-3 py-2 text-right">{tr.amount.toLocaleString()}</td>
                       <td className="px-3 py-2 text-right text-muted-foreground">{new Date(tr.created_at).toLocaleString("en-GB")}</td>
+                      <td className="px-3 py-2 text-right">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-7 px-2 text-xs"
+                          onClick={() => downloadTransferReceipt(tr, { propertyName: prop?.name, tokenHash: tok?.token_hash, pricePerSharePence: fract?.price_per_share_pence })}
+                        >
+                          PDF
+                        </Button>
+                      </td>
                     </tr>
-                  ))}
+                    );
+                  })}
                 </tbody>
               </table>
             )}
