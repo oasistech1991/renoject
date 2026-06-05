@@ -338,14 +338,16 @@ function HMOCompliancePage() {
               </p>
             </div>
           </div>
-          {viewMeta && (
-            <Button size="sm" variant="outline" onClick={resetForNew}>
-              Run new check
+          <div className="flex items-center gap-2">
+            {viewMeta && (
+              <Button size="sm" variant="outline" onClick={resetForNew}>
+                Run new check
+              </Button>
+            )}
+            <Button size="sm" variant="outline" onClick={openPrompt}>
+              View system prompt
             </Button>
-          )}
-          <Button size="sm" variant="outline" onClick={openPrompt}>
-            View system prompt
-          </Button>
+          </div>
         </div>
       </header>
 
