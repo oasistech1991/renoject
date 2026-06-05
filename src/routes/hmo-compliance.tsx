@@ -868,6 +868,23 @@ function ReportView({
                 </div>
               )}
 
+              {active.rooms.length > 0 && (
+                <div>
+                  <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    Updated floorplan with dimensions
+                  </h4>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Scale diagram of the {scenarioMeta.find((m) => m.key === activeScenario)?.label.toLowerCase()} layout — each room sized to its sqm. Dimensions in metres.
+                  </p>
+                  <div className="mt-2 rounded-md border border-border bg-muted/10 p-3">
+                    <UpdatedFloorplan
+                      rooms={active.rooms}
+                      totalAreaSqm={data.capacity?.totalFloorAreaSqm}
+                    />
+                  </div>
+                </div>
+              )}
+
               {active.reconfiguration.length > 0 && (
                 <div>
                   <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
