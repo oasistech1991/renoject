@@ -3,7 +3,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useMutation } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
 import { analyseFloorplan } from "@/lib/hmo.functions";
-import { getHmoSystemPrompt } from "@/lib/hmo.functions";
+import { getHmoSystemPrompt, generateUpdatedFloorplan } from "@/lib/hmo.functions";
 import { Button } from "@/components/ui/button";
 import { NumberField } from "@/components/btl/NumberField";
 import { supabase } from "@/integrations/supabase/client";
@@ -650,7 +650,7 @@ function HMOCompliancePage() {
 
             {displayData && (
               <>
-                <ReportView data={displayData} proposed={targetBedrooms} checkedAt={lastCheckAt} savedAt={viewMeta?.createdAt} />
+                <ReportView data={displayData} proposed={targetBedrooms} checkedAt={lastCheckAt} savedAt={viewMeta?.createdAt} originalImageBase64={imageBase64} />
                 {mutation.data && !viewMeta && (
                   <div className="mt-6 rounded-xl border border-border bg-muted/20 p-5">
                     {savedMeta ? (
