@@ -1102,6 +1102,15 @@ function ReportView({
                         alt={`AI-generated ${activeScenario} floorplan`}
                         className="mx-auto h-auto w-full max-w-2xl rounded"
                       />
+                    ) : generatingScenario === activeScenario ? (
+                      <div className="flex flex-col items-center gap-3 py-8 text-xs text-muted-foreground">
+                        <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+                        <p>Drawing AI floorplan… this can take 20–40 seconds.</p>
+                        <UpdatedFloorplan
+                          rooms={active.rooms}
+                          totalAreaSqm={data.capacity?.totalFloorAreaSqm}
+                        />
+                      </div>
                     ) : (
                       <UpdatedFloorplan
                         rooms={active.rooms}
