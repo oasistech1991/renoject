@@ -998,17 +998,75 @@ function ReportView({
 
               {active.rooms.length > 0 && (
                 <div>
-                  <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                    Updated floorplan with dimensions
-                  </h4>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    Scale diagram of the {scenarioMeta.find((m) => m.key === activeScenario)?.label.toLowerCase()} layout — each room sized to its sqm. Dimensions in metres.
-                  </p>
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                        Updated floorplan with dimensions
+                      </h4>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        Scale diagram of the {scenarioMeta.find((m) => m.key === activeScenario)?.label.toLowerCase()} layout — each room sized to its sqm. Dimensions in metres.
+                      </p>
+                    </div>
+                    {originalImageBase64 && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={generatingScenario !== null}
+                        onClick={async () => {
+                          setGenError(null);
+                          setGeneratingScenario(activeScenario);
+                          try {
+                            const label = scenarioMeta.find((m) => m.key === activeScenario)?.label ?? activeScenario;
+                            const res = await generateFloorplan({
+                              data: {
+                                imageBase64: originalImageBase64,
+                                scenarioLabel: label,
+                                rooms: active.rooms.map((r) => ({
+                                  label: r.label,
+                                  estimatedSqm: r.estimatedSqm,
+                                })),
+                                totalFloorAreaSqm: data.capacity?.totalFloorAreaSqm,
+                                reconfiguration: active.reconfiguration.map((r) => ({
+                                  change: r.change,
+                                  complexity: r.complexity,
+                                })),
+                              },
+                            });
+                            setGeneratedFloorplans((prev) => ({
+                              ...prev,
+                              [activeScenario]: res.imageBase64,
+                            }));
+                          } catch (e: any) {
+                            setGenError(e?.message ?? "Failed to generate floorplan");
+                          } finally {
+                            setGeneratingScenario(null);
+                          }
+                        }}
+                      >
+                        {generatingScenario === activeScenario
+                          ? "Drawing…"
+                          : generatedFloorplans[activeScenario]
+                            ? "Regenerate AI floorplan"
+                            : "Generate AI floorplan"}
+                      </Button>
+                    )}
+                  </div>
+                  {genError && (
+                    <p className="mt-2 text-xs text-destructive">{genError}</p>
+                  )}
                   <div className="mt-2 rounded-md border border-border bg-muted/10 p-3">
-                    <UpdatedFloorplan
-                      rooms={active.rooms}
-                      totalAreaSqm={data.capacity?.totalFloorAreaSqm}
-                    />
+                    {generatedFloorplans[activeScenario] ? (
+                      <img
+                        src={generatedFloorplans[activeScenario]!}
+                        alt={`AI-generated ${activeScenario} floorplan`}
+                        className="mx-auto h-auto w-full max-w-2xl rounded"
+                      />
+                    ) : (
+                      <UpdatedFloorplan
+                        rooms={active.rooms}
+                        totalAreaSqm={data.capacity?.totalFloorAreaSqm}
+                      />
+                    )}
                   </div>
                 </div>
               )}
