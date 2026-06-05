@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as TradesmenRouteImport } from './routes/tradesmen'
 import { Route as TokenizeRouteImport } from './routes/tokenize'
 import { Route as RefinanceRouteImport } from './routes/refinance'
 import { Route as PropertiesRouteImport } from './routes/properties'
@@ -18,6 +19,11 @@ import { Route as ForecastRouteImport } from './routes/forecast'
 import { Route as ConditionRouteImport } from './routes/condition'
 import { Route as IndexRouteImport } from './routes/index'
 
+const TradesmenRoute = TradesmenRouteImport.update({
+  id: '/tradesmen',
+  path: '/tradesmen',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const TokenizeRoute = TokenizeRouteImport.update({
   id: '/tokenize',
   path: '/tokenize',
@@ -68,6 +74,7 @@ export interface FileRoutesByFullPath {
   '/properties': typeof PropertiesRoute
   '/refinance': typeof RefinanceRoute
   '/tokenize': typeof TokenizeRoute
+  '/tradesmen': typeof TradesmenRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -78,6 +85,7 @@ export interface FileRoutesByTo {
   '/properties': typeof PropertiesRoute
   '/refinance': typeof RefinanceRoute
   '/tokenize': typeof TokenizeRoute
+  '/tradesmen': typeof TradesmenRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -89,6 +97,7 @@ export interface FileRoutesById {
   '/properties': typeof PropertiesRoute
   '/refinance': typeof RefinanceRoute
   '/tokenize': typeof TokenizeRoute
+  '/tradesmen': typeof TradesmenRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -101,6 +110,7 @@ export interface FileRouteTypes {
     | '/properties'
     | '/refinance'
     | '/tokenize'
+    | '/tradesmen'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -111,6 +121,7 @@ export interface FileRouteTypes {
     | '/properties'
     | '/refinance'
     | '/tokenize'
+    | '/tradesmen'
   id:
     | '__root__'
     | '/'
@@ -121,6 +132,7 @@ export interface FileRouteTypes {
     | '/properties'
     | '/refinance'
     | '/tokenize'
+    | '/tradesmen'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -132,10 +144,18 @@ export interface RootRouteChildren {
   PropertiesRoute: typeof PropertiesRoute
   RefinanceRoute: typeof RefinanceRoute
   TokenizeRoute: typeof TokenizeRoute
+  TradesmenRoute: typeof TradesmenRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/tradesmen': {
+      id: '/tradesmen'
+      path: '/tradesmen'
+      fullPath: '/tradesmen'
+      preLoaderRoute: typeof TradesmenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/tokenize': {
       id: '/tokenize'
       path: '/tokenize'
@@ -204,7 +224,18 @@ const rootRouteChildren: RootRouteChildren = {
   PropertiesRoute: PropertiesRoute,
   RefinanceRoute: RefinanceRoute,
   TokenizeRoute: TokenizeRoute,
+  TradesmenRoute: TradesmenRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
