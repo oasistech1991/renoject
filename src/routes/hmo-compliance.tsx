@@ -168,6 +168,13 @@ function HMOCompliancePage() {
     })();
   }, []);
 
+  // Track last check timestamp for status banner
+  useEffect(() => {
+    if (mutation.isSuccess || mutation.isError) {
+      setLastCheckAt(new Date());
+    }
+  }, [mutation.isSuccess, mutation.isError]);
+
   const onFile = async (f: File | null) => {
     if (!f) return;
     setConvertError(null);
