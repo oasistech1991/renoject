@@ -53,6 +53,95 @@ export const getHmoSystemPrompt = createServerFn({ method: "GET" }).handler(asyn
   return { prompt: HMO_SYSTEM_PROMPT, model: "google/gemini-2.5-flash" };
 });
 
+export const generateUpdatedFloorplan = createServerFn({ method: "POST" })
+  .inputValidator(
+    (input: {
+      imageBase64: string;
+      scenarioLabel: string;
+      rooms: { label: string; estimatedSqm: number }[];
+      totalFloorAreaSqm?: number;
+      reconfiguration: { change: string; complexity: string }[];
+    }) => {
+      if (!input.imageBase64?.startsWith("data:image/")) {
+        throw new Error("Invalid image data");
+      }
+      if (!input.scenarioLabel) throw new Error("scenarioLabel required");
+      if (!Array.isArray(input.rooms) || input.rooms.length === 0) {
+        throw new Error("rooms required");
+      }
+      return input;
+    },
+  )
+  .handler(async ({ data }): Promise<{ imageBase64: string }> => {
+    const apiKey = process.env.LOVABLE_API_KEY;
+    if (!apiKey) throw new Error("LOVABLE_API_KEY not configured");
+
+    const roomLines = data.rooms
+      .map((r, i) => `  ${i + 1}. ${r.label} — ${r.estimatedSqm.toFixed(1)} m²`)
+      .join("\n");
+    const reconfigLines = data.reconfiguration.length
+      ? data.reconfiguration
+          .map((r, i) => `  ${i + 1}. (${r.complexity}) ${r.change}`)
+          .join("\n")
+      : "  (no structural changes)";
+
+    const prompt = `Redraw the supplied UK floorplan as a clean top-down 2D architectural schematic showing the "${data.scenarioLabel}" HMO layout.
+
+Rules:
+- Preserve the building's external outline, footprint orientation, staircase position, and window/door positions from the original floorplan.
+- Apply these reconfiguration steps to the internal walls:
+${reconfigLines}
+- Lay out the following rooms inside the footprint, labelled exactly as listed with their sqm shown underneath the label:
+${roomLines}
+${data.totalFloorAreaSqm ? `- Total internal floor area: ${data.totalFloorAreaSqm.toFixed(1)} m².` : ""}
+- Style: black walls on white background, thin black lines, sans-serif labels, no shading, no furniture icons, no photorealism. Pure schematic.
+- Include short metre dimensions on the outer walls.
+- Output a single image only.`;
+
+    const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "google/gemini-2.5-flash-image",
+        modalities: ["image", "text"],
+        messages: [
+          {
+            role: "user",
+            content: [
+              { type: "text", text: prompt },
+              { type: "image_url", image_url: { url: data.imageBase64 } },
+            ],
+          },
+        ],
+      }),
+    });
+
+    if (!res.ok) {
+      const body = await res.text();
+      if (res.status === 429) throw new Error("Rate limit reached. Please try again in a moment.");
+      if (res.status === 402) throw new Error("AI credits exhausted. Please top up Lovable AI usage.");
+      throw new Error(`Image generation failed (${res.status}): ${body.slice(0, 200)}`);
+    }
+
+    const json = (await res.json()) as {
+      choices?: {
+        message?: {
+          content?: string;
+          images?: { image_url?: { url?: string }; type?: string }[];
+        };
+      }[];
+    };
+    const msg = json.choices?.[0]?.message;
+    const url = msg?.images?.[0]?.image_url?.url;
+    if (!url || !url.startsWith("data:image/")) {
+      throw new Error("Model did not return an image.");
+    }
+    return { imageBase64: url };
+  });
+
 export interface RoomAssessment {
   label: string;
   estimatedSqm: number;
