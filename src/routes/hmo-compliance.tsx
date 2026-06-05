@@ -868,6 +868,23 @@ function ReportView({
                 </div>
               )}
 
+              {active.rooms.length > 0 && (
+                <div>
+                  <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    Updated floorplan with dimensions
+                  </h4>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Scale diagram of the {scenarioMeta.find((m) => m.key === activeScenario)?.label.toLowerCase()} layout — each room sized to its sqm. Dimensions in metres.
+                  </p>
+                  <div className="mt-2 rounded-md border border-border bg-muted/10 p-3">
+                    <UpdatedFloorplan
+                      rooms={active.rooms}
+                      totalAreaSqm={data.capacity?.totalFloorAreaSqm}
+                    />
+                  </div>
+                </div>
+              )}
+
               {active.reconfiguration.length > 0 && (
                 <div>
                   <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
@@ -1148,5 +1165,201 @@ function ComplexityBadge({
     >
       {complexity}
     </span>
+  );
+}
+
+function UpdatedFloorplan({
+  rooms,
+  totalAreaSqm,
+}: {
+  rooms: { label: string; estimatedSqm: number; compliant: boolean }[];
+  totalAreaSqm?: number;
+}) {
+  // Approximate building footprint aspect ratio ~ 1.4:1 (typical UK terrace).
+  // We pack bedroom rectangles + a single "Shared (kitchen/bath/circ)" rectangle
+  // into a footprint scaled to match the property's true sqm where known.
+  const bedroomSqmTotal = rooms.reduce((s, r) => s + r.estimatedSqm, 0);
+  const sharedSqm = Math.max(
+    0,
+    (totalAreaSqm ?? bedroomSqmTotal * 1.6) - bedroomSqmTotal,
+  );
+  const total = bedroomSqmTotal + sharedSqm;
+  // Footprint dimensions in metres (visual only)
+  const ratio = 1.45;
+  const footprintH = Math.sqrt(total / ratio);
+  const footprintW = footprintH * ratio;
+
+  // Simple shelf-packer: split into rows, fit rooms left-to-right until row
+  // width exceeds footprint, then start new row. Each room's width in the row
+  // is proportional to its sqm so heights stay uniform per row.
+  type Tile = {
+    label: string;
+    sqm: number;
+    w: number;
+    h: number;
+    x: number;
+    y: number;
+    tone: "ok" | "fail" | "shared";
+  };
+  const items: { label: string; sqm: number; tone: Tile["tone"] }[] = [
+    ...rooms.map((r) => ({
+      label: r.label,
+      sqm: r.estimatedSqm,
+      tone: (r.compliant ? "ok" : "fail") as Tile["tone"],
+    })),
+  ];
+  if (sharedSqm > 0.5) {
+    items.push({
+      label: "Shared (kitchen / bath / circulation)",
+      sqm: sharedSqm,
+      tone: "shared",
+    });
+  }
+
+  // Greedy row packing: aim for ~2-3 rooms per row depending on count
+  const perRow = Math.max(1, Math.min(3, Math.ceil(Math.sqrt(items.length))));
+  const rows: { label: string; sqm: number; tone: Tile["tone"] }[][] = [];
+  for (let i = 0; i < items.length; i += perRow) {
+    rows.push(items.slice(i, i + perRow));
+  }
+
+  const rowAreas = rows.map((row) => row.reduce((s, r) => s + r.sqm, 0));
+  const totalArea = rowAreas.reduce((s, a) => s + a, 0);
+
+  const tiles: Tile[] = [];
+  let cursorY = 0;
+  rows.forEach((row, ri) => {
+    const rowAreaShare = rowAreas[ri] / totalArea;
+    const rowH = footprintH * rowAreaShare;
+    const rowSqm = rowAreas[ri];
+    let cursorX = 0;
+    row.forEach((it) => {
+      const w = footprintW * (it.sqm / rowSqm);
+      const h = rowH;
+      tiles.push({
+        label: it.label,
+        sqm: it.sqm,
+        w,
+        h,
+        x: cursorX,
+        y: cursorY,
+        tone: it.tone,
+      });
+      cursorX += w;
+    });
+    cursorY += rowH;
+  });
+
+  // SVG viewbox: 1m = 40 units, plus margin for dimension arrows
+  const SCALE = 40;
+  const PAD = 36;
+  const vbW = footprintW * SCALE + PAD * 2;
+  const vbH = footprintH * SCALE + PAD * 2;
+
+  const toneFill = (t: Tile["tone"]) =>
+    t === "ok"
+      ? "hsl(var(--primary) / 0.10)"
+      : t === "fail"
+        ? "hsl(0 84% 60% / 0.12)"
+        : "hsl(var(--muted-foreground) / 0.10)";
+  const toneStroke = (t: Tile["tone"]) =>
+    t === "ok"
+      ? "hsl(var(--primary))"
+      : t === "fail"
+        ? "hsl(0 84% 60%)"
+        : "hsl(var(--muted-foreground))";
+
+  return (
+    <svg
+      viewBox={`0 0 ${vbW} ${vbH}`}
+      className="h-auto w-full"
+      style={{ maxHeight: 520 }}
+      role="img"
+      aria-label="Updated floorplan with room dimensions"
+    >
+      {/* Footprint outline */}
+      <rect
+        x={PAD}
+        y={PAD}
+        width={footprintW * SCALE}
+        height={footprintH * SCALE}
+        fill="hsl(var(--background))"
+        stroke="hsl(var(--foreground))"
+        strokeWidth={2}
+      />
+
+      {/* Overall dimension labels */}
+      <text
+        x={PAD + (footprintW * SCALE) / 2}
+        y={PAD - 12}
+        textAnchor="middle"
+        fontSize={12}
+        fill="hsl(var(--foreground))"
+        fontWeight={600}
+      >
+        {footprintW.toFixed(1)} m
+      </text>
+      <text
+        x={PAD - 12}
+        y={PAD + (footprintH * SCALE) / 2}
+        textAnchor="middle"
+        fontSize={12}
+        fill="hsl(var(--foreground))"
+        fontWeight={600}
+        transform={`rotate(-90 ${PAD - 12} ${PAD + (footprintH * SCALE) / 2})`}
+      >
+        {footprintH.toFixed(1)} m
+      </text>
+
+      {/* Room tiles */}
+      {tiles.map((t, i) => {
+        const x = PAD + t.x * SCALE;
+        const y = PAD + t.y * SCALE;
+        const w = t.w * SCALE;
+        const h = t.h * SCALE;
+        const cx = x + w / 2;
+        const cy = y + h / 2;
+        // Approx side lengths from sqm assuming room aspect ~1.25
+        const roomH = Math.sqrt(t.sqm / 1.25);
+        const roomW = roomH * 1.25;
+        const minSide = Math.min(w, h);
+        return (
+          <g key={i}>
+            <rect
+              x={x + 1}
+              y={y + 1}
+              width={Math.max(0, w - 2)}
+              height={Math.max(0, h - 2)}
+              fill={toneFill(t.tone)}
+              stroke={toneStroke(t.tone)}
+              strokeWidth={1.25}
+            />
+            {minSide > 38 && (
+              <>
+                <text
+                  x={cx}
+                  y={cy - 8}
+                  textAnchor="middle"
+                  fontSize={Math.min(13, minSide / 5)}
+                  fontWeight={600}
+                  fill="hsl(var(--foreground))"
+                >
+                  {t.label}
+                </text>
+                <text
+                  x={cx}
+                  y={cy + 8}
+                  textAnchor="middle"
+                  fontSize={Math.min(11, minSide / 6)}
+                  fill="hsl(var(--muted-foreground))"
+                >
+                  {t.sqm.toFixed(1)} m² · {roomW.toFixed(1)} × {roomH.toFixed(1)} m
+                </text>
+              </>
+            )}
+          </g>
+        );
+      })}
+    </svg>
   );
 }
