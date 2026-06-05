@@ -3,6 +3,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useMutation } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
 import { analyseFloorplan } from "@/lib/hmo.functions";
+import { getHmoSystemPrompt } from "@/lib/hmo.functions";
 import { Button } from "@/components/ui/button";
 import { NumberField } from "@/components/btl/NumberField";
 import { supabase } from "@/integrations/supabase/client";
@@ -12,6 +13,13 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 
 export const Route = createFileRoute("/hmo-compliance")({
   head: () => ({
@@ -62,7 +70,28 @@ async function downscaleDataUrl(dataUrl: string, maxDim = 400): Promise<string> 
 
 function HMOCompliancePage() {
   const analyse = useServerFn(analyseFloorplan);
+  const fetchPrompt = useServerFn(getHmoSystemPrompt);
   const fileRef = useRef<HTMLInputElement>(null);
+
+  const [promptOpen, setPromptOpen] = useState(false);
+  const [promptText, setPromptText] = useState<string | null>(null);
+  const [promptModel, setPromptModel] = useState<string>("");
+  const [promptLoading, setPromptLoading] = useState(false);
+
+  const openPrompt = async () => {
+    setPromptOpen(true);
+    if (promptText) return;
+    setPromptLoading(true);
+    try {
+      const res = await fetchPrompt();
+      setPromptText(res.prompt);
+      setPromptModel(res.model);
+    } catch (e: any) {
+      setPromptText(`Failed to load prompt: ${e?.message ?? "unknown error"}`);
+    } finally {
+      setPromptLoading(false);
+    }
+  };
 
   const [imageBase64, setImageBase64] = useState<string | null>(null);
   const [fileName, setFileName] = useState<string>("");
@@ -314,8 +343,31 @@ function HMOCompliancePage() {
               Run new check
             </Button>
           )}
+          <Button size="sm" variant="outline" onClick={openPrompt}>
+            View system prompt
+          </Button>
         </div>
       </header>
+
+      <Dialog open={promptOpen} onOpenChange={setPromptOpen}>
+        <DialogContent className="max-w-3xl max-h-[80vh] overflow-hidden flex flex-col">
+          <DialogHeader>
+            <DialogTitle>HMO floorplan system prompt</DialogTitle>
+            <DialogDescription>
+              The exact rules sent to {promptModel || "the AI model"} for every floorplan analysis.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="overflow-auto rounded-md border border-border bg-muted/30 p-4">
+            {promptLoading ? (
+              <p className="text-sm text-muted-foreground">Loading…</p>
+            ) : (
+              <pre className="whitespace-pre-wrap text-xs leading-relaxed font-mono">
+                {promptText}
+              </pre>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <main className="mx-auto max-w-7xl px-6 py-8">
         {viewMeta && (
