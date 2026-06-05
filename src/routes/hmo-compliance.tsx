@@ -673,6 +673,45 @@ function HMOCompliancePage() {
   );
 }
 
+function CheckStatusBanner({
+  verdict,
+  checkedAt,
+  savedAt,
+  roomCount,
+}: {
+  verdict: "PASS" | "REVIEW" | "FAIL";
+  checkedAt: Date | null;
+  savedAt?: string;
+  roomCount: number;
+}) {
+  const timeText = savedAt
+    ? `Saved analysis · ${new Date(savedAt).toLocaleString()}`
+    : checkedAt
+      ? `Checked ${checkedAt.toLocaleString()}`
+      : "Just now";
+
+  const tone =
+    verdict === "PASS"
+      ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
+      : verdict === "REVIEW"
+        ? "border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-300"
+        : "border-destructive/30 bg-destructive/10 text-destructive";
+
+  return (
+    <div className={`rounded-md border px-3 py-2 text-xs ${tone}`}>
+      <div className="flex items-center justify-between gap-3">
+        <span className="font-semibold uppercase tracking-wide">{verdict}</span>
+        <span className="text-muted-foreground">{timeText}</span>
+      </div>
+      {roomCount === 0 && (
+        <p className="mt-1">
+          No rooms in this scenario — the floorplan and layout table won't appear. Try switching scenario or re-running the check.
+        </p>
+      )}
+    </div>
+  );
+}
+
 function ReportView({
   data,
   proposed,
