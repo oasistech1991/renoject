@@ -16,7 +16,10 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Mail, Phone, MapPin, Briefcase, Clock, PoundSterling, Pencil, Trash2, Plus, Search } from "lucide-react";
+import { Mail, Phone, MapPin, Briefcase, Clock, PoundSterling, Pencil, Trash2, Plus, Search, Sparkles, ShieldCheck, ShieldAlert, ShieldX, ExternalLink, Loader2, Check, X, Star } from "lucide-react";
+import { useServerFn } from "@tanstack/react-start";
+import { searchTradesmen, approveCandidate, dismissCandidate } from "@/lib/tradesmen-scrape.functions";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 
 export const Route = createFileRoute("/tradesmen")({
   head: () => ({
@@ -77,6 +80,7 @@ function TradesmenPage() {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Tradesman | null>(null);
   const [profile, setProfile] = useState<Tradesman | null>(null);
+  const [findOpen, setFindOpen] = useState(false);
 
   const load = async () => {
     setLoading(true);
@@ -135,18 +139,29 @@ function TradesmenPage() {
               Shared directory of trusted contacts, specialities and rates.
             </p>
           </div>
-          <Button
-            onClick={() => {
-              setEditing(null);
-              setOpen(true);
-            }}
-          >
-            <Plus className="mr-2 h-4 w-4" /> Add tradesman
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => setFindOpen(true)}>
+              <Sparkles className="mr-2 h-4 w-4" /> Find tradesmen
+            </Button>
+            <Button
+              onClick={() => {
+                setEditing(null);
+                setOpen(true);
+              }}
+            >
+              <Plus className="mr-2 h-4 w-4" /> Add tradesman
+            </Button>
+          </div>
         </div>
       </header>
 
       <main className="mx-auto max-w-7xl px-6 py-6">
+        <Tabs defaultValue="directory" className="w-full">
+          <TabsList className="mb-4">
+            <TabsTrigger value="directory">Directory</TabsTrigger>
+            <TabsTrigger value="queue">Review queue</TabsTrigger>
+          </TabsList>
+          <TabsContent value="directory">
         <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center">
           <div className="relative flex-1">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -226,6 +241,11 @@ function TradesmenPage() {
             ))}
           </div>
         )}
+          </TabsContent>
+          <TabsContent value="queue">
+            <ReviewQueue onApproved={() => void load()} />
+          </TabsContent>
+        </Tabs>
       </main>
 
       {/* Profile dialog */}
@@ -317,6 +337,8 @@ function TradesmenPage() {
           void load();
         }}
       />
+
+      <FindTradesmenDialog open={findOpen} onOpenChange={setFindOpen} />
     </div>
   );
 }
