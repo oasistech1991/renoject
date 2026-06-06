@@ -361,6 +361,7 @@ function TradesmanForm({
 }) {
   const [form, setForm] = useState<FormState>(emptyForm);
   const [saving, setSaving] = useState(false);
+  const saveFn = useServerFn(saveTradesman);
 
   useEffect(() => {
     if (editing) {
@@ -407,14 +408,15 @@ function TradesmanForm({
       notes: form.notes.trim() || null,
     };
 
-    const { error } = editing
-      ? await supabase.from("tradesmen").update(payload).eq("id", editing.id)
-      : await supabase.from("tradesmen").insert(payload);
-
-    setSaving(false);
-    if (error) return toast.error(error.message);
-    toast.success(editing ? "Updated" : "Added");
-    onSaved();
+    try {
+      await saveFn({ data: { id: editing?.id ?? null, payload } });
+      toast.success(editing ? "Updated" : "Added");
+      onSaved();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Save failed");
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
