@@ -18,7 +18,7 @@ import {
 import { toast } from "sonner";
 import { Mail, Phone, MapPin, Briefcase, Clock, PoundSterling, Pencil, Trash2, Plus, Search, Sparkles, ShieldCheck, ShieldAlert, ShieldX, ExternalLink, Loader2, Check, X, Star, Building2, Users } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
-import { searchTradesmen, approveCandidate, dismissCandidate, resetReviewQueue } from "@/lib/tradesmen-scrape.functions";
+import { searchTradesmen, approveCandidate, dismissCandidate, resetReviewQueue, listCandidates } from "@/lib/tradesmen-scrape.functions";
 import { runBackgroundCheck } from "@/lib/tradesmen-background.functions";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -563,17 +563,18 @@ function ReviewQueue({ onApproved }: { onApproved: () => void }) {
   const dismissFn = useServerFn(dismissCandidate);
   const resetFn = useServerFn(resetReviewQueue);
   const backgroundFn = useServerFn(runBackgroundCheck);
+  const listFn = useServerFn(listCandidates);
 
   const load = async () => {
     setLoading(true);
-    const { data, error } = await supabase
-      .from("tradesmen_candidates")
-      .select("*")
-      .eq("status", "pending")
-      .order("score", { ascending: false, nullsFirst: false });
-    if (error) toast.error(error.message);
-    else setItems((data ?? []) as unknown as Candidate[]);
-    setLoading(false);
+    try {
+      const r = await listFn();
+      setItems((r.items ?? []) as unknown as Candidate[]);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to load queue");
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
