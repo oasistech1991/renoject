@@ -1,0 +1,1 @@
+ALTER TABLE public.tradesmen_candidates ADD COLUMN IF NOT EXISTS review_breakdown jsonb;

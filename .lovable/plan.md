@@ -1,74 +1,42 @@
-## Goal
+## 1. Reset button on Review queue
 
-On `/tradesmen`, add a "Find tradesmen" flow: enter a town/city + trade, scrape Google Maps + review/social sources, run an AI "sense check" that flags complaints or bad reviews, then queue results for you to approve before they join the shared directory.
+Add a **"Reset queue"** button next to the existing flagged-toggle in `ReviewQueue` (src/routes/tradesmen.tsx). It opens a confirm dialog and then bulk-updates every `pending` candidate to `status = 'dismissed'`, so the queue is empty but historical rows remain auditable. After success it reloads the list and toasts "Queue cleared".
 
-## User flow
+## 2. Fix Middlesbrough (and all) review counts
 
-1. On `/tradesmen`, click **Find tradesmen**.
-2. Enter **Town/city** and **Trade** (e.g. "Manchester" + "Electrician"). Optional radius.
-3. App scrapes sources in parallel, dedupes by name + phone, ranks by rating × review count × social presence.
-4. Each candidate runs a **sense check** — AI scans recent reviews and social mentions for complaints, 1–2★ reviews, scam flags, unresolved disputes.
-5. Results land in a **Review queue** with a status badge:
-   - Clean — no issues found
-   - Mixed — some negatives, summary shown
-   - Flagged — recurring complaints, hidden by default
-6. You click **Approve** to save into the shared `tradesmen` directory, or **Dismiss**.
+Checked the DB for `search_query ilike '%middles%'`. The Google Places counts being stored (e.g. M B Builders = 4, jdc builders = 2, BMAC = 9) are exactly what Google's Places API returns for those Place IDs. The undercount has three real causes:
 
-## Sources (in priority order)
+1. **Wrong listing matched.** The misspelled query `"builder in middlesborough"` (should be *Middlesbrough*) made Places match smaller/older profiles. We will normalise the town input server-side (trim, collapse whitespace, common misspelling map for Middlesbrough/Middlesborough) before sending it to Google Places.
+2. **Firecrawl snippets are useless for counts.** Checkatrade snippets are the Cloudflare block page, MyBuilder snippets are the generic category landing page — so `extractReviewCount` finds nothing and we never add platform totals. Fix: instead of relying on `search()` description snippets, do a targeted `scrape()` of the top Checkatrade / Trustpilot / MyBuilder / Yell result with `formats: ['markdown']`, then run `extractReviewCount` on the full page text. Cache the parsed count per platform in `sources[host].reviewCount`.
+3. **Google `userRatingCount` is authoritative for Google itself** — keep it, but display review counts as a **per-platform breakdown** (see §3) rather than a single number, so the user can see *why* a total looks low and never feels the count is wrong vs. Google.
 
-1. **Google Maps / Places API (New)** — primary. Already connected (`GOOGLE_MAPS_API_KEY` connector). Use `places:searchText` with query `"{trade} in {town}"`, fetch place details (rating, user_ratings_total, website, phone, recent reviews).
-2. **Checkatrade / MyBuilder / Rated People / Trustpilot / Yell** — via **Firecrawl** (needs connector — will request after plan approval). Search-then-scrape pattern: `firecrawl.search("{trade} {town} site:checkatrade.com")` → scrape top results for reviews + contact.
-3. **Facebook / Instagram pages** — Firecrawl scrape of public pages found via Google search; pull follower count, last-post recency as "social presence" signal. (No login-gated data.)
+We will also store the Google Maps URL (`https://www.google.com/maps/place/?q=place_id:<id>`) in `sources.google.url` so the Google badge becomes a clickable proof link, making it trivial to compare against the real Google listing.
 
-Each source contributes a partial profile; we merge by normalised name + phone.
+## 3. Review breakdown dropdown on each card
 
-## Sense check (AI)
+Replace the single `Star · rating (count)` line with a collapsible **"Reviews"** section (shadcn `Collapsible`) on each candidate card:
 
-Server fn `senseCheckTradesman` using Lovable AI (`google/gemini-3-flash-preview`):
-- Input: merged profile + concatenated review/social snippets (truncated).
-- Output (JSON): `{ verdict: "clean" | "mixed" | "flagged", complaintSummary: string, redFlags: string[], positiveSignals: string[] }`.
-- Heuristics it must apply: recurring no-show complaints, unpaid-work disputes, fake-review patterns (bursts of 5★ same day), Trustpilot score <3, ratio of 1–2★ reviews >20%.
+- **Header row** shows aggregated total: `★ 4.8 · 47 reviews across 3 sources`.
+- **Expanded** shows one row per source with:
+  - source name (clickable link to the source URL),
+  - star rating if known,
+  - review count for that source,
+  - up to 3 representative snippets (uses `reviewSnippets` already collected, grouped by host).
 
-## Ranking score
+Snippets are stored in a new JSONB column `review_breakdown` on `tradesmen_candidates` (`[{source, url, rating, count, snippets: [{text, rating, date, location}]}]`) populated by the scraping step. Backwards compatible: existing rows fall back to the old `sources` + `review_count`.
 
-`score = rating * log10(reviewCount + 1) + socialPresenceBonus - complaintPenalty`
-Sorted desc; flagged entries hidden behind a toggle.
+## 4. Sort / segment the review queue
 
-## Data model (one new table)
+Add a small toolbar above the queue grid with:
 
-`tradesmen_candidates` — pending queue, separate from the live `tradesmen` directory.
-- name, company, phone, email, area, website
-- specialities text[]
-- sources jsonb (per-source raw: google, checkatrade, facebook…)
-- rating numeric, review_count int, social_presence_score int
-- sense_check jsonb (verdict, summary, red flags)
-- score numeric
-- status: `pending` | `approved` | `dismissed`
-- search_query text, searched_at timestamptz
-- approved_tradesman_id uuid (set when promoted)
+- **Sort by** select: `Best score` (current default) · `Most reviews` · `Highest rated` · `Newest searched`.
+- **Segment** select: `All` · `By location` (groups cards under `area_covered` town/city headings) · `Latest only` (last 24h of `searched_at`).
 
-RLS: authenticated full access, mirrors `tradesmen`.
+Implemented purely client-side over the already-loaded `items` array — no schema or server changes needed for sorting/segmentation themselves.
 
-## Files
+## Technical notes
 
-- **New migration** — `tradesmen_candidates` table + GRANTs + RLS.
-- **`src/lib/tradesmen-scrape.functions.ts`** — server fns:
-  - `searchTradesmen({ town, trade, radius? })` — orchestrates Google Places + Firecrawl, merges, runs sense check, writes rows into `tradesmen_candidates` with status `pending`, returns inserted IDs.
-  - `approveCandidate({ id })` — inserts into `tradesmen`, marks candidate approved.
-  - `dismissCandidate({ id })`.
-- **`src/routes/tradesmen.tsx`** — add:
-  - "Find tradesmen" button → dialog with town/trade form.
-  - Tabs: **Directory** (existing) / **Review queue** (new) with candidate cards showing rating, review count, social presence, sense-check verdict + summary, source badges, Approve / Dismiss buttons.
-- **Connector** — request Firecrawl connection (managed) after plan approval; Google Maps already connected.
-
-## Costs / caveats (call out to user)
-
-- Each search ≈ 1 Google Places text search + ~5–15 detail calls + 3–6 Firecrawl scrapes + 1 AI sense check per candidate. Expect a few cents per search.
-- Checkatrade / MyBuilder ToS restrict scraping; we'll scrape only public listing pages and store summaries, not full review text. If you want to skip those two, say the word.
-- Social presence is a weak signal from public pages only — no login.
-
-## Out of scope (for now)
-
-- No automatic re-scrape / freshness refresh.
-- No per-project linking from HMO compliance (can add later — say the word).
-- No outreach automation (sending enquiry emails).
+- Files touched: `src/routes/tradesmen.tsx` (UI, reset, sort/segment, breakdown), `src/lib/tradesmen-scrape.functions.ts` (targeted platform scrapes, Google URL, town normalisation, `review_breakdown` write).
+- New migration: add `review_breakdown jsonb` to `public.tradesmen_candidates` (nullable, default `null`); no policy changes needed.
+- New server function `resetReviewQueue` (admin-only via `requireSupabaseAuth`) that bulk-dismisses pending rows; called by the Reset button.
+- No new dependencies.
