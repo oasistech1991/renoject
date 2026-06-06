@@ -6,6 +6,29 @@ const SearchInput = z.object({
   trade: z.string().trim().min(2).max(80),
 });
 
+/** Normalise common UK town misspellings before sending to Google Places. */
+function normaliseTown(input: string): string {
+  let t = input.trim().replace(/\s+/g, " ");
+  const map: Record<string, string> = {
+    middlesborough: "Middlesbrough",
+    middlesbrouogh: "Middlesbrough",
+    newcaslte: "Newcastle",
+    manchster: "Manchester",
+    birmingam: "Birmingham",
+  };
+  const low = t.toLowerCase();
+  if (map[low]) return map[low];
+  return t;
+}
+
+type ReviewBreakdownEntry = {
+  source: string;
+  url: string | null;
+  rating: number | null;
+  count: number | null;
+  snippets: Array<{ text: string; rating: number | null }>;
+};
+
 type Candidate = {
   name: string;
   company: string | null;
@@ -19,6 +42,7 @@ type Candidate = {
   social_presence_score: number | null;
   sources: Record<string, unknown>;
   reviewSnippets: string[];
+  reviewBreakdown: ReviewBreakdownEntry[];
 };
 
 function normaliseKey(name: string, phone: string | null): string {
@@ -54,6 +78,17 @@ async function searchGooglePlaces(query: string): Promise<Candidate[]> {
     .map((p): Candidate => {
       const reviews: Array<{ text?: { text?: string }; rating?: number }> = p.reviews ?? [];
       const snippets = reviews.slice(0, 8).map((r) => `(${r.rating ?? "?"}★) ${r.text?.text ?? ""}`.trim());
+      const googleUrl = p.id ? `https://www.google.com/maps/place/?q=place_id:${p.id}` : null;
+      const googleBreakdown: ReviewBreakdownEntry = {
+        source: "Google",
+        url: googleUrl,
+        rating: typeof p.rating === "number" ? p.rating : null,
+        count: typeof p.userRatingCount === "number" ? p.userRatingCount : null,
+        snippets: reviews.slice(0, 5).map((r) => ({
+          text: r.text?.text ?? "",
+          rating: typeof r.rating === "number" ? r.rating : null,
+        })).filter((s) => s.text),
+      };
       return {
         name: p.displayName?.text ?? "Unknown",
         company: p.displayName?.text ?? null,
@@ -65,8 +100,9 @@ async function searchGooglePlaces(query: string): Promise<Candidate[]> {
         rating: typeof p.rating === "number" ? p.rating : null,
         review_count: typeof p.userRatingCount === "number" ? p.userRatingCount : null,
         social_presence_score: null,
-        sources: { google: { placeId: p.id } },
+        sources: { google: { placeId: p.id, url: googleUrl } },
         reviewSnippets: snippets,
+        reviewBreakdown: [googleBreakdown],
       };
     });
 }
@@ -86,6 +122,8 @@ async function firecrawlEnrich(candidate: Candidate, trade: string, town: string
     const extraSources: Record<string, unknown> = {};
     let social = 0;
     const perPlatformCounts: Record<string, number> = {};
+    // Track best scraped page per platform so we can do a targeted scrape next
+    const reviewPlatformUrls = new Map<string, string>();
 
     for (const item of items.slice(0, 4)) {
       const url = item.url ?? "";
@@ -99,6 +137,7 @@ async function firecrawlEnrich(candidate: Candidate, trade: string, town: string
           // Keep highest count seen for that platform (search may surface multiple pages)
           perPlatformCounts[host] = Math.max(perPlatformCounts[host] ?? 0, count);
         }
+        if (!reviewPlatformUrls.has(host)) reviewPlatformUrls.set(host, url);
         extraSnippets.push(`[${new URL(url).hostname}] ${text.slice(0, 600)}`);
       }
       if (/facebook\.com|instagram\.com/i.test(url)) {
@@ -106,6 +145,40 @@ async function firecrawlEnrich(candidate: Candidate, trade: string, town: string
         extraSources[new URL(url).hostname] = { url };
       }
     }
+
+    // Targeted scrape of each platform page (search descriptions are often blocked/landing pages)
+    await Promise.all(
+      Array.from(reviewPlatformUrls.entries()).map(async ([host, url]) => {
+        try {
+          const scraped: any = await fc.scrape(url, { formats: ["markdown"], onlyMainContent: true } as any);
+          const md: string = scraped?.markdown ?? scraped?.data?.markdown ?? "";
+          if (!md) return;
+          const count = extractReviewCount(md);
+          const rating = extractRating(md);
+          if (count != null) perPlatformCounts[host] = Math.max(perPlatformCounts[host] ?? 0, count);
+          const existing = (extraSources[host] as any) ?? { url };
+          extraSources[host] = {
+            ...existing,
+            url,
+            reviewCount: perPlatformCounts[host] ?? existing.reviewCount,
+            rating: rating ?? existing.rating,
+            snippet: md.slice(0, 600),
+          };
+          // Push a few review-like lines as snippets
+          const lines = md.split(/\n+/).map((l) => l.trim()).filter((l) => l.length > 40 && l.length < 400);
+          const sampled = lines.slice(0, 3);
+          candidate.reviewBreakdown.push({
+            source: host.replace(/^www\./, ""),
+            url,
+            rating: rating ?? null,
+            count: perPlatformCounts[host] ?? null,
+            snippets: sampled.map((t) => ({ text: t, rating: null })),
+          });
+        } catch (err) {
+          console.warn("Targeted scrape failed for", host, err);
+        }
+      }),
+    );
 
     candidate.reviewSnippets.push(...extraSnippets);
     candidate.sources = { ...candidate.sources, ...extraSources };
@@ -140,6 +213,26 @@ function extractReviewCount(text: string): number | null {
     }
   }
   if (!candidates.length) return null;
+  return Math.max(...candidates);
+}
+
+/** Extract a 0-5 rating from page text (e.g. "Rated 4.8 out of 5", "4.9/5"). */
+function extractRating(text: string): number | null {
+  const candidates: number[] = [];
+  const patterns = [
+    /\b([0-5](?:\.\d)?)\s*\/\s*5\b/gi,
+    /\brated\s+([0-5](?:\.\d)?)\s*(?:out of|\/)?\s*5\b/gi,
+    /\b([0-5](?:\.\d)?)\s+out of\s+5\b/gi,
+  ];
+  for (const re of patterns) {
+    let m: RegExpExecArray | null;
+    while ((m = re.exec(text)) !== null) {
+      const n = parseFloat(m[1]);
+      if (Number.isFinite(n) && n > 0 && n <= 5) candidates.push(n);
+    }
+  }
+  if (!candidates.length) return null;
+  // Median-ish: just take the highest plausible mention (avoids "0.0 out of 5" placeholders)
   return Math.max(...candidates);
 }
 
@@ -218,7 +311,8 @@ function rank(c: Candidate, verdict: "clean" | "mixed" | "flagged" | null): numb
 export const searchTradesmen = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => SearchInput.parse(d))
   .handler(async ({ data }) => {
-    const { town, trade } = data;
+    const town = normaliseTown(data.town);
+    const trade = data.trade.trim();
     const query = `${trade} in ${town}`;
 
     const placesCandidates = await searchGooglePlaces(query);
@@ -260,6 +354,7 @@ export const searchTradesmen = createServerFn({ method: "POST" })
         review_count: c.review_count,
         social_presence_score: c.social_presence_score,
         sense_check: sense as any,
+        review_breakdown: c.reviewBreakdown as any,
         score,
         status: "pending" as const,
         search_query: query,
@@ -270,6 +365,17 @@ export const searchTradesmen = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
 
     return { inserted: rows.length, message: `Found ${rows.length} candidates for "${query}".` };
+  });
+
+export const resetReviewQueue = createServerFn({ method: "POST" })
+  .handler(async () => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error, count } = await supabaseAdmin
+      .from("tradesmen_candidates")
+      .update({ status: "dismissed" }, { count: "exact" })
+      .eq("status", "pending");
+    if (error) throw new Error(error.message);
+    return { ok: true, dismissed: count ?? 0 };
   });
 
 export const approveCandidate = createServerFn({ method: "POST" })
