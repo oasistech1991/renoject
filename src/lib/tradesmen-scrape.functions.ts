@@ -85,13 +85,20 @@ async function firecrawlEnrich(candidate: Candidate, trade: string, town: string
     const extraSnippets: string[] = [];
     const extraSources: Record<string, unknown> = {};
     let social = 0;
+    const perPlatformCounts: Record<string, number> = {};
 
     for (const item of items.slice(0, 4)) {
       const url = item.url ?? "";
       const text = (item.markdown ?? item.description ?? "").slice(0, 1200);
       if (!text) continue;
       if (/checkatrade|mybuilder|ratedpeople|trustpilot|yell/i.test(url)) {
-        extraSources[new URL(url).hostname] = { url, snippet: text.slice(0, 400) };
+        const host = new URL(url).hostname;
+        const count = extractReviewCount(text);
+        extraSources[host] = { url, snippet: text.slice(0, 400), reviewCount: count ?? undefined };
+        if (count != null) {
+          // Keep highest count seen for that platform (search may surface multiple pages)
+          perPlatformCounts[host] = Math.max(perPlatformCounts[host] ?? 0, count);
+        }
         extraSnippets.push(`[${new URL(url).hostname}] ${text.slice(0, 600)}`);
       }
       if (/facebook\.com|instagram\.com/i.test(url)) {
@@ -103,9 +110,37 @@ async function firecrawlEnrich(candidate: Candidate, trade: string, town: string
     candidate.reviewSnippets.push(...extraSnippets);
     candidate.sources = { ...candidate.sources, ...extraSources };
     candidate.social_presence_score = social;
+
+    const extraReviewTotal = Object.values(perPlatformCounts).reduce((a, b) => a + b, 0);
+    if (extraReviewTotal > 0) {
+      candidate.review_count = (candidate.review_count ?? 0) + extraReviewTotal;
+    }
   } catch (err) {
     console.error("Firecrawl enrich failed", err);
   }
+}
+
+/**
+ * Pull a review count from scraped page text. Matches patterns like
+ * "1,234 reviews", "Based on 87 reviews", "(245)", "Reviews (312)".
+ * Returns the largest plausible number to avoid picking up unrelated digits.
+ */
+function extractReviewCount(text: string): number | null {
+  const candidates: number[] = [];
+  const patterns = [
+    /([\d,]{1,7})\s+reviews?\b/gi,
+    /\bbased on\s+([\d,]{1,7})\s+reviews?\b/gi,
+    /\breviews?\s*[:\(]\s*([\d,]{1,7})/gi,
+  ];
+  for (const re of patterns) {
+    let m: RegExpExecArray | null;
+    while ((m = re.exec(text)) !== null) {
+      const n = parseInt(m[1].replace(/,/g, ""), 10);
+      if (Number.isFinite(n) && n > 0 && n < 1_000_000) candidates.push(n);
+    }
+  }
+  if (!candidates.length) return null;
+  return Math.max(...candidates);
 }
 
 async function senseCheck(candidate: Candidate): Promise<{
