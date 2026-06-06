@@ -1,6 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -18,7 +17,7 @@ import {
 import { toast } from "sonner";
 import { Mail, Phone, MapPin, Briefcase, Clock, PoundSterling, Pencil, Trash2, Plus, Search, Sparkles, ShieldCheck, ShieldAlert, ShieldX, ExternalLink, Loader2, Check, X, Star, Building2, Users } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
-import { searchTradesmen, approveCandidate, dismissCandidate, resetReviewQueue, listCandidates } from "@/lib/tradesmen-scrape.functions";
+import { searchTradesmen, approveCandidate, dismissCandidate, resetReviewQueue, listCandidates, listTradesmen, saveTradesman, deleteTradesman } from "@/lib/tradesmen-scrape.functions";
 import { runBackgroundCheck } from "@/lib/tradesmen-background.functions";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -84,19 +83,19 @@ function TradesmenPage() {
   const [editing, setEditing] = useState<Tradesman | null>(null);
   const [profile, setProfile] = useState<Tradesman | null>(null);
   const [findOpen, setFindOpen] = useState(false);
+  const listFn = useServerFn(listTradesmen);
+  const deleteFn = useServerFn(deleteTradesman);
 
   const load = async () => {
     setLoading(true);
-    const { data, error } = await supabase
-      .from("tradesmen")
-      .select("*")
-      .order("name", { ascending: true });
-    if (error) {
-      toast.error(error.message);
-    } else {
-      setList((data ?? []) as Tradesman[]);
+    try {
+      const r = await listFn();
+      setList((r.items ?? []) as Tradesman[]);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to load directory");
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   useEffect(() => {
@@ -125,11 +124,14 @@ function TradesmenPage() {
 
   const handleDelete = async (id: string) => {
     if (!confirm("Remove this tradesman from the directory?")) return;
-    const { error } = await supabase.from("tradesmen").delete().eq("id", id);
-    if (error) return toast.error(error.message);
-    toast.success("Removed");
-    setProfile(null);
-    void load();
+    try {
+      await deleteFn({ data: { id } });
+      toast.success("Removed");
+      setProfile(null);
+      void load();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Delete failed");
+    }
   };
 
   return (
