@@ -23,7 +23,7 @@ export const Route = createFileRoute("/")({
   component: Index,
 });
 
-const tools = [
+const tools: Array<{ to: string; title: string; desc: string; icon: typeof Calculator; free?: boolean }> = [
   { to: "/refinance", title: "Property Calculator", desc: "Model BTL, BRRR, mortgage and cash purchases in one place.", icon: Calculator, free: true },
   { to: "/condition", title: "Renovation Calculator", desc: "Estimate refurb costs room-by-room with current UK rates.", icon: Hammer },
   { to: "/forecast", title: "Forecast", desc: "Project long-term cashflow, equity and yield trajectories.", icon: LineChart },
@@ -32,7 +32,7 @@ const tools = [
   { to: "/hmo-compliance", title: "HMO Compliance", desc: "Check floorplans against UK HMO licensing rules.", icon: ShieldCheck },
   { to: "/tradesmen", title: "Tradesmen", desc: "Trusted contractors for refurbs, BTL and HMO conversions.", icon: Wrench },
   { to: "/tokenize", title: "Tokenize", desc: "Fractionalise property equity for syndicated investment.", icon: Coins },
-] as const;
+];
 
 function Index() {
   return (
