@@ -612,6 +612,27 @@ function HMOCompliancePage() {
               )}
             </div>
 
+            <div>
+              <div className="flex items-center justify-between text-sm">
+                <label className="font-medium">Conversion cost per bedroom</label>
+                <span className="tabular-nums text-muted-foreground">
+                  {new Intl.NumberFormat("en-GB", { style: "currency", currency: "GBP", maximumFractionDigits: 0 }).format(costPerBedroom)}
+                </span>
+              </div>
+              <input
+                type="range"
+                min={5000}
+                max={50000}
+                step={1000}
+                value={costPerBedroom}
+                onChange={(e) => setCostPerBedroom(Number(e.target.value))}
+                className="mt-1 w-full"
+              />
+              <p className="mt-1 text-xs text-muted-foreground">
+                Rough build cost per new HMO bedroom (en-suite, stud walls, fire doors, decoration). Adjust to match your spec.
+              </p>
+            </div>
+
             <Button
               className="w-full"
               disabled={!canSubmit}
