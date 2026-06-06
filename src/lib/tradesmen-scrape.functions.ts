@@ -461,3 +461,15 @@ export const dismissCandidate = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { ok: true };
   });
+
+export const listCandidates = createServerFn({ method: "GET" })
+  .handler(async () => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data, error } = await supabaseAdmin
+      .from("tradesmen_candidates")
+      .select("*")
+      .eq("status", "pending")
+      .order("score", { ascending: false, nullsFirst: false });
+    if (error) throw new Error(error.message);
+    return { items: data ?? [] };
+  });
