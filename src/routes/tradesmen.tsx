@@ -645,9 +645,30 @@ function ReviewQueue({ onApproved }: { onApproved: () => void }) {
                 )}
                 {c.sources && Object.keys(c.sources).length > 0 && (
                   <div className="flex flex-wrap gap-1">
-                    {Object.keys(c.sources).map((src) => (
-                      <Badge key={src} variant="outline" className="text-xs">{src.replace("www.", "")}</Badge>
-                    ))}
+                    {Object.entries(c.sources).map(([src, info]) => {
+                      const url = (info as any)?.url;
+                      const label = src.replace("www.", "");
+                      if (url) {
+                        return (
+                          <a
+                            key={src}
+                            href={url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="inline-flex items-center gap-1 rounded-md border px-2.5 py-0.5 text-xs font-semibold text-foreground transition-colors hover:border-primary hover:text-primary"
+                            title={(info as any)?.snippet ? String((info as any).snippet).slice(0, 200) : undefined}
+                          >
+                            {label}
+                            <ExternalLink className="h-3 w-3" />
+                          </a>
+                        );
+                      }
+                      return (
+                        <Badge key={src} variant="outline" className="text-xs">
+                          {label}
+                        </Badge>
+                      );
+                    })}
                   </div>
                 )}
                 <div className="flex gap-2 pt-1">
