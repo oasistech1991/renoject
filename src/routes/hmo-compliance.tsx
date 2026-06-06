@@ -111,6 +111,7 @@ function HMOCompliancePage() {
   const [requireLivingRoom, setRequireLivingRoom] = useState(false);
   const [circulationPct, setCirculationPct] = useState(17);
   const [showAmenity, setShowAmenity] = useState(false);
+  const [costPerBedroom, setCostPerBedroom] = useState(20000);
 
   // Saved-analysis state
   const [propertiesList, setPropertiesList] = useState<{ id: string; name: string }[]>([]);
@@ -192,6 +193,7 @@ function HMOCompliancePage() {
       if (typeof inputs.storeys === "number") setStoreys(inputs.storeys);
       if (typeof inputs.occupants === "number") setOccupants(inputs.occupants);
       if (typeof inputs.notes === "string") setNotes(inputs.notes);
+      if (typeof inputs.costPerBedroom === "number") setCostPerBedroom(inputs.costPerBedroom);
       if (data.thumbnail) setImageBase64(data.thumbnail);
       setFileName(data.label);
     })();
@@ -295,6 +297,7 @@ function HMOCompliancePage() {
         kitchenSizing,
         requireLivingRoom,
         circulationPct,
+        costPerBedroom,
       };
       const finalLabel = label.trim() || location.trim() || "HMO analysis";
       const { data, error } = await supabase
