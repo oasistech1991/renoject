@@ -528,3 +528,23 @@ export const deleteTradesman = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { ok: true };
   });
+
+export const getTradesmanDetail = createServerFn({ method: "POST" })
+  .inputValidator((d: unknown) => z.object({ id: z.string().uuid() }).parse(d))
+  .handler(async ({ data }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: tradesman, error: tErr } = await supabaseAdmin
+      .from("tradesmen")
+      .select("*")
+      .eq("id", data.id)
+      .single();
+    if (tErr || !tradesman) throw new Error(tErr?.message ?? "Not found");
+    const { data: candidate } = await supabaseAdmin
+      .from("tradesmen_candidates")
+      .select("*")
+      .eq("approved_tradesman_id", data.id)
+      .order("updated_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    return { tradesman, candidate: candidate ?? null };
+  });
