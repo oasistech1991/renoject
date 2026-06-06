@@ -1,34 +1,21 @@
-## Problem
+## Why this is happening
 
-The "Find tradesmen" search runs and inserts candidates correctly (34 pending rows exist in the DB right now, all from your recent "Electrician in Manchester" run), but the **Review queue** tab looks empty.
+`tradesmen_candidates` has correct RLS policies for the `authenticated` role, but the table has **zero table-level GRANTs**. Supabase's Data API (PostgREST) checks role grants *before* RLS — with no grants, every request from the browser client fails with `permission denied for table tradesmen_candidates`, even for signed-in users. That's why the Review queue read worked via `supabaseAdmin` (service role bypasses both) but direct browser reads/writes fail.
 
-The cause is the recent security tightening. `tradesmen_candidates` now requires an authenticated Supabase session to read:
-
-```
-Authenticated read candidates  SELECT  authenticated  USING (true)
-```
-
-The Review queue currently reads with the browser Supabase client. If the page is opened without a signed-in Supabase session (e.g. via the "admin unlock" sessionStorage flag, or after a session expired), RLS silently returns zero rows — no error toast, just an empty list. Meanwhile the search itself still works because it runs server-side via `supabaseAdmin`, which bypasses RLS.
+This likely happened when a recent security migration dropped/recreated the table or revoked default grants without re-issuing them.
 
 ## Fix
 
-Route the queue reads through the same trusted server path as the writes, so the directory works for any user who can already use the rest of the page.
+One migration to add the Data API grants matching the existing policies (auth-only, so no `anon`):
 
-### Changes
+```sql
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.tradesmen_candidates TO authenticated;
+GRANT ALL ON public.tradesmen_candidates TO service_role;
+```
 
-1. **`src/lib/tradesmen-scrape.functions.ts`** — add two server functions:
-   - `listCandidates({ status: "pending" })` — uses `supabaseAdmin` to return pending candidates ordered by `score desc`.
-   - (Optional) `listCandidateStats()` if we later want counts per location; not required for this fix.
+I'll also audit the other recently-touched tables in this area (`tradesmen`, `hmo_analyses`, `expert_reviews`, `properties`, `property_media`, `market_watchlist`, `saved_searches`, `subscriptions`, `tokens`, `token_holdings`, `token_fractions`, `token_transfers`, `user_roles`) in the same migration and add any missing grants based on each table's existing policies (skipping `anon` for auth-only tables).
 
-2. **`src/routes/tradesmen.tsx` → `ReviewQueue`**:
-   - Replace the direct `supabase.from("tradesmen_candidates").select(...)` in `load()` with a `useServerFn(listCandidates)` call.
-   - Keep the existing client-side sort/segment/group logic unchanged.
-   - Keep `approveCandidate` / `dismissCandidate` / `resetReviewQueue` as-is (already server fns).
+## Out of scope
 
-3. **No DB / RLS changes.** The shared-workspace policy stays intact; we just stop relying on the browser client for this read.
-
-### Out of scope
-
-- No UI redesign of the queue.
-- No change to `searchTradesmen`, scoring, or scraping logic.
-- No change to the `tradesmen` directory read (that one already works because rows are visible to everyone with grants).
+- No RLS policy changes.
+- No code changes — once grants are restored, the existing browser-client reads/writes start working again.
