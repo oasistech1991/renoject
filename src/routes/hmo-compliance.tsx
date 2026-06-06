@@ -1155,6 +1155,13 @@ function ReportView({
                   <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                     Reconfiguration to hit this layout
                   </h4>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Estimated build cost:{" "}
+                    <span className="font-semibold text-foreground tabular-nums">
+                      {new Intl.NumberFormat("en-GB", { style: "currency", currency: "GBP", maximumFractionDigits: 0 }).format(active.bedroomCount * costPerBedroom)}
+                    </span>{" "}
+                    ({active.bedroomCount} bedrooms × {new Intl.NumberFormat("en-GB", { style: "currency", currency: "GBP", maximumFractionDigits: 0 }).format(costPerBedroom)})
+                  </p>
                   <ol className="mt-2 space-y-2">
                     {active.reconfiguration.map((step, i) => (
                       <li
