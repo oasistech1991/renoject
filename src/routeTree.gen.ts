@@ -11,9 +11,12 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as TradesmenRouteImport } from './routes/tradesmen'
 import { Route as TokenizeRouteImport } from './routes/tokenize'
+import { Route as TermsRouteImport } from './routes/terms'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
+import { Route as RefundPolicyRouteImport } from './routes/refund-policy'
 import { Route as RefinanceRouteImport } from './routes/refinance'
 import { Route as PropertiesRouteImport } from './routes/properties'
+import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as PricingRouteImport } from './routes/pricing'
 import { Route as MarketRouteImport } from './routes/market'
 import { Route as HmoComplianceRouteImport } from './routes/hmo-compliance'
@@ -34,9 +37,19 @@ const TokenizeRoute = TokenizeRouteImport.update({
   path: '/tokenize',
   getParentRoute: () => rootRouteImport,
 } as any)
+const TermsRoute = TermsRouteImport.update({
+  id: '/terms',
+  path: '/terms',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
   id: '/reset-password',
   path: '/reset-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RefundPolicyRoute = RefundPolicyRouteImport.update({
+  id: '/refund-policy',
+  path: '/refund-policy',
   getParentRoute: () => rootRouteImport,
 } as any)
 const RefinanceRoute = RefinanceRouteImport.update({
@@ -47,6 +60,11 @@ const RefinanceRoute = RefinanceRouteImport.update({
 const PropertiesRoute = PropertiesRouteImport.update({
   id: '/properties',
   path: '/properties',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PrivacyRoute = PrivacyRouteImport.update({
+  id: '/privacy',
+  path: '/privacy',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PricingRoute = PricingRouteImport.update({
@@ -105,9 +123,12 @@ export interface FileRoutesByFullPath {
   '/hmo-compliance': typeof HmoComplianceRoute
   '/market': typeof MarketRoute
   '/pricing': typeof PricingRoute
+  '/privacy': typeof PrivacyRoute
   '/properties': typeof PropertiesRoute
   '/refinance': typeof RefinanceRoute
+  '/refund-policy': typeof RefundPolicyRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/terms': typeof TermsRoute
   '/tokenize': typeof TokenizeRoute
   '/tradesmen': typeof TradesmenRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
@@ -121,9 +142,12 @@ export interface FileRoutesByTo {
   '/hmo-compliance': typeof HmoComplianceRoute
   '/market': typeof MarketRoute
   '/pricing': typeof PricingRoute
+  '/privacy': typeof PrivacyRoute
   '/properties': typeof PropertiesRoute
   '/refinance': typeof RefinanceRoute
+  '/refund-policy': typeof RefundPolicyRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/terms': typeof TermsRoute
   '/tokenize': typeof TokenizeRoute
   '/tradesmen': typeof TradesmenRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
@@ -138,9 +162,12 @@ export interface FileRoutesById {
   '/hmo-compliance': typeof HmoComplianceRoute
   '/market': typeof MarketRoute
   '/pricing': typeof PricingRoute
+  '/privacy': typeof PrivacyRoute
   '/properties': typeof PropertiesRoute
   '/refinance': typeof RefinanceRoute
+  '/refund-policy': typeof RefundPolicyRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/terms': typeof TermsRoute
   '/tokenize': typeof TokenizeRoute
   '/tradesmen': typeof TradesmenRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
@@ -156,9 +183,12 @@ export interface FileRouteTypes {
     | '/hmo-compliance'
     | '/market'
     | '/pricing'
+    | '/privacy'
     | '/properties'
     | '/refinance'
+    | '/refund-policy'
     | '/reset-password'
+    | '/terms'
     | '/tokenize'
     | '/tradesmen'
     | '/api/public/payments/webhook'
@@ -172,9 +202,12 @@ export interface FileRouteTypes {
     | '/hmo-compliance'
     | '/market'
     | '/pricing'
+    | '/privacy'
     | '/properties'
     | '/refinance'
+    | '/refund-policy'
     | '/reset-password'
+    | '/terms'
     | '/tokenize'
     | '/tradesmen'
     | '/api/public/payments/webhook'
@@ -188,9 +221,12 @@ export interface FileRouteTypes {
     | '/hmo-compliance'
     | '/market'
     | '/pricing'
+    | '/privacy'
     | '/properties'
     | '/refinance'
+    | '/refund-policy'
     | '/reset-password'
+    | '/terms'
     | '/tokenize'
     | '/tradesmen'
     | '/api/public/payments/webhook'
@@ -205,9 +241,12 @@ export interface RootRouteChildren {
   HmoComplianceRoute: typeof HmoComplianceRoute
   MarketRoute: typeof MarketRoute
   PricingRoute: typeof PricingRoute
+  PrivacyRoute: typeof PrivacyRoute
   PropertiesRoute: typeof PropertiesRoute
   RefinanceRoute: typeof RefinanceRoute
+  RefundPolicyRoute: typeof RefundPolicyRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
+  TermsRoute: typeof TermsRoute
   TokenizeRoute: typeof TokenizeRoute
   TradesmenRoute: typeof TradesmenRoute
   ApiPublicPaymentsWebhookRoute: typeof ApiPublicPaymentsWebhookRoute
@@ -229,11 +268,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TokenizeRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/terms': {
+      id: '/terms'
+      path: '/terms'
+      fullPath: '/terms'
+      preLoaderRoute: typeof TermsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/reset-password': {
       id: '/reset-password'
       path: '/reset-password'
       fullPath: '/reset-password'
       preLoaderRoute: typeof ResetPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/refund-policy': {
+      id: '/refund-policy'
+      path: '/refund-policy'
+      fullPath: '/refund-policy'
+      preLoaderRoute: typeof RefundPolicyRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/refinance': {
@@ -248,6 +301,13 @@ declare module '@tanstack/react-router' {
       path: '/properties'
       fullPath: '/properties'
       preLoaderRoute: typeof PropertiesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/privacy': {
+      id: '/privacy'
+      path: '/privacy'
+      fullPath: '/privacy'
+      preLoaderRoute: typeof PrivacyRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/pricing': {
@@ -325,9 +385,12 @@ const rootRouteChildren: RootRouteChildren = {
   HmoComplianceRoute: HmoComplianceRoute,
   MarketRoute: MarketRoute,
   PricingRoute: PricingRoute,
+  PrivacyRoute: PrivacyRoute,
   PropertiesRoute: PropertiesRoute,
   RefinanceRoute: RefinanceRoute,
+  RefundPolicyRoute: RefundPolicyRoute,
   ResetPasswordRoute: ResetPasswordRoute,
+  TermsRoute: TermsRoute,
   TokenizeRoute: TokenizeRoute,
   TradesmenRoute: TradesmenRoute,
   ApiPublicPaymentsWebhookRoute: ApiPublicPaymentsWebhookRoute,
