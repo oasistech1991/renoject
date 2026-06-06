@@ -796,12 +796,14 @@ function ReportView({
   checkedAt,
   savedAt,
   originalImageBase64,
+  costPerBedroom,
 }: {
   data: Awaited<ReturnType<typeof analyseFloorplan>>;
   proposed: number;
   checkedAt: Date | null;
   savedAt?: string;
   originalImageBase64?: string | null;
+  costPerBedroom: number;
 }) {
   const [activeScenario, setActiveScenario] = useState<"maxSingles" | "balanced" | "maxDoubles">(
     "balanced",
