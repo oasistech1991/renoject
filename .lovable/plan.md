@@ -1,79 +1,42 @@
 ## Goal
-Release Hartstone Holdings publicly with a **subscription paywall** that locks **Market Search** and **Tradesmen** (including background checks) behind a paid plan. Keep the existing `HARTS / TAYLOR` shared password as an admin bypass so you and the team retain full access without paying.
 
-## What the user sees
-- New **landing/marketing tweak** on `/` explaining free vs paid features and a "Start free trial / Subscribe" CTA.
-- **New `/auth` page** — email + password sign-up/sign-in plus Google sign-in. Existing `HARTS / TAYLOR` modal still works on top of everything as an admin override.
-- **`/pricing` page** — single Monthly plan card with "Subscribe" button → Stripe Checkout.
-- **`/account` page** — shows subscription status, "Manage billing" button (Stripe Customer Portal) to cancel/update card.
-- **Locked routes** (`/market`, `/tradesmen`):
-  - Signed-out users → redirected to `/auth?redirect=...`.
-  - Signed-in but no active subscription → soft paywall screen: blurred preview + "Subscribe to unlock — £X/month" CTA.
-  - Admin bypass (HARTS/TAYLOR session flag) or active subscriber → full access.
-- All other pages (HMO, Renovation, Property Calculator, Deals, Forecast, Tokenize, home) remain **free** behind the existing shared password only — unchanged.
+Make the AI apply the same conversion logic seen at 100 Elwick Road (204 sqm, 3-storey terrace, 5-bed family home → 9-bed all-ensuite HMO with kitchen-diner + communal lounge) to every floorplan it analyses, not just this one.
 
-## Pricing
-- **Monthly subscription** — single tier. Suggested £29/month (we'll confirm the exact number with you before creating the Stripe product; easy to change after).
+## What the Elwick before → after teaches us
 
-## Auth model
-Two parallel access paths:
-1. **Admin shared password** (existing `HARTS / TAYLOR`) — sets `sessionStorage.hh_unlocked = "1"` and grants access to **everything**, paid features included. Used by you/the team.
-2. **Real Supabase accounts** (new) — email/password + Google OAuth. Public users sign up, then must subscribe to access locked features.
+Comparing your "before" (this upload) to the "after" you sent earlier, the conversion follows a repeatable playbook:
 
-A user is considered "entitled" if **either** the admin flag is set **or** they have an active Stripe subscription.
+1. **Subdivide oversized rooms.** Front Lounge (20.8 m²), Rear Reception (19.2 m²) and Bedroom 4 (26 m²) are all large enough to split into bedroom + en-suite, or two smaller bedrooms.
+2. **Every bedroom gets a private en-suite** (~2.5–3.2 m² shower room) carved out of the bedroom footprint, placed against the existing soil stack / plumbing wall where possible to cluster waste runs.
+3. **One ground-floor reception becomes a kitchen-diner** (~16–18 m²) — this absorbs communal eating so no separate dining room is needed.
+4. **Keep one communal lounge** (~12–14 m²) — the other reception room.
+5. **Reuse existing chimney breasts, alcoves and structural piers** as natural stud-wall anchor points so new partitions are non-load-bearing wherever possible.
+6. **Stairs, hallways and protected escape route stay put** — fire strategy is built around the existing core, not relocated.
+7. **Bedroom sizing is calculated AFTER the en-suite carve-out**, against England HMO minimums (6.51 m² single / 10.22 m² double).
 
-## Data sources / infrastructure
-- **Lovable Payments — Stripe (seamless)**: enabled via `enable_stripe_payments`. No Stripe account or API key needed from you; Lovable handles checkout, webhooks, taxes. Requires Lovable **Pro plan** and Lovable Cloud (already enabled). For digital/SaaS we'll default to Stripe's full compliance handling (tax, fraud, disputes handled for you, +3.5% on top of base Stripe fees).
-- **Supabase Auth** for real accounts (email/password + Google).
-- **`subscribers` table** synced from Stripe webhooks to make entitlement checks fast and offline-safe.
+## What to change in code
 
-## Technical changes
+One file: `src/lib/hmo.functions.ts`. Update `HMO_SYSTEM_PROMPT` only — no schema, UI or other logic changes.
 
-**Auth (Lovable Cloud)**
-- Enable email/password auth (no auto-confirm by default — users verify email).
-- Enable Google OAuth via `configure_social_auth`.
-- Add `src/routes/auth.tsx` with sign-up / sign-in / forgot-password tabs and Google button (using `lovable.auth.signInWithOAuth`).
-- Add `src/routes/reset-password.tsx` (required for password reset flow).
-- Update `src/routes/__root.tsx`:
-  - Keep the `HARTS/TAYLOR` modal as admin bypass.
-  - Add Supabase `onAuthStateChange` listener; treat user as "unlocked" if admin flag OR signed in.
-  - Add user menu (email, Account link, Sign out) when signed in.
+Add a new section titled **"HMO CONVERSION PLAYBOOK (apply on every analysis)"** that codifies the 7 rules above as ordered instructions the model must follow when building each of the three scenarios (maxSingles / balanced / maxDoubles):
 
-**Payments (Stripe via Lovable Payments)**
-1. Run `recommend_payment_provider` to confirm fit.
-2. Enable via `enable_stripe_payments`.
-3. Create one Stripe Product + recurring Price (£X / month) using `batch_create_product`.
-4. Implement checkout server function → returns Stripe Checkout URL.
-5. Implement customer portal server function.
-6. Implement Stripe webhook route at `/api/public/stripe-webhook` to upsert into `subscribers` on `checkout.session.completed`, `customer.subscription.updated`, `customer.subscription.deleted`.
+- **Step A — Identify oversize rooms.** Any room >14 m² is a subdivision candidate; >22 m² should be split into 2 lettable rooms.
+- **Step B — En-suite policy.** Add `ensuitePolicy` reasoning: default to en-suite-every-bedroom for properties ≥150 m² internal area or ≥3 storeys (the Elwick profile). Carve 2.5–3.2 m² per en-suite from the bedroom, placed on the plumbing wall. Smaller properties fall back to shared bath/WC per the user's ratio setting.
+- **Step C — Communal allocation.** One reception → kitchen-diner (16–18 m²), one reception → lounge (12–14 m²). If only one reception exists, use kitchen-diner sizing and skip separate lounge.
+- **Step D — Wall strategy.** Prefer stud walls anchored to chimney breasts, alcoves and existing piers. Flag any partition crossing a load path as `structural` complexity in `reconfiguration[]`.
+- **Step E — Core untouched.** Stairs, hall and escape route must remain in original position; only flag a move as `structural` if unavoidable.
+- **Step F — Bedroom compliance check.** Measure the bedroom AFTER subtracting the en-suite footprint, then compare to 6.51 / 10.22 m² minimums.
 
-**Database migration**
-- `subscribers` table: `id`, `user_id` (FK auth.users), `stripe_customer_id`, `stripe_subscription_id`, `status` (`active`/`trialing`/`past_due`/`canceled`), `current_period_end`, `price_id`, `updated_at`. RLS: user can read own row; webhook uses service role.
-- `has_active_subscription(_user_id uuid)` security-definer function returning boolean (status in active/trialing AND period not expired).
+Also add a short worked-example block inside the prompt (Elwick 204 m² → 9 beds: 8 × ~10.2 m² doubles with en-suite + 1 × ~6.5 m² single, 18 m² kitchen-diner, 13 m² lounge, ~17% circulation) so the model has a concrete anchor for the "balanced" scenario on similar-sized properties.
 
-**Entitlement helper**
-- New hook `useEntitlement()` returning `{ isAdmin, isSubscriber, isEntitled, isLoading }`.
-- Reads admin flag from sessionStorage + subscription row from Supabase.
+Keep the existing area-allocation method, three-scenario structure, verdict logic and JSON schema exactly as they are — the playbook just tightens HOW the model fills `scenarios.balanced.rooms` and `reconfiguration[]`.
 
-**Route gating**
-- Wrap `/market` and `/tradesmen` route components in a `<PaywallGate>` that:
-  - If not signed in and not admin → `<Navigate to="/auth?redirect=...">`.
-  - If signed in but not entitled → render `<Paywall>` (blurred backdrop screenshot + pricing CTA).
-  - Else render the page.
+## Out of scope
 
-**Pricing + Account pages**
-- `src/routes/pricing.tsx` — plan card, "Subscribe" calls checkout server fn, redirects to Stripe.
-- `src/routes/account.tsx` — shows email, subscription status, "Manage billing" button → customer portal.
+- No changes to `generateUpdatedFloorplan` image prompt (we'll tune the redraw in a separate pass once analysis output is solid).
+- No new form fields. Existing `bathRatio`, `kitchenSizing`, `requireLivingRoom`, `circulationPct` still drive amenity sizing; the playbook adds the conversion intelligence on top.
+- No schema/UI changes.
 
-**Nav**
-- Add "Pricing" link (always visible) and "Account" / "Sign in" depending on auth state.
+## How we'll know it worked
 
-## Pre-requisites we need from you
-1. **Confirm the price** (suggested £29/month — happy to change).
-2. **Confirm Pro plan** is active on your Lovable workspace (required for Lovable Payments).
-3. After Stripe is enabled, you'll claim the Stripe account from inside Lovable to start accepting real (live) payments. Test-mode works immediately for verifying the flow end-to-end.
-
-## Out of scope (for this round)
-- Annual / lifetime tiers, team seats, coupons — easy to add later once monthly is live.
-- Per-feature credit metering (e.g. "5 background checks/month") — current plan is all-or-nothing access to the two locked sections.
-- Migrating existing pages off the shared password to real accounts — only paywalled sections require sign-in.
+Re-run analysis on this Elwick "before" image with the user's settings (kitchen-diner, no separate lounge override, 1:5 bath ratio, 17% circulation). The `balanced` scenario should land on ~9 bedrooms with en-suites listed in `reconfiguration[]` as `minor works`, matching the real "after" plan. We'll iterate the prompt if it under- or over-shoots.
