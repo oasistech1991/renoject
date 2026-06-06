@@ -440,6 +440,7 @@ export type Database = {
           name: string
           phone: string | null
           rating: number | null
+          review_breakdown: Json | null
           review_count: number | null
           score: number | null
           search_query: string | null
@@ -463,6 +464,7 @@ export type Database = {
           name: string
           phone?: string | null
           rating?: number | null
+          review_breakdown?: Json | null
           review_count?: number | null
           score?: number | null
           search_query?: string | null
@@ -486,6 +488,7 @@ export type Database = {
           name?: string
           phone?: string | null
           rating?: number | null
+          review_breakdown?: Json | null
           review_count?: number | null
           score?: number | null
           search_query?: string | null

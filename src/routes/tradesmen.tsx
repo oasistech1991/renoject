@@ -18,8 +18,11 @@ import {
 import { toast } from "sonner";
 import { Mail, Phone, MapPin, Briefcase, Clock, PoundSterling, Pencil, Trash2, Plus, Search, Sparkles, ShieldCheck, ShieldAlert, ShieldX, ExternalLink, Loader2, Check, X, Star } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
-import { searchTradesmen, approveCandidate, dismissCandidate } from "@/lib/tradesmen-scrape.functions";
+import { searchTradesmen, approveCandidate, dismissCandidate, resetReviewQueue } from "@/lib/tradesmen-scrape.functions";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ChevronDown, RotateCcw } from "lucide-react";
 
 export const Route = createFileRoute("/tradesmen")({
   head: () => ({
@@ -499,6 +502,13 @@ type Candidate = {
   status: string;
   search_query: string | null;
   sources: Record<string, { url?: string; snippet?: string }> | null;
+  review_breakdown: Array<{
+    source: string;
+    url: string | null;
+    rating: number | null;
+    count: number | null;
+    snippets: Array<{ text: string; rating: number | null }>;
+  }> | null;
   searched_at: string;
 };
 
@@ -514,8 +524,12 @@ function ReviewQueue({ onApproved }: { onApproved: () => void }) {
   const [loading, setLoading] = useState(true);
   const [showFlagged, setShowFlagged] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [sortBy, setSortBy] = useState<"score" | "reviews" | "rating" | "newest">("score");
+  const [segment, setSegment] = useState<"all" | "location" | "latest">("all");
+  const [resetting, setResetting] = useState(false);
   const approveFn = useServerFn(approveCandidate);
   const dismissFn = useServerFn(dismissCandidate);
+  const resetFn = useServerFn(resetReviewQueue);
 
   const load = async () => {
     setLoading(true);
@@ -534,6 +548,46 @@ function ReviewQueue({ onApproved }: { onApproved: () => void }) {
   }, []);
 
   const visible = items.filter((c) => showFlagged || c.sense_check?.verdict !== "flagged");
+
+  const filtered = useMemo(() => {
+    let arr = [...visible];
+    if (segment === "latest") {
+      const cutoff = Date.now() - 24 * 60 * 60 * 1000;
+      arr = arr.filter((c) => new Date(c.searched_at).getTime() >= cutoff);
+    }
+    arr.sort((a, b) => {
+      if (sortBy === "reviews") return (b.review_count ?? 0) - (a.review_count ?? 0);
+      if (sortBy === "rating") return (b.rating ?? 0) - (a.rating ?? 0);
+      if (sortBy === "newest") return new Date(b.searched_at).getTime() - new Date(a.searched_at).getTime();
+      return (b.score ?? 0) - (a.score ?? 0);
+    });
+    return arr;
+  }, [visible, sortBy, segment]);
+
+  const grouped = useMemo(() => {
+    if (segment !== "location") return null;
+    const m = new Map<string, Candidate[]>();
+    for (const c of filtered) {
+      const loc = extractTown(c.area_covered) || "Unknown location";
+      if (!m.has(loc)) m.set(loc, []);
+      m.get(loc)!.push(c);
+    }
+    return Array.from(m.entries()).sort((a, b) => a[0].localeCompare(b[0]));
+  }, [filtered, segment]);
+
+  const handleReset = async () => {
+    if (!confirm("Dismiss every pending candidate? They'll move to 'dismissed' but remain in the audit log.")) return;
+    setResetting(true);
+    try {
+      const r = await resetFn();
+      toast.success(`Queue cleared (${r.dismissed} dismissed)`);
+      setItems([]);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Reset failed");
+    } finally {
+      setResetting(false);
+    }
+  };
 
   const approve = async (id: string) => {
     setBusyId(id);
@@ -567,124 +621,240 @@ function ReviewQueue({ onApproved }: { onApproved: () => void }) {
 
   return (
     <div>
-      <div className="mb-4 flex items-center justify-between">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm text-muted-foreground">
           {items.length} pending {items.length === 1 ? "candidate" : "candidates"}
           {flaggedCount > 0 && ` · ${flaggedCount} flagged`}
         </p>
-        {flaggedCount > 0 && (
-          <Button variant="ghost" size="sm" onClick={() => setShowFlagged((v) => !v)}>
-            {showFlagged ? "Hide flagged" : "Show flagged"}
-          </Button>
-        )}
+        <div className="flex flex-wrap items-center gap-2">
+          <Select value={sortBy} onValueChange={(v) => setSortBy(v as typeof sortBy)}>
+            <SelectTrigger className="h-8 w-[150px] text-xs"><SelectValue placeholder="Sort by" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="score">Best score</SelectItem>
+              <SelectItem value="reviews">Most reviews</SelectItem>
+              <SelectItem value="rating">Highest rated</SelectItem>
+              <SelectItem value="newest">Newest searched</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={segment} onValueChange={(v) => setSegment(v as typeof segment)}>
+            <SelectTrigger className="h-8 w-[150px] text-xs"><SelectValue placeholder="Segment" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All</SelectItem>
+              <SelectItem value="location">By location</SelectItem>
+              <SelectItem value="latest">Latest (24h)</SelectItem>
+            </SelectContent>
+          </Select>
+          {flaggedCount > 0 && (
+            <Button variant="ghost" size="sm" onClick={() => setShowFlagged((v) => !v)}>
+              {showFlagged ? "Hide flagged" : "Show flagged"}
+            </Button>
+          )}
+          {items.length > 0 && (
+            <Button variant="outline" size="sm" onClick={handleReset} disabled={resetting}>
+              {resetting ? <Loader2 className="mr-2 h-3 w-3 animate-spin" /> : <RotateCcw className="mr-2 h-3 w-3" />}
+              Reset queue
+            </Button>
+          )}
+        </div>
       </div>
-      {visible.length === 0 ? (
+      {filtered.length === 0 ? (
         <div className="rounded-lg border border-dashed border-border p-10 text-center">
           <p className="text-sm text-muted-foreground">
             No pending candidates. Click <strong>Find tradesmen</strong> to scrape an area.
           </p>
         </div>
+      ) : grouped ? (
+        <div className="space-y-6">
+          {grouped.map(([loc, cards]) => (
+            <div key={loc}>
+              <h3 className="mb-2 text-sm font-semibold text-muted-foreground">{loc} · {cards.length}</h3>
+              <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+                {cards.map((c) => (
+                  <CandidateCard key={c.id} c={c} busyId={busyId} onApprove={approve} onDismiss={dismiss} />
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
       ) : (
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-          {visible.map((c) => (
-            <Card key={c.id}>
-              <CardHeader className="pb-2">
-                <div className="flex items-start justify-between gap-2">
-                  <div>
-                    <CardTitle className="text-base">{c.name}</CardTitle>
-                    {c.search_query && <p className="text-xs text-muted-foreground">from "{c.search_query}"</p>}
-                  </div>
-                  <VerdictBadge verdict={c.sense_check?.verdict} />
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-3 text-sm">
-                <div className="flex flex-wrap items-center gap-3 text-xs">
-                  {c.rating != null && (
-                    <span className="flex items-center gap-1">
-                      <Star className="h-3 w-3 fill-amber-500 text-amber-500" />
-                      <strong>{c.rating.toFixed(1)}</strong>
-                      <span className="text-muted-foreground">({c.review_count ?? 0})</span>
-                    </span>
-                  )}
-                  {c.social_presence_score != null && c.social_presence_score > 0 && (
-                    <span className="text-muted-foreground">Social: {c.social_presence_score}</span>
-                  )}
-                  {c.area_covered && (
-                    <span className="flex items-center gap-1 text-muted-foreground">
-                      <MapPin className="h-3 w-3" /> {c.area_covered}
-                    </span>
-                  )}
-                </div>
-                <div className="flex flex-wrap gap-3 text-xs">
-                  {c.phone && (
-                    <a href={`tel:${c.phone}`} className="flex items-center gap-1 text-primary hover:underline">
-                      <Phone className="h-3 w-3" /> {c.phone}
-                    </a>
-                  )}
-                  {c.website && (
-                    <a href={c.website} target="_blank" rel="noreferrer" className="flex items-center gap-1 text-primary hover:underline">
-                      <ExternalLink className="h-3 w-3" /> Website
-                    </a>
-                  )}
-                </div>
-                {c.sense_check && (
-                  <div className="rounded-md border border-border bg-muted/40 p-3 text-xs">
-                    <p className="mb-1 font-medium">Sense check</p>
-                    <p className="text-muted-foreground">{c.sense_check.complaintSummary || "No notable complaints."}</p>
-                    {c.sense_check.redFlags?.length > 0 && (
-                      <ul className="mt-2 list-disc space-y-0.5 pl-4 text-destructive">
-                        {c.sense_check.redFlags.slice(0, 4).map((f, i) => (<li key={i}>{f}</li>))}
-                      </ul>
-                    )}
-                    {c.sense_check.positiveSignals?.length > 0 && (
-                      <ul className="mt-2 list-disc space-y-0.5 pl-4 text-emerald-600 dark:text-emerald-400">
-                        {c.sense_check.positiveSignals.slice(0, 3).map((f, i) => (<li key={i}>{f}</li>))}
-                      </ul>
-                    )}
-                  </div>
-                )}
-                {c.sources && Object.keys(c.sources).length > 0 && (
-                  <div className="flex flex-wrap gap-1">
-                    {Object.entries(c.sources).map(([src, info]) => {
-                      const url = (info as any)?.url;
-                      const label = src.replace("www.", "");
-                      if (url) {
-                        return (
-                          <a
-                            key={src}
-                            href={url}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="inline-flex items-center gap-1 rounded-md border px-2.5 py-0.5 text-xs font-semibold text-foreground transition-colors hover:border-primary hover:text-primary"
-                            title={(info as any)?.snippet ? String((info as any).snippet).slice(0, 200) : undefined}
-                          >
-                            {label}
-                            <ExternalLink className="h-3 w-3" />
-                          </a>
-                        );
-                      }
-                      return (
-                        <Badge key={src} variant="outline" className="text-xs">
-                          {label}
-                        </Badge>
-                      );
-                    })}
-                  </div>
-                )}
-                <div className="flex gap-2 pt-1">
-                  <Button size="sm" onClick={() => approve(c.id)} disabled={busyId === c.id}>
-                    {busyId === c.id ? <Loader2 className="mr-2 h-3 w-3 animate-spin" /> : <Check className="mr-2 h-3 w-3" />} Approve
-                  </Button>
-                  <Button size="sm" variant="outline" onClick={() => dismiss(c.id)} disabled={busyId === c.id}>
-                    <X className="mr-2 h-3 w-3" /> Dismiss
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
+          {filtered.map((c) => (
+            <CandidateCard key={c.id} c={c} busyId={busyId} onApprove={approve} onDismiss={dismiss} />
           ))}
         </div>
       )}
     </div>
+  );
+}
+
+function extractTown(area: string | null): string {
+  if (!area) return "";
+  // Try to pull a town name from e.g. "12 High St, Middlesbrough TS1 2AB, UK"
+  const parts = area.split(",").map((p) => p.trim()).filter(Boolean);
+  if (parts.length >= 2) {
+    // Second-to-last usually has "Town POSTCODE"
+    const cand = parts[parts.length - 2] || parts[0];
+    return cand.replace(/\s+[A-Z]{1,2}\d.*$/, "").trim();
+  }
+  return parts[0] ?? "";
+}
+
+function CandidateCard({
+  c,
+  busyId,
+  onApprove,
+  onDismiss,
+}: {
+  c: Candidate;
+  busyId: string | null;
+  onApprove: (id: string) => void;
+  onDismiss: (id: string) => void;
+}) {
+  const [openReviews, setOpenReviews] = useState(false);
+  const breakdown = c.review_breakdown ?? [];
+  const totalReviews =
+    breakdown.length > 0
+      ? breakdown.reduce((sum, b) => sum + (b.count ?? 0), 0)
+      : c.review_count ?? 0;
+  const sourceCount = breakdown.filter((b) => (b.count ?? 0) > 0).length || (c.sources ? Object.keys(c.sources).length : 0);
+
+  return (
+    <Card>
+      <CardHeader className="pb-2">
+        <div className="flex items-start justify-between gap-2">
+          <div>
+            <CardTitle className="text-base">{c.name}</CardTitle>
+            {c.search_query && <p className="text-xs text-muted-foreground">from "{c.search_query}"</p>}
+          </div>
+          <VerdictBadge verdict={c.sense_check?.verdict} />
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-3 text-sm">
+        <div className="flex flex-wrap items-center gap-3 text-xs">
+          {c.social_presence_score != null && c.social_presence_score > 0 && (
+            <span className="text-muted-foreground">Social: {c.social_presence_score}</span>
+          )}
+          {c.area_covered && (
+            <span className="flex items-center gap-1 text-muted-foreground">
+              <MapPin className="h-3 w-3" /> {c.area_covered}
+            </span>
+          )}
+        </div>
+        <div className="flex flex-wrap gap-3 text-xs">
+          {c.phone && (
+            <a href={`tel:${c.phone}`} className="flex items-center gap-1 text-primary hover:underline">
+              <Phone className="h-3 w-3" /> {c.phone}
+            </a>
+          )}
+          {c.website && (
+            <a href={c.website} target="_blank" rel="noreferrer" className="flex items-center gap-1 text-primary hover:underline">
+              <ExternalLink className="h-3 w-3" /> Website
+            </a>
+          )}
+        </div>
+
+        {/* Review breakdown */}
+        <Collapsible open={openReviews} onOpenChange={setOpenReviews}>
+          <CollapsibleTrigger className="flex w-full items-center justify-between rounded-md border border-border bg-muted/30 px-3 py-2 text-xs hover:bg-muted/60">
+            <span className="flex items-center gap-2">
+              <Star className="h-3 w-3 fill-amber-500 text-amber-500" />
+              <strong>{c.rating != null ? c.rating.toFixed(1) : "—"}</strong>
+              <span className="text-muted-foreground">
+                · {totalReviews} review{totalReviews === 1 ? "" : "s"}
+                {sourceCount > 0 && ` across ${sourceCount} source${sourceCount === 1 ? "" : "s"}`}
+              </span>
+            </span>
+            <ChevronDown className={`h-3 w-3 transition-transform ${openReviews ? "rotate-180" : ""}`} />
+          </CollapsibleTrigger>
+          <CollapsibleContent className="mt-2 space-y-2">
+            {breakdown.length === 0 ? (
+              <p className="px-1 text-xs text-muted-foreground">No per-source breakdown captured.</p>
+            ) : (
+              breakdown.map((b, i) => (
+                <div key={`${b.source}-${i}`} className="rounded-md border border-border p-2 text-xs">
+                  <div className="flex items-center justify-between gap-2">
+                    {b.url ? (
+                      <a href={b.url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 font-medium text-primary hover:underline">
+                        {b.source} <ExternalLink className="h-3 w-3" />
+                      </a>
+                    ) : (
+                      <span className="font-medium">{b.source}</span>
+                    )}
+                    <span className="text-muted-foreground">
+                      {b.rating != null && (<><Star className="mr-1 inline h-3 w-3 fill-amber-500 text-amber-500" />{b.rating.toFixed(1)} · </>)}
+                      {b.count ?? 0} reviews
+                    </span>
+                  </div>
+                  {b.snippets.length > 0 && (
+                    <ul className="mt-1 space-y-1 text-muted-foreground">
+                      {b.snippets.slice(0, 3).map((s, j) => (
+                        <li key={j} className="line-clamp-2">
+                          {s.rating != null && <span className="mr-1 text-amber-600">{s.rating}★</span>}
+                          {s.text}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              ))
+            )}
+          </CollapsibleContent>
+        </Collapsible>
+
+        {c.sense_check && (
+          <div className="rounded-md border border-border bg-muted/40 p-3 text-xs">
+            <p className="mb-1 font-medium">Sense check</p>
+            <p className="text-muted-foreground">{c.sense_check.complaintSummary || "No notable complaints."}</p>
+            {c.sense_check.redFlags?.length > 0 && (
+              <ul className="mt-2 list-disc space-y-0.5 pl-4 text-destructive">
+                {c.sense_check.redFlags.slice(0, 4).map((f, i) => (<li key={i}>{f}</li>))}
+              </ul>
+            )}
+            {c.sense_check.positiveSignals?.length > 0 && (
+              <ul className="mt-2 list-disc space-y-0.5 pl-4 text-emerald-600 dark:text-emerald-400">
+                {c.sense_check.positiveSignals.slice(0, 3).map((f, i) => (<li key={i}>{f}</li>))}
+              </ul>
+            )}
+          </div>
+        )}
+        {c.sources && Object.keys(c.sources).length > 0 && (
+          <div className="flex flex-wrap gap-1">
+            {Object.entries(c.sources).map(([src, info]) => {
+              const url = (info as any)?.url;
+              const label = src.replace("www.", "");
+              if (url) {
+                return (
+                  <a
+                    key={src}
+                    href={url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-1 rounded-md border px-2.5 py-0.5 text-xs font-semibold text-foreground transition-colors hover:border-primary hover:text-primary"
+                    title={(info as any)?.snippet ? String((info as any).snippet).slice(0, 200) : undefined}
+                  >
+                    {label}
+                    <ExternalLink className="h-3 w-3" />
+                  </a>
+                );
+              }
+              return (
+                <Badge key={src} variant="outline" className="text-xs">
+                  {label}
+                </Badge>
+              );
+            })}
+          </div>
+        )}
+        <div className="flex gap-2 pt-1">
+          <Button size="sm" onClick={() => onApprove(c.id)} disabled={busyId === c.id}>
+            {busyId === c.id ? <Loader2 className="mr-2 h-3 w-3 animate-spin" /> : <Check className="mr-2 h-3 w-3" />} Approve
+          </Button>
+          <Button size="sm" variant="outline" onClick={() => onDismiss(c.id)} disabled={busyId === c.id}>
+            <X className="mr-2 h-3 w-3" /> Dismiss
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 
