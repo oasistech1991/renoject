@@ -105,6 +105,19 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         href: appCss,
       },
     ],
+    scripts: [
+      {
+        type: "application/ld+json",
+        children: JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "Organization",
+          name: "Hartstone Holdings",
+          url: "https://hartstoneholdings.com",
+          description:
+            "UK property investment toolkit — BTL & BRRR calculators, HMO compliance, market search, renovation costs and trusted tradesmen.",
+        }),
+      },
+    ],
   }),
   shellComponent: RootShell,
   component: RootComponent,
