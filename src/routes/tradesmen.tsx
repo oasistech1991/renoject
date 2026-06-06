@@ -18,7 +18,7 @@ import {
 import { toast } from "sonner";
 import { Mail, Phone, MapPin, Briefcase, Clock, PoundSterling, Pencil, Trash2, Plus, Search, Sparkles, ShieldCheck, ShieldAlert, ShieldX, ExternalLink, Loader2, Check, X, Star, Building2, Users } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
-import { searchTradesmen, approveCandidate, dismissCandidate, resetReviewQueue } from "@/lib/tradesmen-scrape.functions";
+import { searchTradesmen, approveCandidate, dismissCandidate, resetReviewQueue, listCandidates } from "@/lib/tradesmen-scrape.functions";
 import { runBackgroundCheck } from "@/lib/tradesmen-background.functions";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
