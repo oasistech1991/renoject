@@ -16,9 +16,10 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Mail, Phone, MapPin, Briefcase, Clock, PoundSterling, Pencil, Trash2, Plus, Search, Sparkles, ShieldCheck, ShieldAlert, ShieldX, ExternalLink, Loader2, Check, X, Star } from "lucide-react";
+import { Mail, Phone, MapPin, Briefcase, Clock, PoundSterling, Pencil, Trash2, Plus, Search, Sparkles, ShieldCheck, ShieldAlert, ShieldX, ExternalLink, Loader2, Check, X, Star, Building2, Users } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
 import { searchTradesmen, approveCandidate, dismissCandidate, resetReviewQueue } from "@/lib/tradesmen-scrape.functions";
+import { runBackgroundCheck } from "@/lib/tradesmen-background.functions";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -510,6 +511,38 @@ type Candidate = {
     snippets: Array<{ text: string; rating: number | null }>;
   }> | null;
   searched_at: string;
+  background_check: BackgroundReport | null;
+  background_checked_at: string | null;
+};
+
+type BackgroundReport = {
+  company_match: {
+    company_name: string;
+    company_number: string;
+    company_status: string;
+    address: string | null;
+    incorporated_on: string | null;
+    url: string;
+  } | null;
+  officers: Array<{ name: string; role: string | null; appointed_on: string | null; resigned_on: string | null; appointments_url: string | null }>;
+  director_reports: Array<{
+    name: string;
+    role: string | null;
+    appointed_on: string | null;
+    appointments_url: string | null;
+    counts: { total: number; active: number; dissolved: number; resigned: number; liquidation: number };
+    examples: Array<{ company_name: string; company_number: string; status: string; role: string | null }>;
+  }>;
+  web_mentions: Array<{ url: string; title: string | null; snippet: string }>;
+  ai: {
+    verdict: "clean" | "watch" | "flagged";
+    summary: string;
+    riskSignals: string[];
+    positiveSignals: string[];
+    directorFlags: string[];
+  } | null;
+  checked_at: string;
+  disclaimer: string;
 };
 
 function VerdictBadge({ verdict }: { verdict?: string | null }) {
@@ -530,6 +563,7 @@ function ReviewQueue({ onApproved }: { onApproved: () => void }) {
   const approveFn = useServerFn(approveCandidate);
   const dismissFn = useServerFn(dismissCandidate);
   const resetFn = useServerFn(resetReviewQueue);
+  const backgroundFn = useServerFn(runBackgroundCheck);
 
   const load = async () => {
     setLoading(true);
@@ -615,6 +649,10 @@ function ReviewQueue({ onApproved }: { onApproved: () => void }) {
     }
   };
 
+  const updateCandidate = (id: string, patch: Partial<Candidate>) => {
+    setItems((prev) => prev.map((c) => (c.id === id ? { ...c, ...patch } : c)));
+  };
+
   if (loading) return <p className="text-sm text-muted-foreground">Loading…</p>;
 
   const flaggedCount = items.filter((c) => c.sense_check?.verdict === "flagged").length;
@@ -670,7 +708,7 @@ function ReviewQueue({ onApproved }: { onApproved: () => void }) {
               <h3 className="mb-2 text-sm font-semibold text-muted-foreground">{loc} · {cards.length}</h3>
               <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
                 {cards.map((c) => (
-                  <CandidateCard key={c.id} c={c} busyId={busyId} onApprove={approve} onDismiss={dismiss} />
+                  <CandidateCard key={c.id} c={c} busyId={busyId} onApprove={approve} onDismiss={dismiss} onBackground={backgroundFn} onUpdate={updateCandidate} />
                 ))}
               </div>
             </div>
@@ -679,7 +717,7 @@ function ReviewQueue({ onApproved }: { onApproved: () => void }) {
       ) : (
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
           {filtered.map((c) => (
-            <CandidateCard key={c.id} c={c} busyId={busyId} onApprove={approve} onDismiss={dismiss} />
+            <CandidateCard key={c.id} c={c} busyId={busyId} onApprove={approve} onDismiss={dismiss} onBackground={backgroundFn} onUpdate={updateCandidate} />
           ))}
         </div>
       )}
@@ -704,19 +742,39 @@ function CandidateCard({
   busyId,
   onApprove,
   onDismiss,
+  onBackground,
+  onUpdate,
 }: {
   c: Candidate;
   busyId: string | null;
   onApprove: (id: string) => void;
   onDismiss: (id: string) => void;
+  onBackground: (args: { data: { id: string } }) => Promise<BackgroundReport>;
+  onUpdate: (id: string, patch: Partial<Candidate>) => void;
 }) {
   const [openReviews, setOpenReviews] = useState(false);
+  const [openBg, setOpenBg] = useState(!!c.background_check);
+  const [bgLoading, setBgLoading] = useState(false);
   const breakdown = c.review_breakdown ?? [];
   const totalReviews =
     breakdown.length > 0
       ? breakdown.reduce((sum, b) => sum + (b.count ?? 0), 0)
       : c.review_count ?? 0;
   const sourceCount = breakdown.filter((b) => (b.count ?? 0) > 0).length || (c.sources ? Object.keys(c.sources).length : 0);
+
+  const runBg = async () => {
+    setBgLoading(true);
+    try {
+      const report = await onBackground({ data: { id: c.id } });
+      onUpdate(c.id, { background_check: report, background_checked_at: report.checked_at });
+      setOpenBg(true);
+      toast.success("Background check complete");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Background check failed");
+    } finally {
+      setBgLoading(false);
+    }
+  };
 
   return (
     <Card>
@@ -852,9 +910,140 @@ function CandidateCard({
           <Button size="sm" variant="outline" onClick={() => onDismiss(c.id)} disabled={busyId === c.id}>
             <X className="mr-2 h-3 w-3" /> Dismiss
           </Button>
+          <Button size="sm" variant="secondary" onClick={runBg} disabled={bgLoading}>
+            {bgLoading ? <Loader2 className="mr-2 h-3 w-3 animate-spin" /> : <Building2 className="mr-2 h-3 w-3" />}
+            {c.background_check ? "Re-run analysis" : "Further analyse"}
+          </Button>
         </div>
+
+        {c.background_check && (
+          <BackgroundPanel report={c.background_check} open={openBg} onOpenChange={setOpenBg} />
+        )}
       </CardContent>
     </Card>
+  );
+}
+
+function BgVerdictBadge({ verdict }: { verdict?: string | null }) {
+  if (verdict === "clean") return <Badge className="bg-emerald-600 hover:bg-emerald-600"><ShieldCheck className="mr-1 h-3 w-3" /> Clean</Badge>;
+  if (verdict === "watch") return <Badge className="bg-amber-600 hover:bg-amber-600"><ShieldAlert className="mr-1 h-3 w-3" /> Watch</Badge>;
+  if (verdict === "flagged") return <Badge variant="destructive"><ShieldX className="mr-1 h-3 w-3" /> Flagged</Badge>;
+  return <Badge variant="outline">No verdict</Badge>;
+}
+
+function BackgroundPanel({
+  report,
+  open,
+  onOpenChange,
+}: {
+  report: BackgroundReport;
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+}) {
+  const match = report.company_match;
+  return (
+    <Collapsible open={open} onOpenChange={onOpenChange}>
+      <CollapsibleTrigger className="flex w-full items-center justify-between rounded-md border border-border bg-muted/30 px-3 py-2 text-xs hover:bg-muted/60">
+        <span className="flex items-center gap-2">
+          <Building2 className="h-3 w-3" />
+          <strong>Background check</strong>
+          <BgVerdictBadge verdict={report.ai?.verdict} />
+        </span>
+        <ChevronDown className={`h-3 w-3 transition-transform ${open ? "rotate-180" : ""}`} />
+      </CollapsibleTrigger>
+      <CollapsibleContent className="mt-2 space-y-3">
+        {/* Company match */}
+        <div className="rounded-md border border-border p-2 text-xs">
+          <p className="mb-1 font-medium">Company match</p>
+          {match ? (
+            <div className="space-y-1">
+              <div className="flex flex-wrap items-center gap-2">
+                <a href={match.url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 font-medium text-primary hover:underline">
+                  {match.company_name} <ExternalLink className="h-3 w-3" />
+                </a>
+                <Badge variant="outline" className="text-[10px]">{match.company_status}</Badge>
+                <span className="text-muted-foreground">#{match.company_number}</span>
+              </div>
+              {match.incorporated_on && <p className="text-muted-foreground">Incorporated {match.incorporated_on}</p>}
+              {match.address && <p className="text-muted-foreground">{match.address}</p>}
+            </div>
+          ) : (
+            <p className="text-muted-foreground">No Companies House match found for this trader.</p>
+          )}
+        </div>
+
+        {/* Directors */}
+        {report.director_reports.length > 0 && (
+          <div className="rounded-md border border-border p-2 text-xs">
+            <p className="mb-1 flex items-center gap-1 font-medium"><Users className="h-3 w-3" /> Directors</p>
+            <ul className="space-y-2">
+              {report.director_reports.map((d, i) => (
+                <li key={i} className="border-l-2 border-border pl-2">
+                  <div className="flex flex-wrap items-center gap-2">
+                    {d.appointments_url ? (
+                      <a href={d.appointments_url} target="_blank" rel="noreferrer" className="font-medium text-primary hover:underline">
+                        {d.name}
+                      </a>
+                    ) : (
+                      <span className="font-medium">{d.name}</span>
+                    )}
+                    {d.role && <span className="text-muted-foreground">· {d.role}</span>}
+                  </div>
+                  <div className="mt-0.5 flex flex-wrap gap-x-3 text-muted-foreground">
+                    <span>{d.counts.total} appointments</span>
+                    <span>{d.counts.active} active</span>
+                    <span className={d.counts.dissolved >= 3 ? "text-destructive" : ""}>{d.counts.dissolved} dissolved</span>
+                    {d.counts.liquidation > 0 && <span className="text-destructive">{d.counts.liquidation} liquidation</span>}
+                    <span>{d.counts.resigned} resigned</span>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {/* AI verdict */}
+        {report.ai && (
+          <div className="rounded-md border border-border bg-muted/40 p-2 text-xs">
+            <p className="mb-1 font-medium">Verdict</p>
+            <p className="text-muted-foreground">{report.ai.summary}</p>
+            {report.ai.riskSignals.length > 0 && (
+              <ul className="mt-2 list-disc space-y-0.5 pl-4 text-destructive">
+                {report.ai.riskSignals.map((f, i) => (<li key={i}>{f}</li>))}
+              </ul>
+            )}
+            {report.ai.directorFlags.length > 0 && (
+              <ul className="mt-2 list-disc space-y-0.5 pl-4 text-amber-700 dark:text-amber-400">
+                {report.ai.directorFlags.map((f, i) => (<li key={i}>{f}</li>))}
+              </ul>
+            )}
+            {report.ai.positiveSignals.length > 0 && (
+              <ul className="mt-2 list-disc space-y-0.5 pl-4 text-emerald-600 dark:text-emerald-400">
+                {report.ai.positiveSignals.map((f, i) => (<li key={i}>{f}</li>))}
+              </ul>
+            )}
+          </div>
+        )}
+
+        {/* Web mentions */}
+        {report.web_mentions.length > 0 && (
+          <div className="rounded-md border border-border p-2 text-xs">
+            <p className="mb-1 font-medium">CCJ / reputation web mentions</p>
+            <p className="mb-1 text-[10px] text-muted-foreground italic">{report.disclaimer}</p>
+            <ul className="space-y-1">
+              {report.web_mentions.slice(0, 6).map((m, i) => (
+                <li key={i}>
+                  <a href={m.url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-primary hover:underline">
+                    {m.title ?? m.url} <ExternalLink className="h-3 w-3" />
+                  </a>
+                  {m.snippet && <p className="text-muted-foreground line-clamp-2">{m.snippet}</p>}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </CollapsibleContent>
+    </Collapsible>
   );
 }
 
