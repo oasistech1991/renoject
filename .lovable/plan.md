@@ -1,42 +1,47 @@
-## 1. Reset button on Review queue
+## Goal
+Add a **"Further analyse"** button to each candidate card on `/tradesmen` that runs a deeper background check on the company and its directors, combining official Companies House data with AI-summarised web research (CCJs, complaints, news, reputation). Results expand inline on the card and are persisted on the candidate row so they don't have to be re-run.
 
-Add a **"Reset queue"** button next to the existing flagged-toggle in `ReviewQueue` (src/routes/tradesmen.tsx). It opens a confirm dialog and then bulk-updates every `pending` candidate to `status = 'dismissed'`, so the queue is empty but historical rows remain auditable. After success it reloads the list and toasts "Queue cleared".
+## What the user sees
+- New **"Further analyse"** button on each pending candidate card (next to existing Approve / Dismiss).
+- Clicking it shows a loading state, then expands an inline panel below the existing sense check / review breakdown with:
+  - **Company match** — best Companies House match (name, company number, status, incorporation date, address, SIC codes), plus a link to its Companies House page.
+  - **Directors** — each active director: name, role, appointed date, nationality, and a count of their other active / dissolved / resigned appointments. Highlights directors with many dissolved companies.
+  - **Risk signals** — bullet list (e.g. "3 of director's 5 companies dissolved", "Company filed accounts late", "Active proposal to strike off").
+  - **CCJ / reputation web check** — AI summary from Firecrawl search of "{company} CCJ / complaints / scam / reviews" with cited source links.
+  - **Overall verdict** — `clean` / `watch` / `flagged` badge with one-line rationale.
+- Once run, the panel stays expanded by default and a small "Re-run analysis" link lets the user refresh it.
 
-## 2. Fix Middlesbrough (and all) review counts
+## Data sources
+1. **Companies House Public Data API** (free, requires API key) — for company search, company profile, officers list, and per-director appointments. Needs a new secret `COMPANIES_HOUSE_API_KEY`.
+2. **Firecrawl search + Lovable AI** — for CCJ register mentions, Trustpilot/forum complaints, news; AI synthesises into structured JSON. Already configured.
 
-Checked the DB for `search_query ilike '%middles%'`. The Google Places counts being stored (e.g. M B Builders = 4, jdc builders = 2, BMAC = 9) are exactly what Google's Places API returns for those Place IDs. The undercount has three real causes:
+## Persistence
+New JSONB column `background_check` on `tradesmen_candidates` storing the full structured report plus `checked_at`. UI shows cached result if present; button label becomes "Re-run analysis".
 
-1. **Wrong listing matched.** The misspelled query `"builder in middlesborough"` (should be *Middlesbrough*) made Places match smaller/older profiles. We will normalise the town input server-side (trim, collapse whitespace, common misspelling map for Middlesbrough/Middlesborough) before sending it to Google Places.
-2. **Firecrawl snippets are useless for counts.** Checkatrade snippets are the Cloudflare block page, MyBuilder snippets are the generic category landing page — so `extractReviewCount` finds nothing and we never add platform totals. Fix: instead of relying on `search()` description snippets, do a targeted `scrape()` of the top Checkatrade / Trustpilot / MyBuilder / Yell result with `formats: ['markdown']`, then run `extractReviewCount` on the full page text. Cache the parsed count per platform in `sources[host].reviewCount`.
-3. **Google `userRatingCount` is authoritative for Google itself** — keep it, but display review counts as a **per-platform breakdown** (see §3) rather than a single number, so the user can see *why* a total looks low and never feels the count is wrong vs. Google.
+## Technical changes
 
-We will also store the Google Maps URL (`https://www.google.com/maps/place/?q=place_id:<id>`) in `sources.google.url` so the Google badge becomes a clickable proof link, making it trivial to compare against the real Google listing.
+**Migration**
+- Add `background_check jsonb` and `background_checked_at timestamptz` to `tradesmen_candidates`.
 
-## 3. Review breakdown dropdown on each card
+**Secret**
+- Request `COMPANIES_HOUSE_API_KEY` via `add_secret` (user gets it free from developer.company-information.service.gov.uk).
 
-Replace the single `Star · rating (count)` line with a collapsible **"Reviews"** section (shadcn `Collapsible`) on each candidate card:
+**Server function** — `src/lib/tradesmen-background.functions.ts`
+- `runBackgroundCheck({ id })`:
+  1. Load candidate row.
+  2. Call Companies House `/search/companies?q={company name}` → pick top match scoring on name similarity + address town overlap with candidate's `area_covered`.
+  3. Fetch `/company/{number}` and `/company/{number}/officers`.
+  4. For each active director (limit ~5): fetch `/officers/{officer_id}/appointments`, tally active/dissolved/resigned counts.
+  5. Firecrawl search for `"{company} CCJ"`, `"{company} complaints scam"`, `"{director name} director"` (2–3 queries, limit 4 each).
+  6. Pass structured payload to Lovable AI (`google/gemini-3-flash-preview`) with a tool-call schema → returns `{ verdict, summary, riskSignals[], positiveSignals[], directorFlags[] }`.
+  7. Compose final `background_check` JSON (raw Companies House data + AI verdict + web sources) and persist.
+  8. Return it to the client.
 
-- **Header row** shows aggregated total: `★ 4.8 · 47 reviews across 3 sources`.
-- **Expanded** shows one row per source with:
-  - source name (clickable link to the source URL),
-  - star rating if known,
-  - review count for that source,
-  - up to 3 representative snippets (uses `reviewSnippets` already collected, grouped by host).
+**UI** — `src/routes/tradesmen.tsx`
+- Add Tanstack Query mutation calling the new server fn; on success update the candidate's local cache.
+- Add "Further analyse" / "Re-run analysis" button.
+- Add a `<Collapsible>` panel rendering the structured report with badges, director rows, and clickable source links.
 
-Snippets are stored in a new JSONB column `review_breakdown` on `tradesmen_candidates` (`[{source, url, rating, count, snippets: [{text, rating, date, location}]}]`) populated by the scraping step. Backwards compatible: existing rows fall back to the old `sources` + `review_count`.
-
-## 4. Sort / segment the review queue
-
-Add a small toolbar above the queue grid with:
-
-- **Sort by** select: `Best score` (current default) · `Most reviews` · `Highest rated` · `Newest searched`.
-- **Segment** select: `All` · `By location` (groups cards under `area_covered` town/city headings) · `Latest only` (last 24h of `searched_at`).
-
-Implemented purely client-side over the already-loaded `items` array — no schema or server changes needed for sorting/segmentation themselves.
-
-## Technical notes
-
-- Files touched: `src/routes/tradesmen.tsx` (UI, reset, sort/segment, breakdown), `src/lib/tradesmen-scrape.functions.ts` (targeted platform scrapes, Google URL, town normalisation, `review_breakdown` write).
-- New migration: add `review_breakdown jsonb` to `public.tradesmen_candidates` (nullable, default `null`); no policy changes needed.
-- New server function `resetReviewQueue` (admin-only via `requireSupabaseAuth`) that bulk-dismisses pending rows; called by the Reset button.
-- No new dependencies.
+## Out of scope
+- Real CCJ register lookup (Trust Online is paid + per-search). We surface only public web mentions and clearly label the CCJ section as "Public web mentions, not an official register check".
+- Editing the approved `tradesmen` table — this only enriches the candidate review queue.

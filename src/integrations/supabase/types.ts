@@ -432,6 +432,8 @@ export type Database = {
         Row: {
           approved_tradesman_id: string | null
           area_covered: string | null
+          background_check: Json | null
+          background_checked_at: string | null
           company: string | null
           created_at: string
           created_by: string | null
@@ -456,6 +458,8 @@ export type Database = {
         Insert: {
           approved_tradesman_id?: string | null
           area_covered?: string | null
+          background_check?: Json | null
+          background_checked_at?: string | null
           company?: string | null
           created_at?: string
           created_by?: string | null
@@ -480,6 +484,8 @@ export type Database = {
         Update: {
           approved_tradesman_id?: string | null
           area_covered?: string | null
+          background_check?: Json | null
+          background_checked_at?: string | null
           company?: string | null
           created_at?: string
           created_by?: string | null
