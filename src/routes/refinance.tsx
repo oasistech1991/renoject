@@ -22,6 +22,10 @@ export const Route = createFileRoute("/refinance")({
       { name: "description", content: "Model the full UK BRRR cycle: total cash in, GDV, cash pulled out on refinance, cash left in the deal and post-refi cashflow." },
       { property: "og:title", content: "BRRR Calculator" },
       { property: "og:description", content: "Work out cash recycled, money left in and post-refi yield for any BRRR deal." },
+      { property: "og:url", content: "https://hartstoneholdings.com/refinance" },
+    ],
+    links: [
+      { rel: "canonical", href: "https://hartstoneholdings.com/refinance" },
     ],
   }),
   component: RefinancePage,

@@ -18,6 +18,10 @@ export const Route = createFileRoute("/auth")({
     meta: [
       { title: "Sign in — HARTSTONE HOLDINGS" },
       { name: "description", content: "Sign in or create your Hartstone Holdings account." },
+      { property: "og:url", content: "https://hartstoneholdings.com/auth" },
+    ],
+    links: [
+      { rel: "canonical", href: "https://hartstoneholdings.com/auth" },
     ],
   }),
   component: AuthPage,

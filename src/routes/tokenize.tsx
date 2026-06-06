@@ -13,6 +13,10 @@ export const Route = createFileRoute("/tokenize")({
     meta: [
       { title: "Tokenize — HARTSTONE HOLDINGS" },
       { name: "description", content: "Visual demo of property tokenization: mint NFT deeds, fractionalize ownership, and transfer to new parties on-chain." },
+      { property: "og:url", content: "https://hartstoneholdings.com/tokenize" },
+    ],
+    links: [
+      { rel: "canonical", href: "https://hartstoneholdings.com/tokenize" },
     ],
   }),
   component: TokenizePage,

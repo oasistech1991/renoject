@@ -5,6 +5,10 @@ export const Route = createFileRoute("/refund-policy")({
     meta: [
       { title: "Refund Policy — HARTSTONE HOLDINGS" },
       { name: "description", content: "Hartstone Holdings 30-day money-back guarantee." },
+      { property: "og:url", content: "https://hartstoneholdings.com/refund-policy" },
+    ],
+    links: [
+      { rel: "canonical", href: "https://hartstoneholdings.com/refund-policy" },
     ],
   }),
   component: RefundPage,

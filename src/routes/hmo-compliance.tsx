@@ -35,6 +35,10 @@ export const Route = createFileRoute("/hmo-compliance")({
         property: "og:description",
         content: "AI compliance review of UK HMO floorplans by location.",
       },
+      { property: "og:url", content: "https://hartstoneholdings.com/hmo-compliance" },
+    ],
+    links: [
+      { rel: "canonical", href: "https://hartstoneholdings.com/hmo-compliance" },
     ],
   }),
   component: HMOCompliancePage,

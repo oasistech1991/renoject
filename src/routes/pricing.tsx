@@ -10,6 +10,10 @@ export const Route = createFileRoute("/pricing")({
     meta: [
       { title: "Pricing — HARTSTONE HOLDINGS" },
       { name: "description", content: "Unlock Market Search and Tradesmen background checks for £1/month." },
+      { property: "og:url", content: "https://hartstoneholdings.com/pricing" },
+    ],
+    links: [
+      { rel: "canonical", href: "https://hartstoneholdings.com/pricing" },
     ],
   }),
   component: PricingPage,
