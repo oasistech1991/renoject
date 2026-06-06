@@ -4,6 +4,7 @@ import {
   Link,
   createRootRouteWithContext,
   useRouter,
+  useLocation,
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
@@ -12,6 +13,8 @@ import appCss from "../styles.css?url";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Toaster } from "@/components/ui/sonner";
+import { supabase } from "@/integrations/supabase/client";
+import type { Session } from "@supabase/supabase-js";
 
 function NotFoundComponent() {
   return (
@@ -125,25 +128,64 @@ function RootComponent() {
   );
 }
 
+const PUBLIC_PATHS = new Set([
+  "/auth",
+  "/reset-password",
+  "/pricing",
+  "/terms",
+  "/privacy",
+  "/refund-policy",
+]);
+
 function AuthGate() {
-  const [unlocked, setUnlocked] = useState(false);
+  const location = useLocation();
+  const [adminUnlocked, setAdminUnlocked] = useState(false);
+  const [session, setSession] = useState<Session | null>(null);
+  const [sessionLoaded, setSessionLoaded] = useState(false);
 
   useEffect(() => {
     if (typeof window !== "undefined" && sessionStorage.getItem("hh_unlocked") === "1") {
-      setUnlocked(true);
+      setAdminUnlocked(true);
     }
+    supabase.auth.getSession().then(({ data }) => {
+      setSession(data.session);
+      setSessionLoaded(true);
+    });
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, s) => {
+      setSession(s);
+    });
+    return () => subscription.unsubscribe();
   }, []);
 
-  if (!unlocked) {
-    return <SignInScreen onUnlock={() => setUnlocked(true)} />;
+  const path = location.pathname.replace(/\/+$/, "") || "/";
+  const isPublicPath = PUBLIC_PATHS.has(path);
+  const unlocked = adminUnlocked || !!session;
+
+  if (!unlocked && !isPublicPath) {
+    return (
+      <>
+        <SignInScreen onUnlock={() => setAdminUnlocked(true)} />
+        <Toaster />
+      </>
+    );
+  }
+
+  if (isPublicPath && !sessionLoaded) {
+    // Public legal/auth pages don't need to wait, render immediately
   }
 
   return (
     <>
       <TopNav
+        session={session}
+        isAdmin={adminUnlocked}
         onSignOut={() => {
           sessionStorage.removeItem("hh_unlocked");
-          setUnlocked(false);
+          setAdminUnlocked(false);
+          if (typeof window !== "undefined") {
+            window.dispatchEvent(new Event("hh-admin-changed"));
+          }
+          supabase.auth.signOut();
         }}
       />
       <Outlet />
@@ -161,6 +203,9 @@ function SignInScreen({ onUnlock }: { onUnlock: () => void }) {
     e.preventDefault();
     if (username.trim().toUpperCase() === "HARTS" && password === "TAYLOR") {
       sessionStorage.setItem("hh_unlocked", "1");
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new Event("hh-admin-changed"));
+      }
       setError(null);
       onUnlock();
     } else {
@@ -175,7 +220,7 @@ function SignInScreen({ onUnlock }: { onUnlock: () => void }) {
         className="w-full max-w-sm rounded-lg border border-border bg-card p-8 shadow-sm"
       >
         <h1 className="text-xl font-bold tracking-wide text-foreground">HARTSTONE HOLDINGS</h1>
-        <p className="mt-2 text-sm text-muted-foreground">Sign in to access your property tools.</p>
+        <p className="mt-2 text-sm text-muted-foreground">Admin sign-in. Customers should use the public sign-in below.</p>
 
         <label className="mt-6 block text-xs font-medium text-foreground">Username</label>
         <input
@@ -199,12 +244,25 @@ function SignInScreen({ onUnlock }: { onUnlock: () => void }) {
           Sign in
         </Button>
         {error && <p className="mt-3 text-xs text-destructive">{error}</p>}
+
+        <div className="mt-6 border-t border-border pt-4 text-center text-xs text-muted-foreground">
+          Not the admin?{" "}
+          <a href="/auth" className="font-medium text-foreground underline">Customer sign in / sign up</a>
+        </div>
       </form>
     </div>
   );
 }
 
-function TopNav({ onSignOut }: { onSignOut: () => void }) {
+function TopNav({
+  onSignOut,
+  session,
+  isAdmin,
+}: {
+  onSignOut: () => void;
+  session: Session | null;
+  isAdmin: boolean;
+}) {
   const linkBase =
     "px-4 py-2 text-sm font-medium rounded-md transition-colors text-muted-foreground hover:text-foreground hover:bg-accent/50";
   const activeCls = "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground";
@@ -238,7 +296,19 @@ function TopNav({ onSignOut }: { onSignOut: () => void }) {
         <Link to="/tradesmen" className={linkBase} activeProps={{ className: `${linkBase} ${activeCls}` }}>
           Tradesmen
         </Link>
+        <Link to="/pricing" className={linkBase} activeProps={{ className: `${linkBase} ${activeCls}` }}>
+          Pricing
+        </Link>
         <div className="ml-auto flex items-center gap-2">
+          {session ? (
+            <Link to="/account" className="text-xs text-muted-foreground hover:text-foreground">
+              {session.user.email}
+            </Link>
+          ) : !isAdmin ? (
+            <Link to="/auth" className={linkBase}>
+              Sign in
+            </Link>
+          ) : null}
           <Button variant="outline" size="sm" onClick={onSignOut}>Sign out</Button>
         </div>
       </nav>
