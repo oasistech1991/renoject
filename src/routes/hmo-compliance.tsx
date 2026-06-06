@@ -674,7 +674,7 @@ function HMOCompliancePage() {
 
             {displayData && (
               <>
-                <ReportView data={displayData} proposed={targetBedrooms} checkedAt={lastCheckAt} savedAt={viewMeta?.createdAt} originalImageBase64={imageBase64} />
+                <ReportView data={displayData} proposed={targetBedrooms} checkedAt={lastCheckAt} savedAt={viewMeta?.createdAt} originalImageBase64={imageBase64} costPerBedroom={costPerBedroom} />
                 {mutation.data && !viewMeta && (
                   <div className="mt-6 rounded-xl border border-border bg-muted/20 p-5">
                     {savedMeta ? (
