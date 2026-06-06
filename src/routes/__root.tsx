@@ -131,6 +131,8 @@ function RootComponent() {
 }
 
 const PUBLIC_PATHS = new Set([
+  "/",
+  "/refinance",
   "/auth",
   "/reset-password",
   "/pricing",
