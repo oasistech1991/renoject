@@ -16,7 +16,13 @@ import { Toaster } from "@/components/ui/sonner";
 import { supabase } from "@/integrations/supabase/client";
 import type { Session } from "@supabase/supabase-js";
 import { useEntitlement } from "@/hooks/useEntitlement";
-import { Lock, Loader2 } from "lucide-react";
+import { Lock, Loader2, ChevronDown, Calculator, Building2, ShieldCheck, Tag, Home } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 function NotFoundComponent() {
   return (
@@ -306,44 +312,97 @@ function TopNav({
   isAdmin: boolean;
 }) {
   const linkBase =
-    "px-4 py-2 text-sm font-medium rounded-md transition-colors text-muted-foreground hover:text-foreground hover:bg-accent/50";
-  const activeCls = "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground";
+    "px-3 py-1.5 text-sm font-medium rounded-md transition-colors text-muted-foreground hover:text-foreground hover:bg-accent/60";
+  const activeCls = "bg-primary/15 text-foreground";
+  const triggerCls =
+    "inline-flex items-center gap-1 px-3 py-1.5 text-sm font-medium rounded-md transition-colors text-muted-foreground hover:text-foreground hover:bg-accent/60 focus:outline-none data-[state=open]:bg-accent/60 data-[state=open]:text-foreground";
+
+  const groups: Array<{
+    label: string;
+    icon: typeof Calculator;
+    items: Array<{ to: string; label: string; desc: string }>;
+  }> = [
+    {
+      label: "Calculators",
+      icon: Calculator,
+      items: [
+        { to: "/refinance", label: "Property Calculator", desc: "BTL, BRRR, mortgage & cash" },
+        { to: "/condition", label: "Renovation Calculator", desc: "Refurb cost estimates" },
+        { to: "/forecast", label: "Forecast", desc: "Long-term cashflow projections" },
+      ],
+    },
+    {
+      label: "Deals",
+      icon: Building2,
+      items: [
+        { to: "/properties", label: "View Deals", desc: "Curated investment opportunities" },
+        { to: "/market", label: "Market Search", desc: "Live deal matching" },
+        { to: "/tokenize", label: "Tokenize", desc: "Fractionalise property equity" },
+      ],
+    },
+    {
+      label: "Compliance & People",
+      icon: ShieldCheck,
+      items: [
+        { to: "/hmo-compliance", label: "HMO Floorplan Compliance", desc: "Licensing rule check" },
+        { to: "/tradesmen", label: "Tradesmen", desc: "Trusted contractor network" },
+      ],
+    },
+  ];
+
   return (
-    <div className="border-b border-border bg-card/30 backdrop-blur">
-      <nav className="mx-auto flex max-w-7xl items-center gap-2 px-6 py-2">
-        <Link to="/" className="mr-4 text-sm font-bold tracking-wide text-foreground">
+    <div className="sticky top-0 z-40 border-b border-border bg-background/80 backdrop-blur-xl">
+      <nav className="mx-auto flex h-14 max-w-7xl items-center gap-1 px-6">
+        <Link to="/" className="mr-6 flex items-center gap-2 text-sm font-bold tracking-wide text-foreground">
+          <span className="flex h-7 w-7 items-center justify-center rounded-md bg-primary/15 text-primary">
+            <Home className="h-3.5 w-3.5" />
+          </span>
           HARTSTONE HOLDINGS
         </Link>
-        <Link to="/hmo-compliance" className={linkBase} activeProps={{ className: `${linkBase} ${activeCls}` }}>
-          HMO Floorplan Compliance
-        </Link>
-        <Link to="/market" className={linkBase} activeProps={{ className: `${linkBase} ${activeCls}` }}>
-          Market Search
-        </Link>
-        <Link to="/condition" className={linkBase} activeProps={{ className: `${linkBase} ${activeCls}` }}>
-          Renovation Calculator
-        </Link>
-        <Link to="/refinance" className={linkBase} activeProps={{ className: `${linkBase} ${activeCls}` }}>
-          Property Calculator
-        </Link>
-        <Link to="/properties" className={linkBase} activeProps={{ className: `${linkBase} ${activeCls}` }}>
-          View Deals
-        </Link>
-        <Link to="/forecast" className={linkBase} activeProps={{ className: `${linkBase} ${activeCls}` }}>
-          Forecast
-        </Link>
-        <Link to="/tokenize" className={linkBase} activeProps={{ className: `${linkBase} ${activeCls}` }}>
-          Tokenize
-        </Link>
-        <Link to="/tradesmen" className={linkBase} activeProps={{ className: `${linkBase} ${activeCls}` }}>
-          Tradesmen
-        </Link>
-        <Link to="/pricing" className={linkBase} activeProps={{ className: `${linkBase} ${activeCls}` }}>
-          Pricing
-        </Link>
+
+        <div className="hidden items-center gap-1 md:flex">
+          <Link to="/" className={linkBase} activeOptions={{ exact: true }} activeProps={{ className: `${linkBase} ${activeCls}` }}>
+            Home
+          </Link>
+          {groups.map((group) => {
+            const Icon = group.icon;
+            return (
+              <DropdownMenu key={group.label}>
+                <DropdownMenuTrigger className={triggerCls}>
+                  <Icon className="h-3.5 w-3.5 opacity-70" />
+                  {group.label}
+                  <ChevronDown className="h-3 w-3 opacity-60 transition-transform data-[state=open]:rotate-180" />
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="w-72 p-1.5">
+                  {group.items.map((item) => (
+                    <DropdownMenuItem key={item.to} asChild className="cursor-pointer rounded-md p-0">
+                      <Link
+                        to={item.to as "/refinance"}
+                        className="flex w-full flex-col items-start gap-0.5 px-3 py-2.5 text-sm"
+                      >
+                        <span className="font-medium text-foreground">{item.label}</span>
+                        <span className="text-xs text-muted-foreground">{item.desc}</span>
+                      </Link>
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            );
+          })}
+          <Link to="/pricing" className={linkBase} activeProps={{ className: `${linkBase} ${activeCls}` }}>
+            <span className="inline-flex items-center gap-1">
+              <Tag className="h-3.5 w-3.5 opacity-70" />
+              Pricing
+            </span>
+          </Link>
+        </div>
+
         <div className="ml-auto flex items-center gap-2">
           {session ? (
-            <Link to="/account" className="text-xs text-muted-foreground hover:text-foreground">
+            <Link
+              to="/account"
+              className="hidden max-w-[180px] truncate rounded-md border border-border bg-card/40 px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground sm:inline-flex"
+            >
               {session.user.email}
             </Link>
           ) : !isAdmin ? (
@@ -351,7 +410,9 @@ function TopNav({
               Sign in
             </Link>
           ) : null}
-          <Button variant="outline" size="sm" onClick={onSignOut}>Sign out</Button>
+          <Button variant="outline" size="sm" onClick={onSignOut}>
+            Sign out
+          </Button>
         </div>
       </nav>
     </div>
