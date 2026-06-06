@@ -149,7 +149,7 @@ async function firecrawlEnrich(candidate: Candidate, trade: string, town: string
       const url = item.url ?? "";
       const text = (item.markdown ?? item.description ?? "").slice(0, 1200);
       if (!text) continue;
-      if (/checkatrade|mybuilder|ratedpeople|trustpilot|yell/i.test(url)) {
+      if (/checkatrade|ratedpeople|trustpilot|yell/i.test(url)) {
         const host = new URL(url).hostname;
         // Only trust snippet counts when the snippet clearly refers to this tradesman —
         // category/landing pages list aggregate totals across many traders.
