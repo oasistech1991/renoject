@@ -16,7 +16,10 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Mail, Phone, MapPin, Briefcase, Clock, PoundSterling, Pencil, Trash2, Plus, Search } from "lucide-react";
+import { Mail, Phone, MapPin, Briefcase, Clock, PoundSterling, Pencil, Trash2, Plus, Search, Sparkles, ShieldCheck, ShieldAlert, ShieldX, ExternalLink, Loader2, Check, X, Star } from "lucide-react";
+import { useServerFn } from "@tanstack/react-start";
+import { searchTradesmen, approveCandidate, dismissCandidate } from "@/lib/tradesmen-scrape.functions";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 
 export const Route = createFileRoute("/tradesmen")({
   head: () => ({
@@ -77,6 +80,7 @@ function TradesmenPage() {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Tradesman | null>(null);
   const [profile, setProfile] = useState<Tradesman | null>(null);
+  const [findOpen, setFindOpen] = useState(false);
 
   const load = async () => {
     setLoading(true);
@@ -135,18 +139,29 @@ function TradesmenPage() {
               Shared directory of trusted contacts, specialities and rates.
             </p>
           </div>
-          <Button
-            onClick={() => {
-              setEditing(null);
-              setOpen(true);
-            }}
-          >
-            <Plus className="mr-2 h-4 w-4" /> Add tradesman
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => setFindOpen(true)}>
+              <Sparkles className="mr-2 h-4 w-4" /> Find tradesmen
+            </Button>
+            <Button
+              onClick={() => {
+                setEditing(null);
+                setOpen(true);
+              }}
+            >
+              <Plus className="mr-2 h-4 w-4" /> Add tradesman
+            </Button>
+          </div>
         </div>
       </header>
 
       <main className="mx-auto max-w-7xl px-6 py-6">
+        <Tabs defaultValue="directory" className="w-full">
+          <TabsList className="mb-4">
+            <TabsTrigger value="directory">Directory</TabsTrigger>
+            <TabsTrigger value="queue">Review queue</TabsTrigger>
+          </TabsList>
+          <TabsContent value="directory">
         <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center">
           <div className="relative flex-1">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -226,6 +241,11 @@ function TradesmenPage() {
             ))}
           </div>
         )}
+          </TabsContent>
+          <TabsContent value="queue">
+            <ReviewQueue onApproved={() => void load()} />
+          </TabsContent>
+        </Tabs>
       </main>
 
       {/* Profile dialog */}
@@ -317,6 +337,8 @@ function TradesmenPage() {
           void load();
         }}
       />
+
+      <FindTradesmenDialog open={findOpen} onOpenChange={setFindOpen} />
     </div>
   );
 }
@@ -452,6 +474,250 @@ function TradesmanForm({
             </Button>
             <Button type="submit" disabled={saving}>
               {saving ? "Saving…" : editing ? "Save changes" : "Add tradesman"}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+type Candidate = {
+  id: string;
+  name: string;
+  company: string | null;
+  phone: string | null;
+  email: string | null;
+  area_covered: string | null;
+  website: string | null;
+  specialities: string[];
+  rating: number | null;
+  review_count: number | null;
+  social_presence_score: number | null;
+  sense_check: { verdict: "clean" | "mixed" | "flagged"; complaintSummary: string; redFlags: string[]; positiveSignals: string[] } | null;
+  score: number | null;
+  status: string;
+  search_query: string | null;
+  sources: Record<string, { url?: string; snippet?: string }> | null;
+  searched_at: string;
+};
+
+function VerdictBadge({ verdict }: { verdict?: string | null }) {
+  if (verdict === "clean") return <Badge className="bg-emerald-600 hover:bg-emerald-600"><ShieldCheck className="mr-1 h-3 w-3" /> Clean</Badge>;
+  if (verdict === "mixed") return <Badge className="bg-amber-600 hover:bg-amber-600"><ShieldAlert className="mr-1 h-3 w-3" /> Mixed</Badge>;
+  if (verdict === "flagged") return <Badge variant="destructive"><ShieldX className="mr-1 h-3 w-3" /> Flagged</Badge>;
+  return <Badge variant="outline">Unchecked</Badge>;
+}
+
+function ReviewQueue({ onApproved }: { onApproved: () => void }) {
+  const [items, setItems] = useState<Candidate[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showFlagged, setShowFlagged] = useState(false);
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const approveFn = useServerFn(approveCandidate);
+  const dismissFn = useServerFn(dismissCandidate);
+
+  const load = async () => {
+    setLoading(true);
+    const { data, error } = await supabase
+      .from("tradesmen_candidates")
+      .select("*")
+      .eq("status", "pending")
+      .order("score", { ascending: false, nullsFirst: false });
+    if (error) toast.error(error.message);
+    else setItems((data ?? []) as unknown as Candidate[]);
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    void load();
+  }, []);
+
+  const visible = items.filter((c) => showFlagged || c.sense_check?.verdict !== "flagged");
+
+  const approve = async (id: string) => {
+    setBusyId(id);
+    try {
+      await approveFn({ data: { id } });
+      toast.success("Added to directory");
+      setItems((prev) => prev.filter((c) => c.id !== id));
+      onApproved();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to approve");
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const dismiss = async (id: string) => {
+    setBusyId(id);
+    try {
+      await dismissFn({ data: { id } });
+      setItems((prev) => prev.filter((c) => c.id !== id));
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to dismiss");
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  if (loading) return <p className="text-sm text-muted-foreground">Loading…</p>;
+
+  const flaggedCount = items.filter((c) => c.sense_check?.verdict === "flagged").length;
+
+  return (
+    <div>
+      <div className="mb-4 flex items-center justify-between">
+        <p className="text-sm text-muted-foreground">
+          {items.length} pending {items.length === 1 ? "candidate" : "candidates"}
+          {flaggedCount > 0 && ` · ${flaggedCount} flagged`}
+        </p>
+        {flaggedCount > 0 && (
+          <Button variant="ghost" size="sm" onClick={() => setShowFlagged((v) => !v)}>
+            {showFlagged ? "Hide flagged" : "Show flagged"}
+          </Button>
+        )}
+      </div>
+      {visible.length === 0 ? (
+        <div className="rounded-lg border border-dashed border-border p-10 text-center">
+          <p className="text-sm text-muted-foreground">
+            No pending candidates. Click <strong>Find tradesmen</strong> to scrape an area.
+          </p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+          {visible.map((c) => (
+            <Card key={c.id}>
+              <CardHeader className="pb-2">
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <CardTitle className="text-base">{c.name}</CardTitle>
+                    {c.search_query && <p className="text-xs text-muted-foreground">from "{c.search_query}"</p>}
+                  </div>
+                  <VerdictBadge verdict={c.sense_check?.verdict} />
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-3 text-sm">
+                <div className="flex flex-wrap items-center gap-3 text-xs">
+                  {c.rating != null && (
+                    <span className="flex items-center gap-1">
+                      <Star className="h-3 w-3 fill-amber-500 text-amber-500" />
+                      <strong>{c.rating.toFixed(1)}</strong>
+                      <span className="text-muted-foreground">({c.review_count ?? 0})</span>
+                    </span>
+                  )}
+                  {c.social_presence_score != null && c.social_presence_score > 0 && (
+                    <span className="text-muted-foreground">Social: {c.social_presence_score}</span>
+                  )}
+                  {c.area_covered && (
+                    <span className="flex items-center gap-1 text-muted-foreground">
+                      <MapPin className="h-3 w-3" /> {c.area_covered}
+                    </span>
+                  )}
+                </div>
+                <div className="flex flex-wrap gap-3 text-xs">
+                  {c.phone && (
+                    <a href={`tel:${c.phone}`} className="flex items-center gap-1 text-primary hover:underline">
+                      <Phone className="h-3 w-3" /> {c.phone}
+                    </a>
+                  )}
+                  {c.website && (
+                    <a href={c.website} target="_blank" rel="noreferrer" className="flex items-center gap-1 text-primary hover:underline">
+                      <ExternalLink className="h-3 w-3" /> Website
+                    </a>
+                  )}
+                </div>
+                {c.sense_check && (
+                  <div className="rounded-md border border-border bg-muted/40 p-3 text-xs">
+                    <p className="mb-1 font-medium">Sense check</p>
+                    <p className="text-muted-foreground">{c.sense_check.complaintSummary || "No notable complaints."}</p>
+                    {c.sense_check.redFlags?.length > 0 && (
+                      <ul className="mt-2 list-disc space-y-0.5 pl-4 text-destructive">
+                        {c.sense_check.redFlags.slice(0, 4).map((f, i) => (<li key={i}>{f}</li>))}
+                      </ul>
+                    )}
+                    {c.sense_check.positiveSignals?.length > 0 && (
+                      <ul className="mt-2 list-disc space-y-0.5 pl-4 text-emerald-600 dark:text-emerald-400">
+                        {c.sense_check.positiveSignals.slice(0, 3).map((f, i) => (<li key={i}>{f}</li>))}
+                      </ul>
+                    )}
+                  </div>
+                )}
+                {c.sources && Object.keys(c.sources).length > 0 && (
+                  <div className="flex flex-wrap gap-1">
+                    {Object.keys(c.sources).map((src) => (
+                      <Badge key={src} variant="outline" className="text-xs">{src.replace("www.", "")}</Badge>
+                    ))}
+                  </div>
+                )}
+                <div className="flex gap-2 pt-1">
+                  <Button size="sm" onClick={() => approve(c.id)} disabled={busyId === c.id}>
+                    {busyId === c.id ? <Loader2 className="mr-2 h-3 w-3 animate-spin" /> : <Check className="mr-2 h-3 w-3" />} Approve
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={() => dismiss(c.id)} disabled={busyId === c.id}>
+                    <X className="mr-2 h-3 w-3" /> Dismiss
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function FindTradesmenDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
+  const [town, setTown] = useState("");
+  const [trade, setTrade] = useState("");
+  const [running, setRunning] = useState(false);
+  const searchFn = useServerFn(searchTradesmen);
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!town.trim() || !trade.trim()) return toast.error("Town and trade are required");
+    setRunning(true);
+    try {
+      const result = await searchFn({ data: { town: town.trim(), trade: trade.trim() } });
+      toast.success(result.message);
+      onOpenChange(false);
+      setTown("");
+      setTrade("");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Search failed");
+    } finally {
+      setRunning(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>Find tradesmen</DialogTitle>
+          <p className="text-sm text-muted-foreground">
+            Scrapes Google, review sites and social pages, then AI-checks each one for complaints.
+            Results land in the Review queue for your approval.
+          </p>
+        </DialogHeader>
+        <form onSubmit={submit} className="space-y-3">
+          <div>
+            <Label>Town or city *</Label>
+            <Input value={town} onChange={(e) => setTown(e.target.value)} placeholder="e.g. Manchester" maxLength={80} required />
+          </div>
+          <div>
+            <Label>Trade *</Label>
+            <Input value={trade} onChange={(e) => setTrade(e.target.value)} placeholder="e.g. Electrician, Plumber, Gas Safe" maxLength={80} required />
+          </div>
+          <p className="text-xs text-muted-foreground">
+            This takes ~30–60 seconds. Each search costs a few cents in API usage.
+          </p>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={running}>
+              Cancel
+            </Button>
+            <Button type="submit" disabled={running}>
+              {running ? (<><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Scraping…</>) : (<><Sparkles className="mr-2 h-4 w-4" /> Start search</>)}
             </Button>
           </DialogFooter>
         </form>
