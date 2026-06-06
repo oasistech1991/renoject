@@ -18,6 +18,7 @@ import { toast } from "sonner";
 import { Mail, Phone, MapPin, Briefcase, Clock, PoundSterling, Pencil, Trash2, Plus, Search, Sparkles, ShieldCheck, ShieldAlert, ShieldX, ExternalLink, Loader2, Check, X, Star, Building2, Users } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
 import { searchTradesmen, approveCandidate, dismissCandidate, resetReviewQueue, listCandidates, listTradesmen, saveTradesman, deleteTradesman } from "@/lib/tradesmen-scrape.functions";
+import { TradesmanDetailSheet } from "@/components/tradesman-detail-sheet";
 import { runBackgroundCheck } from "@/lib/tradesmen-background.functions";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -253,84 +254,16 @@ function TradesmenPage() {
         </Tabs>
       </main>
 
-      {/* Profile dialog */}
-      <Dialog open={profile !== null} onOpenChange={(o) => !o && setProfile(null)}>
-        <DialogContent className="max-w-lg">
-          {profile && (
-            <>
-              <DialogHeader>
-                <DialogTitle>{profile.name}</DialogTitle>
-                {profile.company && (
-                  <p className="text-sm text-muted-foreground">{profile.company}</p>
-                )}
-              </DialogHeader>
-              <div className="space-y-3 text-sm">
-                {(profile.specialities?.length ?? 0) > 0 && (
-                  <div>
-                    <p className="mb-1 text-xs font-medium text-muted-foreground">Specialities</p>
-                    <div className="flex flex-wrap gap-1">
-                      {profile.specialities.map((s) => (
-                        <Badge key={s} variant="secondary">{s}</Badge>
-                      ))}
-                    </div>
-                  </div>
-                )}
-                <div className="grid grid-cols-1 gap-2">
-                  {profile.phone && (
-                    <a href={`tel:${profile.phone}`} className="flex items-center gap-2 text-primary hover:underline">
-                      <Phone className="h-4 w-4" /> {profile.phone}
-                    </a>
-                  )}
-                  {profile.email && (
-                    <a href={`mailto:${profile.email}`} className="flex items-center gap-2 text-primary hover:underline">
-                      <Mail className="h-4 w-4" /> {profile.email}
-                    </a>
-                  )}
-                  {profile.area_covered && (
-                    <p className="flex items-center gap-2">
-                      <MapPin className="h-4 w-4 text-muted-foreground" /> {profile.area_covered}
-                    </p>
-                  )}
-                </div>
-                <div className="grid grid-cols-3 gap-2 border-t border-border pt-3">
-                  <div>
-                    <p className="flex items-center gap-1 text-xs text-muted-foreground"><PoundSterling className="h-3 w-3" /> Day rate</p>
-                    <p className="font-medium">{profile.day_rate != null ? `£${profile.day_rate}` : "—"}</p>
-                  </div>
-                  <div>
-                    <p className="flex items-center gap-1 text-xs text-muted-foreground"><Briefcase className="h-3 w-3" /> Call-out</p>
-                    <p className="font-medium">{profile.call_out_fee != null ? `£${profile.call_out_fee}` : "—"}</p>
-                  </div>
-                  <div>
-                    <p className="flex items-center gap-1 text-xs text-muted-foreground"><Clock className="h-3 w-3" /> Lead time</p>
-                    <p className="font-medium">{profile.lead_time_days != null ? `${profile.lead_time_days}d` : "—"}</p>
-                  </div>
-                </div>
-                {profile.notes && (
-                  <div className="border-t border-border pt-3">
-                    <p className="mb-1 text-xs font-medium text-muted-foreground">Notes</p>
-                    <p className="whitespace-pre-wrap text-sm">{profile.notes}</p>
-                  </div>
-                )}
-              </div>
-              <DialogFooter className="gap-2">
-                <Button variant="outline" onClick={() => handleDelete(profile.id)}>
-                  <Trash2 className="mr-2 h-4 w-4" /> Delete
-                </Button>
-                <Button
-                  onClick={() => {
-                    setEditing(profile);
-                    setProfile(null);
-                    setOpen(true);
-                  }}
-                >
-                  <Pencil className="mr-2 h-4 w-4" /> Edit
-                </Button>
-              </DialogFooter>
-            </>
-          )}
-        </DialogContent>
-      </Dialog>
+      <TradesmanDetailSheet
+        tradesmanId={profile?.id ?? null}
+        onClose={() => setProfile(null)}
+        onEdit={(t) => {
+          setEditing(t);
+          setProfile(null);
+          setOpen(true);
+        }}
+        onDelete={(id) => handleDelete(id)}
+      />
 
       <TradesmanForm
         open={open}
