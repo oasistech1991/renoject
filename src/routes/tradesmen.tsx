@@ -24,6 +24,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ChevronDown, RotateCcw } from "lucide-react";
+import { PaywallGate } from "@/components/PaywallGate";
 
 export const Route = createFileRoute("/tradesmen")({
   head: () => ({
@@ -32,8 +33,16 @@ export const Route = createFileRoute("/tradesmen")({
       { name: "description", content: "Shared directory of trusted tradesmen and services with contact details, specialities and rates." },
     ],
   }),
-  component: TradesmenPage,
+  component: GatedTradesmenPage,
 });
+
+function GatedTradesmenPage() {
+  return (
+    <PaywallGate feature="Tradesmen">
+      <TradesmenPage />
+    </PaywallGate>
+  );
+}
 
 type Tradesman = {
   id: string;

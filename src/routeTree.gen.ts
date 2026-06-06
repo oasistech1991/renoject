@@ -11,13 +11,21 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as TradesmenRouteImport } from './routes/tradesmen'
 import { Route as TokenizeRouteImport } from './routes/tokenize'
+import { Route as TermsRouteImport } from './routes/terms'
+import { Route as ResetPasswordRouteImport } from './routes/reset-password'
+import { Route as RefundPolicyRouteImport } from './routes/refund-policy'
 import { Route as RefinanceRouteImport } from './routes/refinance'
 import { Route as PropertiesRouteImport } from './routes/properties'
+import { Route as PrivacyRouteImport } from './routes/privacy'
+import { Route as PricingRouteImport } from './routes/pricing'
 import { Route as MarketRouteImport } from './routes/market'
 import { Route as HmoComplianceRouteImport } from './routes/hmo-compliance'
 import { Route as ForecastRouteImport } from './routes/forecast'
 import { Route as ConditionRouteImport } from './routes/condition'
+import { Route as AuthRouteImport } from './routes/auth'
+import { Route as AccountRouteImport } from './routes/account'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ApiPublicPaymentsWebhookRouteImport } from './routes/api/public/payments/webhook'
 
 const TradesmenRoute = TradesmenRouteImport.update({
   id: '/tradesmen',
@@ -29,6 +37,21 @@ const TokenizeRoute = TokenizeRouteImport.update({
   path: '/tokenize',
   getParentRoute: () => rootRouteImport,
 } as any)
+const TermsRoute = TermsRouteImport.update({
+  id: '/terms',
+  path: '/terms',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ResetPasswordRoute = ResetPasswordRouteImport.update({
+  id: '/reset-password',
+  path: '/reset-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RefundPolicyRoute = RefundPolicyRouteImport.update({
+  id: '/refund-policy',
+  path: '/refund-policy',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const RefinanceRoute = RefinanceRouteImport.update({
   id: '/refinance',
   path: '/refinance',
@@ -37,6 +60,16 @@ const RefinanceRoute = RefinanceRouteImport.update({
 const PropertiesRoute = PropertiesRouteImport.update({
   id: '/properties',
   path: '/properties',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PrivacyRoute = PrivacyRouteImport.update({
+  id: '/privacy',
+  path: '/privacy',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PricingRoute = PricingRouteImport.update({
+  id: '/pricing',
+  path: '/pricing',
   getParentRoute: () => rootRouteImport,
 } as any)
 const MarketRoute = MarketRouteImport.update({
@@ -59,92 +92,164 @@ const ConditionRoute = ConditionRouteImport.update({
   path: '/condition',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthRoute = AuthRouteImport.update({
+  id: '/auth',
+  path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AccountRoute = AccountRouteImport.update({
+  id: '/account',
+  path: '/account',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicPaymentsWebhookRoute =
+  ApiPublicPaymentsWebhookRouteImport.update({
+    id: '/api/public/payments/webhook',
+    path: '/api/public/payments/webhook',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/account': typeof AccountRoute
+  '/auth': typeof AuthRoute
   '/condition': typeof ConditionRoute
   '/forecast': typeof ForecastRoute
   '/hmo-compliance': typeof HmoComplianceRoute
   '/market': typeof MarketRoute
+  '/pricing': typeof PricingRoute
+  '/privacy': typeof PrivacyRoute
   '/properties': typeof PropertiesRoute
   '/refinance': typeof RefinanceRoute
+  '/refund-policy': typeof RefundPolicyRoute
+  '/reset-password': typeof ResetPasswordRoute
+  '/terms': typeof TermsRoute
   '/tokenize': typeof TokenizeRoute
   '/tradesmen': typeof TradesmenRoute
+  '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/account': typeof AccountRoute
+  '/auth': typeof AuthRoute
   '/condition': typeof ConditionRoute
   '/forecast': typeof ForecastRoute
   '/hmo-compliance': typeof HmoComplianceRoute
   '/market': typeof MarketRoute
+  '/pricing': typeof PricingRoute
+  '/privacy': typeof PrivacyRoute
   '/properties': typeof PropertiesRoute
   '/refinance': typeof RefinanceRoute
+  '/refund-policy': typeof RefundPolicyRoute
+  '/reset-password': typeof ResetPasswordRoute
+  '/terms': typeof TermsRoute
   '/tokenize': typeof TokenizeRoute
   '/tradesmen': typeof TradesmenRoute
+  '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/account': typeof AccountRoute
+  '/auth': typeof AuthRoute
   '/condition': typeof ConditionRoute
   '/forecast': typeof ForecastRoute
   '/hmo-compliance': typeof HmoComplianceRoute
   '/market': typeof MarketRoute
+  '/pricing': typeof PricingRoute
+  '/privacy': typeof PrivacyRoute
   '/properties': typeof PropertiesRoute
   '/refinance': typeof RefinanceRoute
+  '/refund-policy': typeof RefundPolicyRoute
+  '/reset-password': typeof ResetPasswordRoute
+  '/terms': typeof TermsRoute
   '/tokenize': typeof TokenizeRoute
   '/tradesmen': typeof TradesmenRoute
+  '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/account'
+    | '/auth'
     | '/condition'
     | '/forecast'
     | '/hmo-compliance'
     | '/market'
+    | '/pricing'
+    | '/privacy'
     | '/properties'
     | '/refinance'
+    | '/refund-policy'
+    | '/reset-password'
+    | '/terms'
     | '/tokenize'
     | '/tradesmen'
+    | '/api/public/payments/webhook'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/account'
+    | '/auth'
     | '/condition'
     | '/forecast'
     | '/hmo-compliance'
     | '/market'
+    | '/pricing'
+    | '/privacy'
     | '/properties'
     | '/refinance'
+    | '/refund-policy'
+    | '/reset-password'
+    | '/terms'
     | '/tokenize'
     | '/tradesmen'
+    | '/api/public/payments/webhook'
   id:
     | '__root__'
     | '/'
+    | '/account'
+    | '/auth'
     | '/condition'
     | '/forecast'
     | '/hmo-compliance'
     | '/market'
+    | '/pricing'
+    | '/privacy'
     | '/properties'
     | '/refinance'
+    | '/refund-policy'
+    | '/reset-password'
+    | '/terms'
     | '/tokenize'
     | '/tradesmen'
+    | '/api/public/payments/webhook'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AccountRoute: typeof AccountRoute
+  AuthRoute: typeof AuthRoute
   ConditionRoute: typeof ConditionRoute
   ForecastRoute: typeof ForecastRoute
   HmoComplianceRoute: typeof HmoComplianceRoute
   MarketRoute: typeof MarketRoute
+  PricingRoute: typeof PricingRoute
+  PrivacyRoute: typeof PrivacyRoute
   PropertiesRoute: typeof PropertiesRoute
   RefinanceRoute: typeof RefinanceRoute
+  RefundPolicyRoute: typeof RefundPolicyRoute
+  ResetPasswordRoute: typeof ResetPasswordRoute
+  TermsRoute: typeof TermsRoute
   TokenizeRoute: typeof TokenizeRoute
   TradesmenRoute: typeof TradesmenRoute
+  ApiPublicPaymentsWebhookRoute: typeof ApiPublicPaymentsWebhookRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -163,6 +268,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TokenizeRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/terms': {
+      id: '/terms'
+      path: '/terms'
+      fullPath: '/terms'
+      preLoaderRoute: typeof TermsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reset-password': {
+      id: '/reset-password'
+      path: '/reset-password'
+      fullPath: '/reset-password'
+      preLoaderRoute: typeof ResetPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/refund-policy': {
+      id: '/refund-policy'
+      path: '/refund-policy'
+      fullPath: '/refund-policy'
+      preLoaderRoute: typeof RefundPolicyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/refinance': {
       id: '/refinance'
       path: '/refinance'
@@ -175,6 +301,20 @@ declare module '@tanstack/react-router' {
       path: '/properties'
       fullPath: '/properties'
       preLoaderRoute: typeof PropertiesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/privacy': {
+      id: '/privacy'
+      path: '/privacy'
+      fullPath: '/privacy'
+      preLoaderRoute: typeof PrivacyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/pricing': {
+      id: '/pricing'
+      path: '/pricing'
+      fullPath: '/pricing'
+      preLoaderRoute: typeof PricingRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/market': {
@@ -205,6 +345,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ConditionRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/auth': {
+      id: '/auth'
+      path: '/auth'
+      fullPath: '/auth'
+      preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/account': {
+      id: '/account'
+      path: '/account'
+      fullPath: '/account'
+      preLoaderRoute: typeof AccountRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -212,19 +366,34 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/payments/webhook': {
+      id: '/api/public/payments/webhook'
+      path: '/api/public/payments/webhook'
+      fullPath: '/api/public/payments/webhook'
+      preLoaderRoute: typeof ApiPublicPaymentsWebhookRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AccountRoute: AccountRoute,
+  AuthRoute: AuthRoute,
   ConditionRoute: ConditionRoute,
   ForecastRoute: ForecastRoute,
   HmoComplianceRoute: HmoComplianceRoute,
   MarketRoute: MarketRoute,
+  PricingRoute: PricingRoute,
+  PrivacyRoute: PrivacyRoute,
   PropertiesRoute: PropertiesRoute,
   RefinanceRoute: RefinanceRoute,
+  RefundPolicyRoute: RefundPolicyRoute,
+  ResetPasswordRoute: ResetPasswordRoute,
+  TermsRoute: TermsRoute,
   TokenizeRoute: TokenizeRoute,
   TradesmenRoute: TradesmenRoute,
+  ApiPublicPaymentsWebhookRoute: ApiPublicPaymentsWebhookRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

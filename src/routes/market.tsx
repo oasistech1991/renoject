@@ -22,6 +22,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { BarChart, Bar, XAxis, YAxis, Tooltip as RTooltip, ResponsiveContainer, ScatterChart, Scatter, ZAxis, CartesianGrid } from "recharts";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { PaywallGate } from "@/components/PaywallGate";
 
 export const Route = createFileRoute("/market")({
   head: () => ({
@@ -30,8 +31,16 @@ export const Route = createFileRoute("/market")({
       { name: "description", content: "Search the UK property market with investor-grade filters: yield, BMV, HMO potential, auctions and refurb signals." },
     ],
   }),
-  component: MarketPage,
+  component: GatedMarketPage,
 });
+
+function GatedMarketPage() {
+  return (
+    <PaywallGate feature="Market Search">
+      <MarketPage />
+    </PaywallGate>
+  );
+}
 
 type Row = Listing & { m: InvestorMetrics };
 
