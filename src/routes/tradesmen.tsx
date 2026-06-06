@@ -511,6 +511,38 @@ type Candidate = {
     snippets: Array<{ text: string; rating: number | null }>;
   }> | null;
   searched_at: string;
+  background_check: BackgroundReport | null;
+  background_checked_at: string | null;
+};
+
+type BackgroundReport = {
+  company_match: {
+    company_name: string;
+    company_number: string;
+    company_status: string;
+    address: string | null;
+    incorporated_on: string | null;
+    url: string;
+  } | null;
+  officers: Array<{ name: string; role: string | null; appointed_on: string | null; resigned_on: string | null; appointments_url: string | null }>;
+  director_reports: Array<{
+    name: string;
+    role: string | null;
+    appointed_on: string | null;
+    appointments_url: string | null;
+    counts: { total: number; active: number; dissolved: number; resigned: number; liquidation: number };
+    examples: Array<{ company_name: string; company_number: string; status: string; role: string | null }>;
+  }>;
+  web_mentions: Array<{ url: string; title: string | null; snippet: string }>;
+  ai: {
+    verdict: "clean" | "watch" | "flagged";
+    summary: string;
+    riskSignals: string[];
+    positiveSignals: string[];
+    directorFlags: string[];
+  } | null;
+  checked_at: string;
+  disclaimer: string;
 };
 
 function VerdictBadge({ verdict }: { verdict?: string | null }) {
