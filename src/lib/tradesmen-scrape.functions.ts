@@ -473,3 +473,58 @@ export const listCandidates = createServerFn({ method: "GET" })
     if (error) throw new Error(error.message);
     return { items: data ?? [] };
   });
+
+// ---------- Directory (tradesmen table) server fns ----------
+
+export const listTradesmen = createServerFn({ method: "GET" })
+  .handler(async () => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data, error } = await supabaseAdmin
+      .from("tradesmen")
+      .select("*")
+      .order("name", { ascending: true });
+    if (error) throw new Error(error.message);
+    return { items: data ?? [] };
+  });
+
+const TradesmanPayload = z.object({
+  name: z.string().trim().min(1).max(120),
+  company: z.string().max(120).nullable().optional(),
+  phone: z.string().max(40).nullable().optional(),
+  email: z.string().max(255).nullable().optional(),
+  area_covered: z.string().max(200).nullable().optional(),
+  specialities: z.array(z.string().max(80)).max(50).optional(),
+  day_rate: z.number().nullable().optional(),
+  call_out_fee: z.number().nullable().optional(),
+  lead_time_days: z.number().nullable().optional(),
+  notes: z.string().max(2000).nullable().optional(),
+});
+
+export const saveTradesman = createServerFn({ method: "POST" })
+  .inputValidator((d: unknown) =>
+    z.object({ id: z.string().uuid().nullable().optional(), payload: TradesmanPayload }).parse(d),
+  )
+  .handler(async ({ data }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    if (data.id) {
+      const { error } = await supabaseAdmin.from("tradesmen").update(data.payload).eq("id", data.id);
+      if (error) throw new Error(error.message);
+      return { ok: true, id: data.id };
+    }
+    const { data: row, error } = await supabaseAdmin
+      .from("tradesmen")
+      .insert(data.payload)
+      .select("id")
+      .single();
+    if (error || !row) throw new Error(error?.message ?? "Insert failed");
+    return { ok: true, id: row.id };
+  });
+
+export const deleteTradesman = createServerFn({ method: "POST" })
+  .inputValidator((d: unknown) => z.object({ id: z.string().uuid() }).parse(d))
+  .handler(async ({ data }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error } = await supabaseAdmin.from("tradesmen").delete().eq("id", data.id);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
