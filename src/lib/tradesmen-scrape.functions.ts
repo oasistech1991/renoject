@@ -125,16 +125,43 @@ async function firecrawlEnrich(candidate: Candidate, trade: string, town: string
     // Track best scraped page per platform so we can do a targeted scrape next
     const reviewPlatformUrls = new Map<string, string>();
 
+    const nameTokens = (candidate.company ?? candidate.name)
+      .toLowerCase()
+      .replace(/\b(ltd|limited|llp|services|builders?|construction|company|co)\b/g, " ")
+      .split(/[^a-z0-9]+/)
+      .filter((t) => t.length >= 3);
+    const phoneDigits = (candidate.phone ?? "").replace(/\D/g, "");
+    const phoneTail = phoneDigits.slice(-7); // last 7 digits — robust to formatting
+
+    /** Page must clearly reference THIS tradesman before we trust its review numbers. */
+    function pageMatchesCandidate(text: string): boolean {
+      const low = text.toLowerCase();
+      if (phoneTail && phoneTail.length >= 6 && low.replace(/\D/g, "").includes(phoneTail)) {
+        return true;
+      }
+      if (!nameTokens.length) return false;
+      const hits = nameTokens.filter((t) => low.includes(t)).length;
+      // Require either every token (short names) or at least 2 distinctive tokens.
+      return nameTokens.length <= 2 ? hits === nameTokens.length : hits >= 2;
+    }
+
     for (const item of items.slice(0, 4)) {
       const url = item.url ?? "";
       const text = (item.markdown ?? item.description ?? "").slice(0, 1200);
       if (!text) continue;
       if (/checkatrade|mybuilder|ratedpeople|trustpilot|yell/i.test(url)) {
         const host = new URL(url).hostname;
-        const count = extractReviewCount(text);
-        extraSources[host] = { url, snippet: text.slice(0, 400), reviewCount: count ?? undefined };
+        // Only trust snippet counts when the snippet clearly refers to this tradesman —
+        // category/landing pages list aggregate totals across many traders.
+        const matched = pageMatchesCandidate(text);
+        const count = matched ? extractReviewCount(text) : null;
+        extraSources[host] = {
+          url,
+          snippet: text.slice(0, 400),
+          reviewCount: count ?? undefined,
+          matched,
+        };
         if (count != null) {
-          // Keep highest count seen for that platform (search may surface multiple pages)
           perPlatformCounts[host] = Math.max(perPlatformCounts[host] ?? 0, count);
         }
         if (!reviewPlatformUrls.has(host)) reviewPlatformUrls.set(host, url);
@@ -153,27 +180,34 @@ async function firecrawlEnrich(candidate: Candidate, trade: string, town: string
           const scraped: any = await fc.scrape(url, { formats: ["markdown"], onlyMainContent: true } as any);
           const md: string = scraped?.markdown ?? scraped?.data?.markdown ?? "";
           if (!md) return;
-          const count = extractReviewCount(md);
-          const rating = extractRating(md);
+          const matched = pageMatchesCandidate(md);
+          const count = matched ? extractReviewCount(md) : null;
+          const rating = matched ? extractRating(md) : null;
           if (count != null) perPlatformCounts[host] = Math.max(perPlatformCounts[host] ?? 0, count);
           const existing = (extraSources[host] as any) ?? { url };
           extraSources[host] = {
             ...existing,
             url,
-            reviewCount: perPlatformCounts[host] ?? existing.reviewCount,
-            rating: rating ?? existing.rating,
+            reviewCount: matched ? (perPlatformCounts[host] ?? existing.reviewCount) : undefined,
+            rating: matched ? (rating ?? existing.rating) : undefined,
             snippet: md.slice(0, 600),
+            matched,
           };
-          // Push a few review-like lines as snippets
-          const lines = md.split(/\n+/).map((l) => l.trim()).filter((l) => l.length > 40 && l.length < 400);
-          const sampled = lines.slice(0, 3);
-          candidate.reviewBreakdown.push({
-            source: host.replace(/^www\./, ""),
-            url,
-            rating: rating ?? null,
-            count: perPlatformCounts[host] ?? null,
-            snippets: sampled.map((t) => ({ text: t, rating: null })),
-          });
+          // Only surface this source in the breakdown when we're confident it's the right tradesman.
+          if (matched) {
+            const lines = md
+              .split(/\n+/)
+              .map((l) => l.trim())
+              .filter((l) => l.length > 40 && l.length < 400);
+            const sampled = lines.slice(0, 3);
+            candidate.reviewBreakdown.push({
+              source: host.replace(/^www\./, ""),
+              url,
+              rating: rating ?? null,
+              count: perPlatformCounts[host] ?? null,
+              snippets: sampled.map((t) => ({ text: t, rating: null })),
+            });
+          }
         } catch (err) {
           console.warn("Targeted scrape failed for", host, err);
         }
@@ -184,6 +218,8 @@ async function firecrawlEnrich(candidate: Candidate, trade: string, town: string
     candidate.sources = { ...candidate.sources, ...extraSources };
     candidate.social_presence_score = social;
 
+    // Only aggregate counts from platforms we verified matched this tradesman.
+    // If nothing matched, leave review_count as Google's authoritative number.
     const extraReviewTotal = Object.values(perPlatformCounts).reduce((a, b) => a + b, 0);
     if (extraReviewTotal > 0) {
       candidate.review_count = (candidate.review_count ?? 0) + extraReviewTotal;
