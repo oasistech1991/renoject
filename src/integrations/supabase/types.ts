@@ -428,6 +428,86 @@ export type Database = {
         }
         Relationships: []
       }
+      tradesmen_candidates: {
+        Row: {
+          approved_tradesman_id: string | null
+          area_covered: string | null
+          company: string | null
+          created_at: string
+          created_by: string | null
+          email: string | null
+          id: string
+          name: string
+          phone: string | null
+          rating: number | null
+          review_count: number | null
+          score: number | null
+          search_query: string | null
+          searched_at: string
+          sense_check: Json | null
+          social_presence_score: number | null
+          sources: Json
+          specialities: string[]
+          status: string
+          updated_at: string
+          website: string | null
+        }
+        Insert: {
+          approved_tradesman_id?: string | null
+          area_covered?: string | null
+          company?: string | null
+          created_at?: string
+          created_by?: string | null
+          email?: string | null
+          id?: string
+          name: string
+          phone?: string | null
+          rating?: number | null
+          review_count?: number | null
+          score?: number | null
+          search_query?: string | null
+          searched_at?: string
+          sense_check?: Json | null
+          social_presence_score?: number | null
+          sources?: Json
+          specialities?: string[]
+          status?: string
+          updated_at?: string
+          website?: string | null
+        }
+        Update: {
+          approved_tradesman_id?: string | null
+          area_covered?: string | null
+          company?: string | null
+          created_at?: string
+          created_by?: string | null
+          email?: string | null
+          id?: string
+          name?: string
+          phone?: string | null
+          rating?: number | null
+          review_count?: number | null
+          score?: number | null
+          search_query?: string | null
+          searched_at?: string
+          sense_check?: Json | null
+          social_presence_score?: number | null
+          sources?: Json
+          specialities?: string[]
+          status?: string
+          updated_at?: string
+          website?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tradesmen_candidates_approved_tradesman_id_fkey"
+            columns: ["approved_tradesman_id"]
+            isOneToOne: false
+            referencedRelation: "tradesmen"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           created_at: string
