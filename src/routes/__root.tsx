@@ -117,6 +117,40 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
             "UK property investment toolkit — BTL & BRRR calculators, HMO compliance, market search, renovation costs and trusted tradesmen.",
         }),
       },
+      {
+        type: "application/ld+json",
+        children: JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "WebSite",
+          name: "Hartstone Holdings",
+          url: "https://hartstoneholdings.com",
+          potentialAction: {
+            "@type": "SearchAction",
+            target: {
+              "@type": "EntryPoint",
+              urlTemplate: "https://hartstoneholdings.com/market?q={search_term_string}",
+            },
+            "query-input": "required name=search_term_string",
+          },
+        }),
+      },
+      {
+        type: "application/ld+json",
+        children: JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "SoftwareApplication",
+          name: "Hartstone Holdings",
+          applicationCategory: "FinanceApplication",
+          operatingSystem: "Web",
+          description:
+            "UK property investment toolkit: BTL/BRRR calculators, HMO compliance, market search, renovation costs, forecasting, and trusted tradesmen.",
+          offers: {
+            "@type": "Offer",
+            price: "1.00",
+            priceCurrency: "GBP",
+          },
+        }),
+      },
     ],
   }),
   shellComponent: RootShell,
