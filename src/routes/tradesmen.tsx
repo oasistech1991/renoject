@@ -563,6 +563,7 @@ function ReviewQueue({ onApproved }: { onApproved: () => void }) {
   const approveFn = useServerFn(approveCandidate);
   const dismissFn = useServerFn(dismissCandidate);
   const resetFn = useServerFn(resetReviewQueue);
+  const backgroundFn = useServerFn(runBackgroundCheck);
 
   const load = async () => {
     setLoading(true);
@@ -648,6 +649,10 @@ function ReviewQueue({ onApproved }: { onApproved: () => void }) {
     }
   };
 
+  const updateCandidate = (id: string, patch: Partial<Candidate>) => {
+    setItems((prev) => prev.map((c) => (c.id === id ? { ...c, ...patch } : c)));
+  };
+
   if (loading) return <p className="text-sm text-muted-foreground">Loading…</p>;
 
   const flaggedCount = items.filter((c) => c.sense_check?.verdict === "flagged").length;
@@ -703,7 +708,7 @@ function ReviewQueue({ onApproved }: { onApproved: () => void }) {
               <h3 className="mb-2 text-sm font-semibold text-muted-foreground">{loc} · {cards.length}</h3>
               <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
                 {cards.map((c) => (
-                  <CandidateCard key={c.id} c={c} busyId={busyId} onApprove={approve} onDismiss={dismiss} />
+                  <CandidateCard key={c.id} c={c} busyId={busyId} onApprove={approve} onDismiss={dismiss} onBackground={backgroundFn} onUpdate={updateCandidate} />
                 ))}
               </div>
             </div>
@@ -712,7 +717,7 @@ function ReviewQueue({ onApproved }: { onApproved: () => void }) {
       ) : (
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
           {filtered.map((c) => (
-            <CandidateCard key={c.id} c={c} busyId={busyId} onApprove={approve} onDismiss={dismiss} />
+            <CandidateCard key={c.id} c={c} busyId={busyId} onApprove={approve} onDismiss={dismiss} onBackground={backgroundFn} onUpdate={updateCandidate} />
           ))}
         </div>
       )}
