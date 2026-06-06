@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as TradesmenRouteImport } from './routes/tradesmen'
 import { Route as TokenizeRouteImport } from './routes/tokenize'
 import { Route as TermsRouteImport } from './routes/terms'
+import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as RefundPolicyRouteImport } from './routes/refund-policy'
 import { Route as RefinanceRouteImport } from './routes/refinance'
@@ -40,6 +41,11 @@ const TokenizeRoute = TokenizeRouteImport.update({
 const TermsRoute = TermsRouteImport.update({
   id: '/terms',
   path: '/terms',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
+  id: '/sitemap.xml',
+  path: '/sitemap.xml',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
@@ -128,6 +134,7 @@ export interface FileRoutesByFullPath {
   '/refinance': typeof RefinanceRoute
   '/refund-policy': typeof RefundPolicyRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
   '/terms': typeof TermsRoute
   '/tokenize': typeof TokenizeRoute
   '/tradesmen': typeof TradesmenRoute
@@ -147,6 +154,7 @@ export interface FileRoutesByTo {
   '/refinance': typeof RefinanceRoute
   '/refund-policy': typeof RefundPolicyRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
   '/terms': typeof TermsRoute
   '/tokenize': typeof TokenizeRoute
   '/tradesmen': typeof TradesmenRoute
@@ -167,6 +175,7 @@ export interface FileRoutesById {
   '/refinance': typeof RefinanceRoute
   '/refund-policy': typeof RefundPolicyRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
   '/terms': typeof TermsRoute
   '/tokenize': typeof TokenizeRoute
   '/tradesmen': typeof TradesmenRoute
@@ -188,6 +197,7 @@ export interface FileRouteTypes {
     | '/refinance'
     | '/refund-policy'
     | '/reset-password'
+    | '/sitemap.xml'
     | '/terms'
     | '/tokenize'
     | '/tradesmen'
@@ -207,6 +217,7 @@ export interface FileRouteTypes {
     | '/refinance'
     | '/refund-policy'
     | '/reset-password'
+    | '/sitemap.xml'
     | '/terms'
     | '/tokenize'
     | '/tradesmen'
@@ -226,6 +237,7 @@ export interface FileRouteTypes {
     | '/refinance'
     | '/refund-policy'
     | '/reset-password'
+    | '/sitemap.xml'
     | '/terms'
     | '/tokenize'
     | '/tradesmen'
@@ -246,6 +258,7 @@ export interface RootRouteChildren {
   RefinanceRoute: typeof RefinanceRoute
   RefundPolicyRoute: typeof RefundPolicyRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
+  SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   TermsRoute: typeof TermsRoute
   TokenizeRoute: typeof TokenizeRoute
   TradesmenRoute: typeof TradesmenRoute
@@ -273,6 +286,13 @@ declare module '@tanstack/react-router' {
       path: '/terms'
       fullPath: '/terms'
       preLoaderRoute: typeof TermsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sitemap.xml': {
+      id: '/sitemap.xml'
+      path: '/sitemap.xml'
+      fullPath: '/sitemap.xml'
+      preLoaderRoute: typeof SitemapDotxmlRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/reset-password': {
@@ -390,6 +410,7 @@ const rootRouteChildren: RootRouteChildren = {
   RefinanceRoute: RefinanceRoute,
   RefundPolicyRoute: RefundPolicyRoute,
   ResetPasswordRoute: ResetPasswordRoute,
+  SitemapDotxmlRoute: SitemapDotxmlRoute,
   TermsRoute: TermsRoute,
   TokenizeRoute: TokenizeRoute,
   TradesmenRoute: TradesmenRoute,
