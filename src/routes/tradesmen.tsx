@@ -579,7 +579,7 @@ function ReviewQueue({ onApproved }: { onApproved: () => void }) {
     if (!confirm("Dismiss every pending candidate? They'll move to 'dismissed' but remain in the audit log.")) return;
     setResetting(true);
     try {
-      const r = await resetFn({ data: undefined });
+      const r = await resetFn();
       toast.success(`Queue cleared (${r.dismissed} dismissed)`);
       setItems([]);
     } catch (e) {
