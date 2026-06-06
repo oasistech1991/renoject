@@ -16,7 +16,13 @@ import { Toaster } from "@/components/ui/sonner";
 import { supabase } from "@/integrations/supabase/client";
 import type { Session } from "@supabase/supabase-js";
 import { useEntitlement } from "@/hooks/useEntitlement";
-import { Lock, Loader2 } from "lucide-react";
+import { Lock, Loader2, ChevronDown, Calculator, Building2, ShieldCheck, Tag, Home } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 function NotFoundComponent() {
   return (
