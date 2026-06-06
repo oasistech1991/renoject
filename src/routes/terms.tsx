@@ -5,6 +5,10 @@ export const Route = createFileRoute("/terms")({
     meta: [
       { title: "Terms & Conditions — HARTSTONE HOLDINGS" },
       { name: "description", content: "Hartstone Holdings terms of service." },
+      { property: "og:url", content: "https://hartstoneholdings.com/terms" },
+    ],
+    links: [
+      { rel: "canonical", href: "https://hartstoneholdings.com/terms" },
     ],
   }),
   component: TermsPage,

@@ -18,6 +18,10 @@ export const Route = createFileRoute("/")({
       { name: "description", content: "A single workspace for UK property investors: deal calculators, HMO compliance, market search, renovation costs and tradesmen." },
       { property: "og:title", content: "Hartstone Holdings" },
       { property: "og:description", content: "A single workspace for UK property investors — calculators, compliance, market search and tradesmen." },
+      { property: "og:url", content: "https://hartstoneholdings.com/" },
+    ],
+    links: [
+      { rel: "canonical", href: "https://hartstoneholdings.com/" },
     ],
   }),
   component: Index,

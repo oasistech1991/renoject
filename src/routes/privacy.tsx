@@ -5,6 +5,10 @@ export const Route = createFileRoute("/privacy")({
     meta: [
       { title: "Privacy Notice — HARTSTONE HOLDINGS" },
       { name: "description", content: "How Hartstone Holdings handles your personal data." },
+      { property: "og:url", content: "https://hartstoneholdings.com/privacy" },
+    ],
+    links: [
+      { rel: "canonical", href: "https://hartstoneholdings.com/privacy" },
     ],
   }),
   component: PrivacyPage,

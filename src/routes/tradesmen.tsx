@@ -29,6 +29,10 @@ export const Route = createFileRoute("/tradesmen")({
     meta: [
       { title: "Tradesmen & Services — HARTSTONE HOLDINGS" },
       { name: "description", content: "Shared directory of trusted tradesmen and services with contact details, specialities and rates." },
+      { property: "og:url", content: "https://hartstoneholdings.com/tradesmen" },
+    ],
+    links: [
+      { rel: "canonical", href: "https://hartstoneholdings.com/tradesmen" },
     ],
   }),
   component: TradesmenPage,

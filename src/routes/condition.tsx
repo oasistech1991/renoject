@@ -21,6 +21,10 @@ export const Route = createFileRoute("/condition")({
         property: "og:description",
         content: "AI-rated property condition and refurb cost to rental-ready.",
       },
+      { property: "og:url", content: "https://hartstoneholdings.com/condition" },
+    ],
+    links: [
+      { rel: "canonical", href: "https://hartstoneholdings.com/condition" },
     ],
   }),
   component: ConditionPage,

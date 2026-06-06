@@ -27,6 +27,10 @@ export const Route = createFileRoute("/market")({
     meta: [
       { title: "Market Search — HARTSTONE HOLDINGS" },
       { name: "description", content: "Search the UK property market with investor-grade filters: yield, BMV, HMO potential, auctions and refurb signals." },
+      { property: "og:url", content: "https://hartstoneholdings.com/market" },
+    ],
+    links: [
+      { rel: "canonical", href: "https://hartstoneholdings.com/market" },
     ],
   }),
   component: MarketPage,
