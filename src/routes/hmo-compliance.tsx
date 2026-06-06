@@ -972,6 +972,9 @@ function ReportView({
                   <p className="text-xs text-muted-foreground">
                     {s.mix.singles}S / {s.mix.doubles}D · {m.sub}
                   </p>
+                  <p className="mt-1 text-xs font-medium tabular-nums text-foreground">
+                    Est. cost {new Intl.NumberFormat("en-GB", { style: "currency", currency: "GBP", maximumFractionDigits: 0 }).format(s.bedroomCount * costPerBedroom)}
+                  </p>
                   <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-muted">
                     <div
                       className="h-full bg-primary"
