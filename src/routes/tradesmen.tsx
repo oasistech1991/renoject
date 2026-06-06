@@ -563,17 +563,18 @@ function ReviewQueue({ onApproved }: { onApproved: () => void }) {
   const dismissFn = useServerFn(dismissCandidate);
   const resetFn = useServerFn(resetReviewQueue);
   const backgroundFn = useServerFn(runBackgroundCheck);
+  const listFn = useServerFn(listCandidates);
 
   const load = async () => {
     setLoading(true);
-    const { data, error } = await supabase
-      .from("tradesmen_candidates")
-      .select("*")
-      .eq("status", "pending")
-      .order("score", { ascending: false, nullsFirst: false });
-    if (error) toast.error(error.message);
-    else setItems((data ?? []) as unknown as Candidate[]);
-    setLoading(false);
+    try {
+      const r = await listFn();
+      setItems((r.items ?? []) as unknown as Candidate[]);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to load queue");
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
