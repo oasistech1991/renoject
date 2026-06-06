@@ -83,7 +83,7 @@ function Index() {
             return (
               <Link
                 key={t.to}
-                to={t.to}
+                to={t.to as "/refinance"}
                 className="group relative flex flex-col rounded-xl border border-border bg-card/40 p-5 transition-all hover:-translate-y-0.5 hover:border-primary/50 hover:bg-card/70 hover:shadow-lg hover:shadow-primary/5"
               >
                 <div className="mb-4 flex items-center justify-between">
