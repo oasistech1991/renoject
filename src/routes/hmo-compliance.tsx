@@ -111,6 +111,7 @@ function HMOCompliancePage() {
   const [requireLivingRoom, setRequireLivingRoom] = useState(false);
   const [circulationPct, setCirculationPct] = useState(17);
   const [showAmenity, setShowAmenity] = useState(false);
+  const [costPerBedroom, setCostPerBedroom] = useState(20000);
 
   // Saved-analysis state
   const [propertiesList, setPropertiesList] = useState<{ id: string; name: string }[]>([]);
@@ -192,6 +193,7 @@ function HMOCompliancePage() {
       if (typeof inputs.storeys === "number") setStoreys(inputs.storeys);
       if (typeof inputs.occupants === "number") setOccupants(inputs.occupants);
       if (typeof inputs.notes === "string") setNotes(inputs.notes);
+      if (typeof inputs.costPerBedroom === "number") setCostPerBedroom(inputs.costPerBedroom);
       if (data.thumbnail) setImageBase64(data.thumbnail);
       setFileName(data.label);
     })();
@@ -295,6 +297,7 @@ function HMOCompliancePage() {
         kitchenSizing,
         requireLivingRoom,
         circulationPct,
+        costPerBedroom,
       };
       const finalLabel = label.trim() || location.trim() || "HMO analysis";
       const { data, error } = await supabase
@@ -609,6 +612,27 @@ function HMOCompliancePage() {
               )}
             </div>
 
+            <div>
+              <div className="flex items-center justify-between text-sm">
+                <label className="font-medium">Conversion cost per bedroom</label>
+                <span className="tabular-nums text-muted-foreground">
+                  {new Intl.NumberFormat("en-GB", { style: "currency", currency: "GBP", maximumFractionDigits: 0 }).format(costPerBedroom)}
+                </span>
+              </div>
+              <input
+                type="range"
+                min={5000}
+                max={50000}
+                step={1000}
+                value={costPerBedroom}
+                onChange={(e) => setCostPerBedroom(Number(e.target.value))}
+                className="mt-1 w-full"
+              />
+              <p className="mt-1 text-xs text-muted-foreground">
+                Rough build cost per new HMO bedroom (en-suite, stud walls, fire doors, decoration). Adjust to match your spec.
+              </p>
+            </div>
+
             <Button
               className="w-full"
               disabled={!canSubmit}
@@ -650,7 +674,7 @@ function HMOCompliancePage() {
 
             {displayData && (
               <>
-                <ReportView data={displayData} proposed={targetBedrooms} checkedAt={lastCheckAt} savedAt={viewMeta?.createdAt} originalImageBase64={imageBase64} />
+                <ReportView data={displayData} proposed={targetBedrooms} checkedAt={lastCheckAt} savedAt={viewMeta?.createdAt} originalImageBase64={imageBase64} costPerBedroom={costPerBedroom} />
                 {mutation.data && !viewMeta && (
                   <div className="mt-6 rounded-xl border border-border bg-muted/20 p-5">
                     {savedMeta ? (
@@ -772,12 +796,14 @@ function ReportView({
   checkedAt,
   savedAt,
   originalImageBase64,
+  costPerBedroom,
 }: {
   data: Awaited<ReturnType<typeof analyseFloorplan>>;
   proposed: number;
   checkedAt: Date | null;
   savedAt?: string;
   originalImageBase64?: string | null;
+  costPerBedroom: number;
 }) {
   const [activeScenario, setActiveScenario] = useState<"maxSingles" | "balanced" | "maxDoubles">(
     "balanced",
@@ -945,6 +971,9 @@ function ReportView({
                   <p className="mt-1 text-3xl font-semibold tabular-nums">{s.bedroomCount}</p>
                   <p className="text-xs text-muted-foreground">
                     {s.mix.singles}S / {s.mix.doubles}D · {m.sub}
+                  </p>
+                  <p className="mt-1 text-xs font-medium tabular-nums text-foreground">
+                    Est. cost {new Intl.NumberFormat("en-GB", { style: "currency", currency: "GBP", maximumFractionDigits: 0 }).format(s.bedroomCount * costPerBedroom)}
                   </p>
                   <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-muted">
                     <div
@@ -1126,6 +1155,13 @@ function ReportView({
                   <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                     Reconfiguration to hit this layout
                   </h4>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Estimated build cost:{" "}
+                    <span className="font-semibold text-foreground tabular-nums">
+                      {new Intl.NumberFormat("en-GB", { style: "currency", currency: "GBP", maximumFractionDigits: 0 }).format(active.bedroomCount * costPerBedroom)}
+                    </span>{" "}
+                    ({active.bedroomCount} bedrooms × {new Intl.NumberFormat("en-GB", { style: "currency", currency: "GBP", maximumFractionDigits: 0 }).format(costPerBedroom)})
+                  </p>
                   <ol className="mt-2 space-y-2">
                     {active.reconfiguration.map((step, i) => (
                       <li
