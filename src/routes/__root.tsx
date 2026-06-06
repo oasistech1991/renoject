@@ -328,7 +328,6 @@ function TopNav({
       items: [
         { to: "/refinance", label: "Property Calculator", desc: "BTL, BRRR, mortgage & cash" },
         { to: "/condition", label: "Renovation Calculator", desc: "Refurb cost estimates" },
-        { to: "/forecast", label: "Forecast", desc: "Long-term cashflow projections" },
       ],
     },
     {
@@ -337,6 +336,7 @@ function TopNav({
       items: [
         { to: "/properties", label: "View Deals", desc: "Curated investment opportunities" },
         { to: "/market", label: "Market Search", desc: "Live deal matching" },
+        { to: "/forecast", label: "Forecast", desc: "Long-term cashflow projections" },
         { to: "/tokenize", label: "Tokenize", desc: "Fractionalise property equity" },
       ],
     },
