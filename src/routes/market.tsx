@@ -45,72 +45,42 @@ const DEFAULT_FILTERS: MarketFilters = { article4: "any" };
 
 type Mode = "live" | "deals";
 
-const PLACEHOLDER_PHOTO = "https://images.unsplash.com/photo-1568605114967-8130f3a36994?w=800&q=70&auto=format&fit=crop";
-
-function dealToListing(p: {
+type Deal = {
   id: string;
   name: string;
   source: string | null;
-  inputs: Record<string, unknown> | null;
-  metrics: Record<string, unknown> | null;
-}): Row {
-  const inputs = (p.inputs ?? {}) as Record<string, number | string | boolean | undefined>;
-  const metricsRaw = (p.metrics ?? {}) as Record<string, number | undefined>;
-  const price = Number(inputs.purchasePrice ?? inputs.price ?? 0) || 0;
-  const beds = Number(inputs.beds ?? inputs.lettableUnits ?? 3) || 3;
-  const rooms = Number(inputs.rooms ?? inputs.lettableUnits ?? beds) || beds;
-  const sqft = Number(inputs.sqft ?? 1000) || 1000;
-  const monthlyRent = Number(inputs.monthlyRent ?? 0) || 0;
-  const avgBtlRent = monthlyRent || Math.round(price * 0.005);
-  const avgRoomRent = Number(inputs.avgRoomRent ?? Math.round(avgBtlRent / Math.max(rooms, 1))) || 500;
-  const gdv = Number(inputs.gdv ?? price) || price;
-  const refurbEstimate = Number(inputs.refurbCost ?? 0) || 0;
-  const postcode = String(inputs.postcode ?? "");
+  inputs: Record<string, unknown>;
+  metrics: Record<string, unknown>;
+  updated_at: string;
+};
 
-  const listing: Listing = {
-    id: p.id,
-    address: p.name,
-    postcode,
-    town: postcode.split(" ")[0] || "",
-    lat: 0,
-    lng: 0,
-    price,
-    beds,
-    baths: Math.max(1, Math.floor(beds / 2)),
-    sqft,
-    propertyType: "terraced",
-    tenure: "freehold",
-    epc: "D",
-    listingType: "sale",
-    daysOnMarket: 0,
-    photos: [PLACEHOLDER_PHOTO],
-    description: `Saved deal · source: ${sourceLabel(p.source)}`,
-    agent: sourceLabel(p.source),
-    sourceUrl: "#",
-    article4: false,
-    hmoRoomsPotential: rooms,
-    condition: refurbEstimate > 15000 ? "heavy" : refurbEstimate > 0 ? "light" : "turnkey",
-    refurbEstimate,
-    postcodeMedianPrice: gdv,
-    avgRoomRent,
-    avgBtlRent,
-    guidePrice: undefined,
+function num(v: unknown): number | undefined {
+  const n = typeof v === "number" ? v : typeof v === "string" ? Number(v) : NaN;
+  return Number.isFinite(n) ? n : undefined;
+}
+
+function dealFields(d: Deal) {
+  const i = d.inputs ?? {};
+  const m = d.metrics ?? {};
+  const purchasePrice = num((i as any).purchasePrice);
+  const gdv = num((i as any).gdv);
+  const monthlyRent = num((i as any).monthlyRent);
+  const postcode = String((i as any).postcode ?? "");
+  const grossYield = num((m as any).grossYield);
+  const netYield = num((m as any).netYield);
+  const roi = num((m as any).roiOnCashLeftIn) ?? num((m as any).roiIO);
+  const cashLeftIn = num((m as any).cashLeftIn);
+  const totalCashIn = num((m as any).totalCashIn);
+  const monthlyCF = num((m as any).monthlyCashflowIO);
+  const profitOnPaper = num((m as any).profitOnPaper);
+  const verdictLabel = typeof (m as any).verdictLabel === "string" ? ((m as any).verdictLabel as string) : undefined;
+  const verdict = typeof (m as any).verdict === "string" ? ((m as any).verdict as string) : undefined;
+  const method = typeof (m as any).method === "string" ? ((m as any).method as string) : undefined;
+  return {
+    purchasePrice, gdv, monthlyRent, postcode,
+    grossYield, netYield, roi, cashLeftIn, totalCashIn, monthlyCF, profitOnPaper,
+    verdictLabel, verdict, method,
   };
-
-  // Prefer stored metrics where they line up; otherwise compute fresh from the synthetic listing.
-  const computed = metricsFor(listing);
-  const m: InvestorMetrics = {
-    grossYieldBtl: Number(metricsRaw.grossYield ?? computed.grossYieldBtl) || computed.grossYieldBtl,
-    grossYieldHmo: computed.grossYieldHmo,
-    bmvPct: computed.bmvPct,
-    roiAnnual: Number(metricsRaw.roiOnCashLeftIn ?? metricsRaw.roiIO ?? computed.roiAnnual) || computed.roiAnnual,
-    pricePerSqft: computed.pricePerSqft,
-    estGdvHmo: computed.estGdvHmo,
-    refurbUplift: Math.max(0, gdv - price - refurbEstimate),
-    totalInPlight: Number(metricsRaw.totalCashIn ?? computed.totalInPlight) || computed.totalInPlight,
-  };
-
-  return { ...listing, m };
 }
 
 function MarketPage() {
@@ -119,7 +89,7 @@ function MarketPage() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [watchlist, setWatchlist] = useState<Set<string>>(new Set());
   const [reviewFor, setReviewFor] = useState<Row | null>(null);
-  const [deals, setDeals] = useState<Listing[]>([]);
+  const [deals, setDeals] = useState<Deal[]>([]);
   const [dealsLoading, setDealsLoading] = useState(false);
   const [isAuthed, setIsAuthed] = useState<boolean | null>(null);
 
@@ -137,14 +107,28 @@ function MarketPage() {
       }
       const { data, error } = await supabase
         .from("properties")
-        .select("id, name, source, inputs, metrics")
+        .select("id, name, source, inputs, metrics, updated_at")
         .order("updated_at", { ascending: false });
       if (!active) return;
       if (error) {
         toast.error(`Couldn't load deals: ${error.message}`);
         setDeals([]);
       } else {
-        setDeals((data ?? []).map((d) => dealToListing(d as never)));
+        setDeals(
+          ((data ?? []) as unknown as Array<{
+            id: string; name: string; source: string | null;
+            inputs: Record<string, unknown> | null;
+            metrics: Record<string, unknown> | null;
+            updated_at: string;
+          }>).map((d) => ({
+            id: d.id,
+            name: d.name,
+            source: d.source,
+            inputs: d.inputs ?? {},
+            metrics: d.metrics ?? {},
+            updated_at: d.updated_at,
+          })),
+        );
       }
       setDealsLoading(false);
     };
@@ -156,18 +140,44 @@ function MarketPage() {
   }, []);
 
   const rows = useMemo(
-    () => applyFilters(mode === "live" ? MOCK_LISTINGS : deals, filters),
-    [filters, mode, deals],
+    () => (mode === "live" ? applyFilters(MOCK_LISTINGS, filters) : [] as Row[]),
+    [filters, mode],
   );
+
+  const filteredDeals = useMemo(() => {
+    if (mode !== "deals") return [] as Deal[];
+    const q = filters.query?.trim().toLowerCase();
+    return deals.filter((d) => {
+      const f = dealFields(d);
+      if (q) {
+        const hay = `${d.name} ${f.postcode} ${sourceLabel(d.source)}`.toLowerCase();
+        if (!hay.includes(q)) return false;
+      }
+      if (filters.minPrice != null && (f.purchasePrice ?? 0) < filters.minPrice) return false;
+      if (filters.maxPrice != null && (f.purchasePrice ?? Infinity) > filters.maxPrice) return false;
+      if (filters.minHmoYield != null && (f.grossYield ?? -Infinity) < filters.minHmoYield) return false;
+      if (filters.minRoi != null && (f.roi ?? -Infinity) < filters.minRoi) return false;
+      return true;
+    });
+  }, [mode, deals, filters]);
+
   const selected = rows.find((r) => r.id === selectedId) ?? null;
 
   const stats = useMemo(() => {
+    if (mode === "deals") {
+      if (filteredDeals.length === 0) return { count: 0, avgYield: 0, avgBmv: 0, underGuide: 0 };
+      const ys = filteredDeals.map((d) => dealFields(d).grossYield).filter((n): n is number => n != null);
+      const rs = filteredDeals.map((d) => dealFields(d).roi).filter((n): n is number => n != null);
+      const avgYield = ys.length ? ys.reduce((a, b) => a + b, 0) / ys.length : 0;
+      const avgRoi = rs.length ? rs.reduce((a, b) => a + b, 0) / rs.length : 0;
+      return { count: filteredDeals.length, avgYield, avgBmv: avgRoi, underGuide: 0 };
+    }
     if (rows.length === 0) return { count: 0, avgYield: 0, avgBmv: 0, underGuide: 0 };
     const avgYield = rows.reduce((a, r) => a + r.m.grossYieldHmo, 0) / rows.length;
     const avgBmv = rows.reduce((a, r) => a + r.m.bmvPct, 0) / rows.length;
     const underGuide = rows.filter((r) => r.listingType === "auction" && r.guidePrice && r.guidePrice < r.price * 0.85).length;
     return { count: rows.length, avgYield, avgBmv, underGuide };
-  }, [rows]);
+  }, [rows, mode, filteredDeals]);
 
   const set = <K extends keyof MarketFilters>(k: K, v: MarketFilters[K]) =>
     setFilters((p) => ({ ...p, [k]: v }));
@@ -194,15 +204,28 @@ function MarketPage() {
     }
   };
 
+  const deleteDeal = async (id: string, name: string) => {
+    if (!confirm(`Delete "${name}"? This can't be undone.`)) return;
+    const { error } = await supabase.from("properties").delete().eq("id", id);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    setDeals((p) => p.filter((d) => d.id !== id));
+    toast.success("Deal deleted");
+  };
+
   return (
     <div className="min-h-[calc(100vh-49px)] bg-background">
       <FilterBar filters={filters} set={set} reset={() => setFilters(DEFAULT_FILTERS)} stats={stats} mode={mode} setMode={setMode} />
 
-      <div className="mx-auto grid max-w-[1600px] gap-4 px-4 py-4 lg:grid-cols-[1fr_460px]">
-        {/* Map placeholder */}
-        <div className="relative hidden h-[calc(100vh-260px)] overflow-hidden rounded-xl border border-border bg-card lg:block">
-          <MapPlaceholder rows={rows} selectedId={selectedId} onPick={setSelectedId} />
-        </div>
+      <div className={`mx-auto grid max-w-[1600px] gap-4 px-4 py-4 ${mode === "live" ? "lg:grid-cols-[1fr_460px]" : ""}`}>
+        {/* Map (live mode only — saved deals have no coordinates) */}
+        {mode === "live" && (
+          <div className="relative hidden h-[calc(100vh-260px)] overflow-hidden rounded-xl border border-border bg-card lg:block">
+            <MapPlaceholder rows={rows} selectedId={selectedId} onPick={setSelectedId} />
+          </div>
+        )}
 
         {/* List */}
         <div className="h-[calc(100vh-260px)] overflow-y-auto rounded-xl border border-border bg-card p-3">
@@ -221,27 +244,39 @@ function MarketPage() {
               <Button size="sm" variant="outline" onClick={() => setMode("live")}>Browse Live Market</Button>
             </div>
           )}
-          {rows.length === 0 && !(mode === "deals" && (isAuthed === false || dealsLoading || deals.length === 0)) && (
-            <p className="px-3 py-12 text-center text-sm text-muted-foreground">No {mode === "deals" ? "deals" : "listings"} match your filters.</p>
+          {mode === "live" && rows.length === 0 && (
+            <p className="px-3 py-12 text-center text-sm text-muted-foreground">No listings match your filters.</p>
           )}
-          <div className="space-y-3">
-            {rows.map((r) => (
-              <ListingCard
-                key={r.id}
-                row={r}
-                mode={mode}
-                onOpen={() => setSelectedId(r.id)}
-                onWatch={() => toggleWatch(r.id)}
-                onSave={() => saveAsDeal(r)}
-                onExpert={() => setReviewFor(r)}
-                watched={watchlist.has(r.id)}
-              />
-            ))}
-          </div>
+          {mode === "deals" && isAuthed && !dealsLoading && deals.length > 0 && filteredDeals.length === 0 && (
+            <p className="px-3 py-12 text-center text-sm text-muted-foreground">No deals match your filters.</p>
+          )}
+          {mode === "live" && (
+            <div className="space-y-3">
+              {rows.map((r) => (
+                <ListingCard
+                  key={r.id}
+                  row={r}
+                  mode={mode}
+                  onOpen={() => setSelectedId(r.id)}
+                  onWatch={() => toggleWatch(r.id)}
+                  onSave={() => saveAsDeal(r)}
+                  onExpert={() => setReviewFor(r)}
+                  watched={watchlist.has(r.id)}
+                />
+              ))}
+            </div>
+          )}
+          {mode === "deals" && (
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+              {filteredDeals.map((d) => (
+                <DealCard key={d.id} deal={d} onDelete={() => deleteDeal(d.id, d.name)} />
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
-      <AnalyticsStrip rows={rows} />
+      {mode === "live" && <AnalyticsStrip rows={rows} />}
 
       <Sheet open={!!selected} onOpenChange={(o) => !o && setSelectedId(null)}>
         <SheetContent className="w-full overflow-y-auto sm:max-w-xl">
