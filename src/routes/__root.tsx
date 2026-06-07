@@ -245,7 +245,7 @@ function AuthGate() {
 
   return (
     <>
-      <TopNav
+      <AppShell
         session={session}
         isAdmin={adminUnlocked}
         onSignOut={() => {
@@ -256,8 +256,9 @@ function AuthGate() {
           }
           supabase.auth.signOut();
         }}
-      />
-      {isPublicPath ? <Outlet /> : <SubscriptionGate />}
+      >
+        {isPublicPath ? <Outlet /> : <SubscriptionGate />}
+      </AppShell>
       <Toaster />
     </>
   );
