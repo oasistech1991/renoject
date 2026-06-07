@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { PROPERTY_SOURCES, type PropertySource } from "@/lib/sources";
 import { PropertyMedia } from "@/components/property/PropertyMedia";
+import { ExportInvestorPackButton } from "@/components/property/ExportInvestorPackButton";
 import { parsePropertyPdf, parsePropertyUrl, parsePropertyImages } from "@/lib/import-deal.functions";
 
 export const Route = createFileRoute("/refinance")({
