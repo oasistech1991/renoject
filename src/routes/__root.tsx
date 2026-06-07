@@ -16,13 +16,18 @@ import { Toaster } from "@/components/ui/sonner";
 import { supabase } from "@/integrations/supabase/client";
 import type { Session } from "@supabase/supabase-js";
 import { useEntitlement } from "@/hooks/useEntitlement";
-import { Lock, Loader2, ChevronDown, Calculator, Building2, ShieldCheck, Tag, Home } from "lucide-react";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+  Lock,
+  Loader2,
+  Home,
+  Calculator,
+  Building2,
+  ShieldCheck,
+  Tag,
+  Menu,
+  X,
+  LogOut,
+} from "lucide-react";
 
 function NotFoundComponent() {
   return (
@@ -103,6 +108,12 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       {
         rel: "stylesheet",
         href: appCss,
+      },
+      { rel: "preconnect", href: "https://fonts.googleapis.com" },
+      { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
+      {
+        rel: "stylesheet",
+        href: "https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600&family=Sora:wght@600;700&display=swap",
       },
     ],
     scripts: [
