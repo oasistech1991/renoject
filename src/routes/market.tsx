@@ -530,7 +530,8 @@ function MapPlaceholder({ rows, selectedId, onPick }: { rows: Row[]; selectedId:
     const next = new Map<string, google.maps.Marker>();
     const bounds = new google.maps.LatLngBounds();
 
-    for (const r of rows) {
+    const mappable = rows.filter((r) => r.lat !== 0 || r.lng !== 0);
+    for (const r of mappable) {
       const y_ = r.m.grossYieldHmo;
       const color = y_ >= 12 ? "#10b981" : y_ >= 9 ? "#a3e635" : y_ >= 7 ? "#facc15" : "#fb923c";
       const isActive = r.id === selectedId;
@@ -560,11 +561,11 @@ function MapPlaceholder({ rows, selectedId, onPick }: { rows: Row[]; selectedId:
       if (!next.has(id)) m.setMap(null);
     }
     markersRef.current = next;
-    if (rows.length > 0 && !selectedId) {
+    if (mappable.length > 0 && !selectedId) {
       map.fitBounds(bounds, 64);
     } else if (selectedId) {
       const sel = rows.find((r) => r.id === selectedId);
-      if (sel) map.panTo({ lat: sel.lat, lng: sel.lng });
+      if (sel && (sel.lat !== 0 || sel.lng !== 0)) map.panTo({ lat: sel.lat, lng: sel.lng });
     }
   }, [ready, rows, selectedId, onPick]);
 
