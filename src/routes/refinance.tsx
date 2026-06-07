@@ -530,6 +530,9 @@ function RefinancePage() {
                   Save as new
                 </Button>
               )}
+              {propertyId && (
+                <ExportInvestorPackButton propertyId={propertyId} label="Export PDF" />
+              )}
             </div>
           </div>
           {(savedAt || loadError) && (
