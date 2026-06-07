@@ -406,6 +406,53 @@ function RefinancePage() {
     }
   };
 
+  const onPickImages = () => imageRef.current?.click();
+  const onImagesChosen = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? []);
+    e.target.value = "";
+    if (!files.length) return;
+    const valid = files.filter((f) => f.type.startsWith("image/"));
+    if (!valid.length) {
+      setImportMsg("Please choose image files (PNG, JPG, WEBP).");
+      return;
+    }
+    if (valid.length > 6) {
+      setImportMsg("Max 6 images at a time.");
+      return;
+    }
+    if (valid.some((f) => f.size > 10 * 1024 * 1024)) {
+      setImportMsg("Each image must be under 10 MB.");
+      return;
+    }
+    setImporting(true);
+    setImportMsg(`Reading ${valid.length} image(s) and extracting deal details…`);
+    try {
+      const images = await Promise.all(
+        valid.map(async (f) => {
+          const buf = new Uint8Array(await f.arrayBuffer());
+          let bin = "";
+          for (let i = 0; i < buf.length; i++) bin += String.fromCharCode(buf[i]);
+          return {
+            base64: btoa(bin),
+            mimeType: f.type || "image/png",
+            filename: f.name,
+          };
+        })
+      );
+      const { extracted, warning } = await parseImages({ data: { images } });
+      if (warning) {
+        setImportMsg(warning);
+      } else {
+        applyExtracted(extracted);
+        setImportMsg(`Auto-filled ${Object.keys(extracted).length} field(s) from image(s).`);
+      }
+    } catch (err: any) {
+      setImportMsg(err?.message ?? "Failed to import images.");
+    } finally {
+      setImporting(false);
+    }
+  };
+
   const verdictTone =
     r.verdict === "full"
       ? "border-primary bg-primary/10 text-primary"
