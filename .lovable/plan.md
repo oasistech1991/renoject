@@ -1,50 +1,64 @@
-## Make Hartstone Holdings findable on ChatGPT, Perplexity, Claude & Gemini
+# Visual refresh — Brick & Sage palette
 
-### 1. Explicitly allow AI crawlers in `public/robots.txt`
-Keep the existing `User-agent: *` + sitemap block, and add allow-blocks for:
-- `GPTBot`, `OAI-SearchBot`, `ChatGPT-User` (OpenAI / ChatGPT)
-- `PerplexityBot`, `Perplexity-User` (Perplexity)
-- `ClaudeBot`, `Claude-Web`, `anthropic-ai` (Anthropic)
-- `Google-Extended` (Gemini)
-- `Applebot-Extended` (Apple Intelligence)
-- `CCBot` (Common Crawl — feeds many LLMs)
-- `Bytespider`, `Meta-ExternalAgent`, `Amazonbot`
+Add color and visual depth across Hartstone Holdings using the chosen Brick & Sage palette, at a medium intensity (3/5). **No functionality changes** — only tokens, styling, and presentational elements.
 
-### 2. Add `public/llms.txt`
-A markdown summary of Hartstone Holdings for LLM ingestion. Structure:
-- H1: Hartstone Holdings
-- Blockquote: one-line summary (UK property investment toolkit)
-- Short description paragraph
-- `## Tools` — link list to each public tool page (Property Calculator, Renovation Calculator, HMO Compliance, Market Search, View Deals, Forecast, Tradesmen, Tokenize)
-- `## Pricing & Account` — pricing
-- `## Optional` — legal pages (terms, privacy, refund policy)
+## Palette tokens
 
-Excludes auth, admin, account, and API routes.
+Define in `src/styles.css` (oklch) for both light and dark modes:
 
-### 3. Strengthen JSON-LD structured data
-- In `src/routes/__root.tsx`: add a `WebSite` schema with `potentialAction` `SearchAction` alongside the existing `Organization`.
-- In each tool route's `head().scripts`: add a `SoftwareApplication` (or `Service`) JSON-LD block with name, description, applicationCategory `"FinanceApplication"`, and offer (£1/month).
-- In `src/routes/pricing.tsx`: add an `Offer` / `Product` schema.
+- `--background` — warm cream `#fdf8f5` (dark: deep charcoal `#1a1614`)
+- `--foreground` — near-black `#2a2a2a`
+- `--primary` — brick red `#b91c1c` (CTAs, key accents)
+- `--primary-foreground` — cream
+- `--secondary` — sage `#7d9b76` (secondary actions, positive metrics)
+- `--accent` — soft sage tint for hover/highlights
+- `--muted` — warm beige
+- `--border` — warm taupe
+- `--ring` — brick red at lower chroma
+- New gradient tokens: `--gradient-hero` (cream → faint brick), `--gradient-brick` (brick → deeper brick), `--gradient-sage` (sage tints)
+- New shadow tokens: `--shadow-warm` (brick-tinted soft shadow), `--shadow-elegant`
+- Chart colors retuned: brick, sage, warm gold, taupe, deep navy
 
-### 4. Audit and tighten per-page meta
-Sweep all public route files and ensure each has a specific, keyword-rich `title` + `description` + `og:title` + `og:description` (e.g. "UK BTL & BRRR Property Investment Calculator", "HMO Floorplan Compliance Checker — UK Licensing Rules"). Routes to audit: `/`, `/refinance`, `/condition`, `/hmo-compliance`, `/market`, `/properties`, `/forecast`, `/tradesmen`, `/tokenize`, `/pricing`.
+## Scope of visual changes (presentational only)
 
-### 5. Submit to Bing Webmaster Tools (instructions only — no code)
-ChatGPT Search and Copilot pull from Bing's index. I'll include a short closing checklist for the user:
-- Register at bing.com/webmasters
-- Import from Google Search Console (one click)
-- Submit `https://hartstoneholdings.com/sitemap.xml`
+**1. Landing / home page (`src/routes/index.tsx`)**
+- Hero: apply `--gradient-hero` background, brick accent on headline keyword, sage on subtle highlight
+- Feature/tool cards: warm shadow, brick-tinted hover border, sage icon accents
+- Section dividers and CTAs use new tokens
 
-### 6. Confirm Google Search Console submission (instructions only)
-Already have `sitemap.xml` + `robots.txt`. Closing checklist will remind the user to submit the sitemap in GSC if not done.
+**2. Navigation & headers (`src/routes/__root.tsx`, nav components)**
+- Top nav: cream background with subtle warm border, brick active-tab underline, sage hover
+- Active route indicator switches from neutral to brick
 
-### Technical notes
-- All changes are additive — no existing meta/JSON-LD is removed.
-- `robots.txt` and `llms.txt` are static files in `public/`; deployed instantly with the next publish.
-- JSON-LD goes in route `head().scripts` per the TanStack head pattern; canonical/og:url tags already added in the previous SEO pass are untouched.
+**3. Cards, buttons & metrics (shared components)**
+- `MetricCard`: tone="positive" → sage; tone="accent" → brick; warm border on hover
+- Button variants already use `--primary` / `--secondary` — they inherit automatically
+- Add an optional `premium` button variant using `--gradient-brick` for primary CTAs on landing only (used sparingly)
+- Badges and chips pick up new accent tints
 
-### Files to be edited/created
-- `public/robots.txt` (edit — append AI crawler allow blocks)
-- `public/llms.txt` (create)
-- `src/routes/__root.tsx` (add WebSite + SearchAction JSON-LD)
-- `src/routes/refinance.tsx`, `condition.tsx`, `hmo-compliance.tsx`, `market.tsx`, `properties.tsx`, `forecast.tsx`, `tradesmen.tsx`, `tokenize.tsx`, `pricing.tsx`, `index.tsx` (tighten titles/descriptions where weak; add per-tool JSON-LD)
+**4. Dashboard & tool pages (calculator, forecast, market, properties, condition, hmo-compliance, refinance, tradesmen, tokenize, pricing)**
+- Page headers: subtle warm gradient strip
+- Result/summary panels: sage tint for positive results, brick for warnings/key numbers
+- Tab indicators: brick underline
+- Chart series in `ForecastCharts` and similar: brick + sage + warm gold
+
+## What stays unchanged
+
+- All routes, route paths, route logic
+- All server functions, queries, auth, payments, Paddle integration
+- All form inputs, calculations, business logic
+- All component APIs (props, exports) — only internal class names/tokens change
+- Tab structure, navigation behavior, deal forecast placement
+- SEO meta, JSON-LD, robots.txt, llms.txt, sitemap
+
+## Technical details
+
+- All color values defined as `oklch()` in `:root` and `.dark` in `src/styles.css`
+- All new tokens registered in `@theme inline` so Tailwind utilities like `bg-primary`, `text-secondary`, `border-accent` resolve correctly
+- Components continue to use semantic classes (`bg-primary`, `text-muted-foreground`, etc.) — never raw hex
+- One-pass edit across `src/styles.css`, `src/routes/__root.tsx`, `src/routes/index.tsx`, `src/components/btl/MetricCard.tsx`, `src/components/forecast/ForecastCharts.tsx`, and light touches to tool page headers
+- No new dependencies, no schema changes, no migrations
+
+## Verification
+
+After the edit: visit `/`, `/market`, `/forecast`, `/properties`, `/pricing` in preview to confirm cohesive Brick & Sage styling across light + dark modes, and that all interactive elements still work identically.

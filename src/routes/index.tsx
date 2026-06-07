@@ -43,14 +43,15 @@ function Index() {
     <div className="min-h-[calc(100vh-3.5rem)] bg-background">
       {/* Hero */}
       <section className="relative overflow-hidden border-b border-border">
-        <div className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-primary/15 via-background to-background" />
+        <div className="absolute inset-0 -z-10" style={{ background: "var(--gradient-hero)" }} />
+        <div className="absolute inset-x-0 top-0 -z-10 h-px bg-gradient-to-r from-transparent via-primary/40 to-transparent" />
         <div className="mx-auto max-w-6xl px-6 py-20 sm:py-28">
           <div className="inline-flex items-center gap-2 rounded-full border border-border bg-card/50 px-3 py-1 text-xs uppercase tracking-[0.18em] text-muted-foreground backdrop-blur">
             <span className="h-1.5 w-1.5 rounded-full bg-primary" />
             Hartstone Holdings
           </div>
           <h1 className="mt-6 max-w-3xl text-4xl font-semibold tracking-tight text-foreground sm:text-5xl lg:text-6xl">
-            The complete toolkit for serious UK property investors.
+            The complete toolkit for <span className="text-primary">serious UK property</span> investors.
           </h1>
           <p className="mt-5 max-w-2xl text-base text-muted-foreground sm:text-lg">
             Underwrite deals, check HMO compliance, estimate refurb costs and find tradesmen — all in one workspace, for £1/month.
@@ -58,14 +59,15 @@ function Index() {
           <div className="mt-8 flex flex-wrap items-center gap-3">
             <Link
               to="/refinance"
-              className="inline-flex items-center gap-2 rounded-md bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+              className="inline-flex items-center gap-2 rounded-md px-5 py-2.5 text-sm font-medium text-primary-foreground transition-all hover:scale-[1.02]"
+              style={{ background: "var(--gradient-brick)", boxShadow: "var(--shadow-warm)" }}
             >
               Open Property Calculator
               <ArrowRight className="h-4 w-4" />
             </Link>
             <Link
               to="/pricing"
-              className="inline-flex items-center rounded-md border border-input bg-background px-5 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-accent"
+              className="inline-flex items-center rounded-md border border-secondary/40 bg-background px-5 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-accent hover:border-secondary"
             >
               See pricing
             </Link>
@@ -84,14 +86,15 @@ function Index() {
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {tools.map((t) => {
             const Icon = t.icon;
+            const useSage = tools.indexOf(t) % 2 === 1;
             return (
               <Link
                 key={t.to}
                 to={t.to as "/refinance"}
-                className="group relative flex flex-col rounded-xl border border-border bg-card/40 p-5 transition-all hover:-translate-y-0.5 hover:border-primary/50 hover:bg-card/70 hover:shadow-lg hover:shadow-primary/5"
+                className="group relative flex flex-col rounded-xl border border-border bg-card/60 p-5 transition-all hover:-translate-y-0.5 hover:border-primary/50 hover:bg-card hover:shadow-lg"
               >
                 <div className="mb-4 flex items-center justify-between">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-border bg-background text-primary">
+                  <div className={`flex h-10 w-10 items-center justify-center rounded-lg border ${useSage ? "border-secondary/40 bg-secondary/10 text-secondary" : "border-primary/30 bg-primary/10 text-primary"}`}>
                     <Icon className="h-5 w-5" />
                   </div>
                   {t.free && (
