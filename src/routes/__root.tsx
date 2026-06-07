@@ -27,6 +27,12 @@ import {
   Menu,
   X,
   LogOut,
+  Hammer,
+  Search,
+  LineChart,
+  Wrench,
+  Coins,
+  UserCircle,
 } from "lucide-react";
 
 function NotFoundComponent() {
@@ -361,12 +367,20 @@ function SignInScreen({ onUnlock }: { onUnlock: () => void }) {
   );
 }
 
-const SIDEBAR_ITEMS: Array<{ to: string; label: string; icon: typeof Home }> = [
-  { to: "/", label: "Home", icon: Home },
-  { to: "/refinance", label: "Calculators", icon: Calculator },
-  { to: "/market", label: "Market Deals", icon: Building2 },
-  { to: "/hmo-compliance", label: "Compliance", icon: ShieldCheck },
+const TOOL_ITEMS: Array<{ to: string; label: string; icon: typeof Home }> = [
+  { to: "/refinance", label: "Property Calculator", icon: Calculator },
+  { to: "/condition", label: "Renovation", icon: Hammer },
+  { to: "/market", label: "Market Search", icon: Search },
+  { to: "/properties", label: "View Deals", icon: Building2 },
+  { to: "/forecast", label: "Forecast", icon: LineChart },
+  { to: "/hmo-compliance", label: "HMO Compliance", icon: ShieldCheck },
+  { to: "/tradesmen", label: "Tradesmen", icon: Wrench },
+  { to: "/tokenize", label: "Tokenize", icon: Coins },
+];
+
+const ACCOUNT_ITEMS: Array<{ to: string; label: string; icon: typeof Home; authOnly?: boolean }> = [
   { to: "/pricing", label: "Pricing", icon: Tag },
+  { to: "/account", label: "Account", icon: UserCircle, authOnly: true },
 ];
 
 function AppShell({
@@ -412,12 +426,32 @@ function AppShell({
           Tools
         </div>
 
-        {SIDEBAR_ITEMS.slice(1).map((item) => {
+        {TOOL_ITEMS.map((item) => {
           const Icon = item.icon;
           return (
             <Link
               key={item.to}
               to={item.to as "/refinance"}
+              onClick={() => setMobileOpen(false)}
+              className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+              activeProps={{ className: "flex items-center gap-3 px-3 py-2 rounded-lg text-sm bg-accent text-foreground font-medium" }}
+            >
+              <Icon className="h-4 w-4" />
+              <span>{item.label}</span>
+            </Link>
+          );
+        })}
+
+        <div className="pt-4 pb-2 px-3 text-[10px] uppercase tracking-widest font-bold text-muted-foreground opacity-70">
+          Account
+        </div>
+
+        {ACCOUNT_ITEMS.filter((item) => !item.authOnly || session || isAdmin).map((item) => {
+          const Icon = item.icon;
+          return (
+            <Link
+              key={item.to}
+              to={item.to as "/pricing"}
               onClick={() => setMobileOpen(false)}
               className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
               activeProps={{ className: "flex items-center gap-3 px-3 py-2 rounded-lg text-sm bg-accent text-foreground font-medium" }}
