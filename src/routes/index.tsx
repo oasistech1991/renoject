@@ -8,7 +8,6 @@ import {
   ShieldCheck,
   Wrench,
   Coins,
-  ArrowRight,
 } from "lucide-react";
 
 export const Route = createFileRoute("/")({
@@ -40,32 +39,37 @@ const tools: Array<{ to: string; title: string; desc: string; icon: typeof Calcu
 
 function Index() {
   return (
-    <div className="min-h-[calc(100vh-3.5rem)] bg-background">
-      {/* Hero */}
-      <section className="relative overflow-hidden border-b border-border">
-        <div className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-primary/15 via-background to-background" />
-        <div className="mx-auto max-w-6xl px-6 py-20 sm:py-28">
-          <div className="inline-flex items-center gap-2 rounded-full border border-border bg-card/50 px-3 py-1 text-xs uppercase tracking-[0.18em] text-muted-foreground backdrop-blur">
-            <span className="h-1.5 w-1.5 rounded-full bg-primary" />
-            Hartstone Holdings
+    <div className="px-6 py-8 lg:px-10 lg:py-10 max-w-7xl mx-auto w-full">
+      {/* Hero workspace panel */}
+      <section className="mb-10 rounded-2xl border border-border bg-card/40 p-8 lg:p-10">
+        <div className="max-w-3xl">
+          <div className="inline-flex items-center gap-2 rounded-full border border-muted bg-background/40 px-3 py-1 mb-6">
+            <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground animate-pulse" />
+            <span className="text-[10px] font-bold uppercase tracking-widest text-foreground">
+              Hartstone Holdings
+            </span>
           </div>
-          <h1 className="mt-6 max-w-3xl text-4xl font-semibold tracking-tight text-foreground sm:text-5xl lg:text-6xl">
-            The complete toolkit for serious UK property investors.
+          <h1 className="font-display text-4xl lg:text-5xl font-bold text-foreground leading-[1.1] mb-6">
+            The complete toolkit for{" "}
+            <span className="text-muted-foreground">serious</span> UK property investors.
           </h1>
-          <p className="mt-5 max-w-2xl text-base text-muted-foreground sm:text-lg">
-            Underwrite deals, check HMO compliance, estimate refurb costs and find tradesmen — all in one workspace, for £1/month.
+          <p className="text-lg text-muted-foreground leading-relaxed mb-8">
+            Underwrite deals, check HMO compliance, estimate refurb costs and find tradesmen —
+            all in one workspace, for £1/month.
           </p>
-          <div className="mt-8 flex flex-wrap items-center gap-3">
+          <div className="flex flex-wrap gap-3">
             <Link
               to="/refinance"
-              className="inline-flex items-center gap-2 rounded-md bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+              className="inline-flex items-center gap-2 rounded-lg bg-primary px-6 py-3 text-sm font-bold text-primary-foreground transition-all hover:opacity-90"
             >
               Open Property Calculator
-              <ArrowRight className="h-4 w-4" />
+              <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+              </svg>
             </Link>
             <Link
               to="/pricing"
-              className="inline-flex items-center rounded-md border border-input bg-background px-5 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-accent"
+              className="inline-flex items-center rounded-lg border border-muted px-6 py-3 text-sm font-bold text-foreground transition-all hover:bg-accent"
             >
               See pricing
             </Link>
@@ -74,37 +78,34 @@ function Index() {
       </section>
 
       {/* Tools grid */}
-      <section className="mx-auto max-w-6xl px-6 py-16">
-        <div className="mb-8 flex items-end justify-between">
+      <section>
+        <div className="mb-6 flex items-end justify-between">
           <div>
-            <h2 className="text-2xl font-semibold tracking-tight text-foreground">Explore the tools</h2>
-            <p className="mt-1 text-sm text-muted-foreground">Jump straight into any workflow.</p>
+            <h2 className="font-display text-xl font-bold text-foreground mb-1">Explore the tools</h2>
+            <p className="text-sm text-muted-foreground">Jump straight into any workflow.</p>
           </div>
         </div>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
           {tools.map((t) => {
             const Icon = t.icon;
             return (
               <Link
                 key={t.to}
                 to={t.to as "/refinance"}
-                className="group relative flex flex-col rounded-xl border border-border bg-card/40 p-5 transition-all hover:-translate-y-0.5 hover:border-primary/50 hover:bg-card/70 hover:shadow-lg hover:shadow-primary/5"
+                className="group rounded-xl border border-border bg-card/60 p-5 transition-all hover:border-ring hover:bg-card"
               >
-                <div className="mb-4 flex items-center justify-between">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-border bg-background text-primary">
+                <div className="mb-4 flex items-start justify-between">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-background text-foreground transition-transform group-hover:scale-110">
                     <Icon className="h-5 w-5" />
                   </div>
                   {t.free && (
-                    <span className="rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider text-primary">
+                    <span className="rounded bg-foreground/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-foreground">
                       Free
                     </span>
                   )}
                 </div>
-                <h3 className="text-base font-semibold text-foreground">{t.title}</h3>
-                <p className="mt-1 text-sm text-muted-foreground">{t.desc}</p>
-                <div className="mt-4 inline-flex items-center gap-1 text-xs font-medium text-primary opacity-0 transition-opacity group-hover:opacity-100">
-                  Open <ArrowRight className="h-3 w-3" />
-                </div>
+                <h3 className="mb-2 font-display text-sm font-bold text-foreground">{t.title}</h3>
+                <p className="text-xs leading-relaxed text-muted-foreground">{t.desc}</p>
               </Link>
             );
           })}
