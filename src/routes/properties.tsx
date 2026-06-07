@@ -9,6 +9,7 @@ import { calculateRefinance, fmtROI, type RefinanceInputs } from "@/lib/refinanc
 import { parsePropertyPdf } from "@/lib/import-deal.functions";
 import { PROPERTY_SOURCES, sourceBadgeClass, sourceLabel, type PropertySource } from "@/lib/sources";
 import { useSourceColors, badgeStyleFromHex } from "@/lib/source-colors";
+import { ExportInvestorPackButton } from "@/components/property/ExportInvestorPackButton";
 
 export const Route = createFileRoute("/properties")({
   head: () => ({
@@ -595,6 +596,7 @@ function PropertiesPage() {
                     <Link to="/refinance" search={{ id: r.id }} className="flex-1">
                       <Button size="sm" className="w-full">Open</Button>
                     </Link>
+                    <ExportInvestorPackButton propertyId={r.id} label="Export" />
                     <Button size="sm" variant="outline" onClick={() => remove(r.id, r.name)}>Delete</Button>
                   </div>
                   {(() => {
