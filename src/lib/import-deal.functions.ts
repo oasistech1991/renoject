@@ -153,6 +153,94 @@ export const parsePropertyPdf = createServerFn({ method: "POST" })
     return { extracted: clean, warning: null };
   });
 
+export const parsePropertyImages = createServerFn({ method: "POST" })
+  .inputValidator((data: unknown) => ImageInputSchema.parse(data))
+  .handler(async ({ data }): Promise<{
+    extracted: Record<string, number | string | boolean>;
+    warning: string | null;
+  }> => {
+    const apiKey = process.env.LOVABLE_API_KEY;
+    if (!apiKey) throw new Error("AI gateway not configured");
+
+    const userContent: Array<
+      | { type: "text"; text: string }
+      | { type: "image_url"; image_url: { url: string } }
+    > = [
+      {
+        type: "text",
+        text: "Extract UK BRRR / refinance deal data from these property listing images (screenshots, brochures, particulars). Suggest a short propertyName from the address. Use null when a value isn't visible. Never invent numbers.",
+      },
+    ];
+    for (const img of data.images) {
+      userContent.push({
+        type: "image_url",
+        image_url: { url: `data:${img.mimeType};base64,${img.base64}` },
+      });
+    }
+
+    const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model: "google/gemini-2.5-flash",
+        messages: [
+          {
+            role: "system",
+            content:
+              "You extract UK BRRR / refinance deal data from property listing images. Return numbers in GBP without currency symbols. Use null when a value isn't present. Never invent figures. Percentages are plain numbers (e.g. 75 for 75%).",
+          },
+          { role: "user", content: userContent },
+        ],
+        tools: [
+          {
+            type: "function",
+            function: {
+              name: "set_deal",
+              description: "Submit the extracted BRRR deal fields.",
+              parameters: {
+                type: "object",
+                additionalProperties: false,
+                properties: FIELDS,
+                required: Object.keys(FIELDS),
+              },
+            },
+          },
+        ],
+        tool_choice: { type: "function", function: { name: "set_deal" } },
+      }),
+    });
+
+    if (!res.ok) {
+      const body = await res.text();
+      if (res.status === 429) throw new Error("AI rate limit reached, try again shortly.");
+      if (res.status === 402) throw new Error("AI credits exhausted. Add credits in Lovable Cloud.");
+      throw new Error(`AI gateway error ${res.status}: ${body.slice(0, 200)}`);
+    }
+
+    const json = await res.json();
+    const call = json?.choices?.[0]?.message?.tool_calls?.[0];
+    if (!call?.function?.arguments) {
+      return { extracted: {}, warning: "AI returned no structured data from the image(s)." };
+    }
+    let extracted: Record<string, unknown> = {};
+    try {
+      extracted = JSON.parse(call.function.arguments);
+    } catch {
+      return { extracted: {}, warning: "Failed to parse AI response." };
+    }
+    const clean: Record<string, number | string | boolean> = {};
+    for (const [k, v] of Object.entries(extracted)) {
+      if (v === null || v === undefined || v === "") continue;
+      if (typeof v === "number" || typeof v === "string" || typeof v === "boolean") {
+        clean[k] = v;
+      }
+    }
+    return { extracted: clean, warning: null };
+  });
+
 export const parsePropertyUrl = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => UrlInputSchema.parse(data))
   .handler(async ({ data }): Promise<{
