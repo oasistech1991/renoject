@@ -10,6 +10,22 @@ const UrlInputSchema = z.object({
   url: z.string().url().max(2048),
 });
 
+const ImageInputSchema = z.object({
+  images: z
+    .array(
+      z.object({
+        base64: z.string().min(1).max(15_000_000),
+        mimeType: z
+          .string()
+          .regex(/^image\/(png|jpe?g|webp|gif|heic|heif)$/i)
+          .default("image/png"),
+        filename: z.string().max(255).optional(),
+      })
+    )
+    .min(1)
+    .max(6),
+});
+
 const numberOrNull = { type: ["number", "null"] } as const;
 const boolOrNull = { type: ["boolean", "null"] } as const;
 const strOrNull = { type: ["string", "null"] } as const;
