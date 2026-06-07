@@ -11,15 +11,15 @@ interface Props {
 export function MetricCard({ label, value, hint, tone = "default", className }: Props) {
   const toneClass = {
     default: "text-foreground",
-    positive: "text-secondary",
+    positive: "text-primary",
     negative: "text-destructive",
-    accent: "text-primary",
+    accent: "text-accent-foreground",
   }[tone];
 
   return (
     <div
       className={cn(
-        "rounded-xl border border-border bg-card p-5 transition-all hover:shadow-md hover:border-primary/30",
+        "rounded-xl border border-border bg-card p-5 transition-all hover:shadow-md",
         className,
       )}
     >

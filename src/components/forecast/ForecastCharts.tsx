@@ -30,8 +30,8 @@ export function DealsChart({ data }: { data: DealDatum[] }) {
         <YAxis tick={{ fontSize: 11 }} stroke="var(--muted-foreground)" tickFormatter={(v: number) => `£${(v / 1000).toFixed(0)}k`} />
         <Tooltip contentStyle={tooltipStyle} formatter={(v: number) => fmtGBP(v)} />
         <Legend wrapperStyle={{ fontSize: 12 }} />
-        <Bar dataKey="monthly" name="Monthly CF" fill="var(--brick)" radius={[4, 4, 0, 0]} />
-        <Bar dataKey="annual" name="Annual CF" fill="var(--sage)" radius={[4, 4, 0, 0]} />
+        <Bar dataKey="monthly" name="Monthly CF" fill="var(--primary)" radius={[4, 4, 0, 0]} />
+        <Bar dataKey="annual" name="Annual CF" fill="var(--accent)" radius={[4, 4, 0, 0]} />
       </BarChart>
     </ResponsiveContainer>
   );
@@ -46,8 +46,8 @@ export function CumulativeChart({ data }: { data: CumulativeDatum[] }) {
         <YAxis tick={{ fontSize: 11 }} stroke="var(--muted-foreground)" tickFormatter={(v: number) => `£${(v / 1000).toFixed(0)}k`} />
         <Tooltip contentStyle={tooltipStyle} formatter={(v: number) => fmtGBP(v)} />
         <Legend wrapperStyle={{ fontSize: 12 }} />
-        <Bar dataKey="rent" name="Cumulative rent" fill="var(--sage)" radius={[4, 4, 0, 0]} />
-        <Bar dataKey="cashflow" name="Cumulative cashflow" fill="var(--brick)" radius={[4, 4, 0, 0]} />
+        <Bar dataKey="rent" name="Cumulative rent" fill="var(--muted-foreground)" radius={[4, 4, 0, 0]} />
+        <Bar dataKey="cashflow" name="Cumulative cashflow" fill="var(--primary)" radius={[4, 4, 0, 0]} />
       </BarChart>
     </ResponsiveContainer>
   );
