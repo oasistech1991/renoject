@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { PROPERTY_SOURCES, type PropertySource } from "@/lib/sources";
 import { PropertyMedia } from "@/components/property/PropertyMedia";
-import { parsePropertyPdf, parsePropertyUrl } from "@/lib/import-deal.functions";
+import { parsePropertyPdf, parsePropertyUrl, parsePropertyImages } from "@/lib/import-deal.functions";
 
 export const Route = createFileRoute("/refinance")({
   validateSearch: (s: Record<string, unknown>) => ({
@@ -121,8 +121,10 @@ function RefinancePage() {
   const [importMsg, setImportMsg] = useState<string | null>(null);
   const [importUrl, setImportUrl] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
+  const imageRef = useRef<HTMLInputElement>(null);
   const parsePdf = useServerFn(parsePropertyPdf);
   const parseUrl = useServerFn(parsePropertyUrl);
+  const parseImages = useServerFn(parsePropertyImages);
   const set = <K extends keyof RefinanceInputs>(k: K, v: RefinanceInputs[K]) =>
     setInputs((p) => ({ ...p, [k]: v }));
   const setB = <K extends keyof BTLInputs>(k: K, v: BTLInputs[K]) =>
@@ -177,10 +179,15 @@ function RefinancePage() {
   const autoStamp = () => set("stampDuty", calcStampDuty(inputs.purchasePrice));
   const reset = () => {
     setInputs(defaults);
+    setBtlInputs(btlDefaults);
+    setMethod("brrr");
     setPropertyName("");
     setPropertyId(null);
     setSource("");
     setSavedAt(null);
+    setLoadError(null);
+    setImportUrl("");
+    setImportMsg(null);
     navigate({ search: { id: undefined }, replace: true });
   };
 
@@ -399,6 +406,53 @@ function RefinancePage() {
     }
   };
 
+  const onPickImages = () => imageRef.current?.click();
+  const onImagesChosen = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? []);
+    e.target.value = "";
+    if (!files.length) return;
+    const valid = files.filter((f) => f.type.startsWith("image/"));
+    if (!valid.length) {
+      setImportMsg("Please choose image files (PNG, JPG, WEBP).");
+      return;
+    }
+    if (valid.length > 6) {
+      setImportMsg("Max 6 images at a time.");
+      return;
+    }
+    if (valid.some((f) => f.size > 10 * 1024 * 1024)) {
+      setImportMsg("Each image must be under 10 MB.");
+      return;
+    }
+    setImporting(true);
+    setImportMsg(`Reading ${valid.length} image(s) and extracting deal details…`);
+    try {
+      const images = await Promise.all(
+        valid.map(async (f) => {
+          const buf = new Uint8Array(await f.arrayBuffer());
+          let bin = "";
+          for (let i = 0; i < buf.length; i++) bin += String.fromCharCode(buf[i]);
+          return {
+            base64: btoa(bin),
+            mimeType: f.type || "image/png",
+            filename: f.name,
+          };
+        })
+      );
+      const { extracted, warning } = await parseImages({ data: { images } });
+      if (warning) {
+        setImportMsg(warning);
+      } else {
+        applyExtracted(extracted);
+        setImportMsg(`Auto-filled ${Object.keys(extracted).length} field(s) from image(s).`);
+      }
+    } catch (err: any) {
+      setImportMsg(err?.message ?? "Failed to import images.");
+    } finally {
+      setImporting(false);
+    }
+  };
+
   const verdictTone =
     r.verdict === "full"
       ? "border-primary bg-primary/10 text-primary"
@@ -498,6 +552,17 @@ function RefinancePage() {
                 />
                 <Button size="sm" variant="outline" onClick={onPickFile} disabled={importing}>
                   PDF
+                </Button>
+                <input
+                  ref={imageRef}
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  className="hidden"
+                  onChange={onImagesChosen}
+                />
+                <Button size="sm" variant="outline" onClick={onPickImages} disabled={importing}>
+                  Images
                 </Button>
               </div>
             </div>
