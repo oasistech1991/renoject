@@ -134,10 +134,13 @@ function PropertiesPage() {
 
   const load = async () => {
     setLoading(true);
+    const { data: sess } = await supabase.auth.getSession();
+    console.log("[properties] session user:", sess?.session?.user?.id ?? "ANONYMOUS");
     const { data, error } = await supabase
       .from("properties")
       .select("*")
       .order("updated_at", { ascending: false });
+    console.log("[properties] rows:", data?.length, "error:", error);
     if (error) setError(error.message);
     else setRows((data as PropertyRow[]) ?? []);
     setLoading(false);
