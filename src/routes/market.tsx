@@ -6,7 +6,6 @@ import {
   applyFilters,
   fmtGBP,
   fmtPct,
-  metricsFor,
   type Condition,
   type Listing,
   type ListingType,
@@ -23,8 +22,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { BarChart, Bar, XAxis, YAxis, Tooltip as RTooltip, ResponsiveContainer, ScatterChart, Scatter, ZAxis, CartesianGrid } from "recharts";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Link } from "@tanstack/react-router";
-import { sourceLabel } from "@/lib/sources";
 export const Route = createFileRoute("/market")({
   head: () => ({
     meta: [
@@ -43,141 +40,22 @@ type Row = Listing & { m: InvestorMetrics };
 
 const DEFAULT_FILTERS: MarketFilters = { article4: "any" };
 
-type Mode = "live" | "deals";
-
-type Deal = {
-  id: string;
-  name: string;
-  source: string | null;
-  inputs: Record<string, unknown>;
-  metrics: Record<string, unknown>;
-  updated_at: string;
-};
-
-function num(v: unknown): number | undefined {
-  const n = typeof v === "number" ? v : typeof v === "string" ? Number(v) : NaN;
-  return Number.isFinite(n) ? n : undefined;
-}
-
-function dealFields(d: Deal) {
-  const i = d.inputs ?? {};
-  const m = d.metrics ?? {};
-  const purchasePrice = num((i as any).purchasePrice);
-  const gdv = num((i as any).gdv);
-  const monthlyRent = num((i as any).monthlyRent);
-  const postcode = String((i as any).postcode ?? "");
-  const grossYield = num((m as any).grossYield);
-  const netYield = num((m as any).netYield);
-  const roi = num((m as any).roiOnCashLeftIn) ?? num((m as any).roiIO);
-  const cashLeftIn = num((m as any).cashLeftIn);
-  const totalCashIn = num((m as any).totalCashIn);
-  const monthlyCF = num((m as any).monthlyCashflowIO);
-  const profitOnPaper = num((m as any).profitOnPaper);
-  const verdictLabel = typeof (m as any).verdictLabel === "string" ? ((m as any).verdictLabel as string) : undefined;
-  const verdict = typeof (m as any).verdict === "string" ? ((m as any).verdict as string) : undefined;
-  const method = typeof (m as any).method === "string" ? ((m as any).method as string) : undefined;
-  return {
-    purchasePrice, gdv, monthlyRent, postcode,
-    grossYield, netYield, roi, cashLeftIn, totalCashIn, monthlyCF, profitOnPaper,
-    verdictLabel, verdict, method,
-  };
-}
-
 function MarketPage() {
-  const [mode, setMode] = useState<Mode>("live");
   const [filters, setFilters] = useState<MarketFilters>(DEFAULT_FILTERS);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [watchlist, setWatchlist] = useState<Set<string>>(new Set());
   const [reviewFor, setReviewFor] = useState<Row | null>(null);
-  const [deals, setDeals] = useState<Deal[]>([]);
-  const [dealsLoading, setDealsLoading] = useState(false);
-  const [isAuthed, setIsAuthed] = useState<boolean | null>(null);
 
-  useEffect(() => {
-    let active = true;
-    const loadDeals = async () => {
-      setDealsLoading(true);
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!active) return;
-      setIsAuthed(!!session?.user);
-      if (!session?.user) {
-        setDeals([]);
-        setDealsLoading(false);
-        return;
-      }
-      const { data, error } = await supabase
-        .from("properties")
-        .select("id, name, source, inputs, metrics, updated_at")
-        .order("updated_at", { ascending: false });
-      if (!active) return;
-      if (error) {
-        toast.error(`Couldn't load deals: ${error.message}`);
-        setDeals([]);
-      } else {
-        setDeals(
-          ((data ?? []) as unknown as Array<{
-            id: string; name: string; source: string | null;
-            inputs: Record<string, unknown> | null;
-            metrics: Record<string, unknown> | null;
-            updated_at: string;
-          }>).map((d) => ({
-            id: d.id,
-            name: d.name,
-            source: d.source,
-            inputs: d.inputs ?? {},
-            metrics: d.metrics ?? {},
-            updated_at: d.updated_at,
-          })),
-        );
-      }
-      setDealsLoading(false);
-    };
-    loadDeals();
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
-      if (event === "SIGNED_IN" || event === "SIGNED_OUT") loadDeals();
-    });
-    return () => { active = false; subscription.unsubscribe(); };
-  }, []);
-
-  const rows = useMemo(
-    () => (mode === "live" ? applyFilters(MOCK_LISTINGS, filters) : [] as Row[]),
-    [filters, mode],
-  );
-
-  const filteredDeals = useMemo(() => {
-    if (mode !== "deals") return [] as Deal[];
-    const q = filters.query?.trim().toLowerCase();
-    return deals.filter((d) => {
-      const f = dealFields(d);
-      if (q) {
-        const hay = `${d.name} ${f.postcode} ${sourceLabel(d.source)}`.toLowerCase();
-        if (!hay.includes(q)) return false;
-      }
-      if (filters.minPrice != null && (f.purchasePrice ?? 0) < filters.minPrice) return false;
-      if (filters.maxPrice != null && (f.purchasePrice ?? Infinity) > filters.maxPrice) return false;
-      if (filters.minHmoYield != null && (f.grossYield ?? -Infinity) < filters.minHmoYield) return false;
-      if (filters.minRoi != null && (f.roi ?? -Infinity) < filters.minRoi) return false;
-      return true;
-    });
-  }, [mode, deals, filters]);
-
+  const rows = useMemo(() => applyFilters(MOCK_LISTINGS, filters), [filters]);
   const selected = rows.find((r) => r.id === selectedId) ?? null;
 
   const stats = useMemo(() => {
-    if (mode === "deals") {
-      if (filteredDeals.length === 0) return { count: 0, avgYield: 0, avgBmv: 0, underGuide: 0 };
-      const ys = filteredDeals.map((d) => dealFields(d).grossYield).filter((n): n is number => n != null);
-      const rs = filteredDeals.map((d) => dealFields(d).roi).filter((n): n is number => n != null);
-      const avgYield = ys.length ? ys.reduce((a, b) => a + b, 0) / ys.length : 0;
-      const avgRoi = rs.length ? rs.reduce((a, b) => a + b, 0) / rs.length : 0;
-      return { count: filteredDeals.length, avgYield, avgBmv: avgRoi, underGuide: 0 };
-    }
     if (rows.length === 0) return { count: 0, avgYield: 0, avgBmv: 0, underGuide: 0 };
     const avgYield = rows.reduce((a, r) => a + r.m.grossYieldHmo, 0) / rows.length;
     const avgBmv = rows.reduce((a, r) => a + r.m.bmvPct, 0) / rows.length;
     const underGuide = rows.filter((r) => r.listingType === "auction" && r.guidePrice && r.guidePrice < r.price * 0.85).length;
     return { count: rows.length, avgYield, avgBmv, underGuide };
-  }, [rows, mode, filteredDeals]);
+  }, [rows]);
 
   const set = <K extends keyof MarketFilters>(k: K, v: MarketFilters[K]) =>
     setFilters((p) => ({ ...p, [k]: v }));
@@ -204,79 +82,38 @@ function MarketPage() {
     }
   };
 
-  const deleteDeal = async (id: string, name: string) => {
-    if (!confirm(`Delete "${name}"? This can't be undone.`)) return;
-    const { error } = await supabase.from("properties").delete().eq("id", id);
-    if (error) {
-      toast.error(error.message);
-      return;
-    }
-    setDeals((p) => p.filter((d) => d.id !== id));
-    toast.success("Deal deleted");
-  };
-
   return (
     <div className="min-h-[calc(100vh-49px)] bg-background">
-      <FilterBar filters={filters} set={set} reset={() => setFilters(DEFAULT_FILTERS)} stats={stats} mode={mode} setMode={setMode} />
+      <FilterBar filters={filters} set={set} reset={() => setFilters(DEFAULT_FILTERS)} stats={stats} />
 
-      <div className={`mx-auto grid max-w-[1600px] gap-4 px-4 py-4 ${mode === "live" ? "lg:grid-cols-[1fr_460px]" : ""}`}>
-        {/* Map (live mode only — saved deals have no coordinates) */}
-        {mode === "live" && (
-          <div className="relative hidden h-[calc(100vh-260px)] overflow-hidden rounded-xl border border-border bg-card lg:block">
-            <MapPlaceholder rows={rows} selectedId={selectedId} onPick={setSelectedId} />
-          </div>
-        )}
+      <div className="mx-auto grid max-w-[1600px] gap-4 px-4 py-4 lg:grid-cols-[1fr_460px]">
+        {/* Map placeholder */}
+        <div className="relative hidden h-[calc(100vh-260px)] overflow-hidden rounded-xl border border-border bg-card lg:block">
+          <MapPlaceholder rows={rows} selectedId={selectedId} onPick={setSelectedId} />
+        </div>
 
         {/* List */}
         <div className="h-[calc(100vh-260px)] overflow-y-auto rounded-xl border border-border bg-card p-3">
-          {mode === "deals" && isAuthed === false && (
-            <div className="px-3 py-10 text-center">
-              <p className="mb-3 text-sm text-muted-foreground">Sign in to view your saved deals.</p>
-              <Button asChild size="sm"><Link to="/auth" search={{ redirect: "/market" } as never}>Sign in</Link></Button>
-            </div>
-          )}
-          {mode === "deals" && isAuthed && dealsLoading && (
-            <p className="px-3 py-12 text-center text-sm text-muted-foreground">Loading your deals…</p>
-          )}
-          {mode === "deals" && isAuthed && !dealsLoading && deals.length === 0 && (
-            <div className="px-3 py-10 text-center">
-              <p className="mb-3 text-sm text-muted-foreground">No saved deals yet. Run a calculator or save from Live Market.</p>
-              <Button size="sm" variant="outline" onClick={() => setMode("live")}>Browse Live Market</Button>
-            </div>
-          )}
-          {mode === "live" && rows.length === 0 && (
+          {rows.length === 0 && (
             <p className="px-3 py-12 text-center text-sm text-muted-foreground">No listings match your filters.</p>
           )}
-          {mode === "deals" && isAuthed && !dealsLoading && deals.length > 0 && filteredDeals.length === 0 && (
-            <p className="px-3 py-12 text-center text-sm text-muted-foreground">No deals match your filters.</p>
-          )}
-          {mode === "live" && (
-            <div className="space-y-3">
-              {rows.map((r) => (
-                <ListingCard
-                  key={r.id}
-                  row={r}
-                  mode={mode}
-                  onOpen={() => setSelectedId(r.id)}
-                  onWatch={() => toggleWatch(r.id)}
-                  onSave={() => saveAsDeal(r)}
-                  onExpert={() => setReviewFor(r)}
-                  watched={watchlist.has(r.id)}
-                />
-              ))}
-            </div>
-          )}
-          {mode === "deals" && (
-            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-              {filteredDeals.map((d) => (
-                <DealCard key={d.id} deal={d} onDelete={() => deleteDeal(d.id, d.name)} />
-              ))}
-            </div>
-          )}
+          <div className="space-y-3">
+            {rows.map((r) => (
+              <ListingCard
+                key={r.id}
+                row={r}
+                onOpen={() => setSelectedId(r.id)}
+                onWatch={() => toggleWatch(r.id)}
+                onSave={() => saveAsDeal(r)}
+                onExpert={() => setReviewFor(r)}
+                watched={watchlist.has(r.id)}
+              />
+            ))}
+          </div>
         </div>
       </div>
 
-      {mode === "live" && <AnalyticsStrip rows={rows} />}
+      <AnalyticsStrip rows={rows} />
 
       <Sheet open={!!selected} onOpenChange={(o) => !o && setSelectedId(null)}>
         <SheetContent className="w-full overflow-y-auto sm:max-w-xl">
@@ -302,15 +139,11 @@ function FilterBar({
   set,
   reset,
   stats,
-  mode,
-  setMode,
 }: {
   filters: MarketFilters;
   set: <K extends keyof MarketFilters>(k: K, v: MarketFilters[K]) => void;
   reset: () => void;
   stats: { count: number; avgYield: number; avgBmv: number; underGuide: number };
-  mode: Mode;
-  setMode: (m: Mode) => void;
 }) {
   const togglePT = (t: PropertyType) => {
     const cur = new Set(filters.propertyTypes ?? []);
@@ -331,43 +164,6 @@ function FilterBar({
   return (
     <div className="sticky top-0 z-10 border-b border-border bg-card/95 backdrop-blur">
       <div className="mx-auto max-w-[1600px] px-4 py-3">
-        <div className="mb-2 flex items-center gap-1 rounded-full border border-border bg-background p-0.5 w-fit">
-          {(["live", "deals"] as const).map((m) => (
-            <button
-              key={m}
-              onClick={() => setMode(m)}
-              className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
-                mode === m ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              {m === "live" ? "Live Market" : "My Deals"}
-            </button>
-          ))}
-        </div>
-        {mode === "deals" ? (
-          <div className="flex flex-wrap items-center gap-2">
-            <Input
-              placeholder="Search by name, postcode or source…"
-              className="h-9 w-72"
-              value={filters.query ?? ""}
-              onChange={(e) => set("query", e.target.value || undefined)}
-            />
-            <NumInput placeholder="Min £" value={filters.minPrice} onChange={(v) => set("minPrice", v)} />
-            <NumInput placeholder="Max £" value={filters.maxPrice} onChange={(v) => set("maxPrice", v)} />
-            <NumInput placeholder="Min yield %" value={filters.minHmoYield} onChange={(v) => set("minHmoYield", v)} className="w-32" />
-            <NumInput placeholder="Min ROI %" value={filters.minRoi} onChange={(v) => set("minRoi", v)} className="w-28" />
-
-            <div className="ml-auto flex items-center gap-3 text-xs">
-              <span className="text-muted-foreground">
-                <b className="text-foreground">{stats.count}</b> deals · avg gross yield{" "}
-                <b className="text-primary">{fmtPct(stats.avgYield)}</b> · avg ROI{" "}
-                <b className="text-primary">{fmtPct(stats.avgBmv)}</b>
-              </span>
-              <Button size="sm" variant="outline" onClick={reset}>Reset</Button>
-            </div>
-          </div>
-        ) : (
-        <>
         <div className="flex flex-wrap items-center gap-2">
           <Input
             placeholder="Postcode, town or street…"
@@ -430,8 +226,6 @@ function FilterBar({
             <Button size="sm" variant="outline" onClick={reset}>Reset</Button>
           </div>
         </div>
-        </>
-        )}
       </div>
     </div>
   );
@@ -470,7 +264,6 @@ function yieldTone(y: number) {
 
 function ListingCard({
   row,
-  mode,
   onOpen,
   onWatch,
   onSave,
@@ -478,7 +271,6 @@ function ListingCard({
   watched,
 }: {
   row: Row;
-  mode: Mode;
   onOpen: () => void;
   onWatch: () => void;
   onSave: () => void;
@@ -510,13 +302,7 @@ function ListingCard({
       </button>
       <div className="flex gap-1 border-t border-border bg-card/30 px-2 py-1.5">
         <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={onWatch}>{watched ? "★ Watching" : "☆ Watch"}</Button>
-        {mode === "deals" ? (
-          <Button asChild size="sm" variant="ghost" className="h-7 text-xs">
-            <Link to="/refinance" search={{ from: row.id } as never}>Open deal</Link>
-          </Button>
-        ) : (
-          <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={onSave}>+ Save deal</Button>
-        )}
+        <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={onSave}>+ Save deal</Button>
         <Button size="sm" variant="ghost" className="ml-auto h-7 text-xs" onClick={onExpert}>£49 Expert review</Button>
       </div>
     </div>
@@ -528,63 +314,6 @@ function Metric({ label, value, tone }: { label: string; value: string; tone?: s
     <div>
       <p className="text-[10px] uppercase text-muted-foreground">{label}</p>
       <p className={`font-semibold ${tone ?? "text-foreground"}`}>{value}</p>
-    </div>
-  );
-}
-
-function DealCard({ deal, onDelete }: { deal: Deal; onDelete: () => void }) {
-  const f = dealFields(deal);
-  const uplift = f.gdv != null && f.purchasePrice != null ? f.gdv - f.purchasePrice : undefined;
-  const upliftPct = uplift != null && f.purchasePrice ? (uplift / f.purchasePrice) * 100 : undefined;
-  const updated = new Date(deal.updated_at).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
-  const verdictTone =
-    f.verdict === "full" ? "text-primary" :
-    f.verdict === "partial" ? "text-foreground" :
-    f.verdict ? "text-muted-foreground" : "text-muted-foreground";
-  return (
-    <div className="flex flex-col overflow-hidden rounded-lg border border-border bg-background transition-colors hover:border-primary/50">
-      <div className="flex items-start justify-between gap-2 border-b border-border px-3 py-2.5">
-        <div className="min-w-0">
-          <p className="truncate text-sm font-semibold">{deal.name}</p>
-          <p className="mt-0.5 flex items-center gap-2 text-[11px] text-muted-foreground">
-            <span className="rounded-full border border-border px-1.5 py-0.5 text-[10px] uppercase tracking-wider">{sourceLabel(deal.source)}</span>
-            {f.postcode && <span>{f.postcode}</span>}
-            {f.method && <span className="uppercase">{f.method}</span>}
-          </p>
-        </div>
-        <span className="shrink-0 text-[10px] text-muted-foreground">{updated}</span>
-      </div>
-
-      <div className="grid grid-cols-2 gap-x-3 gap-y-2 px-3 py-3 text-xs">
-        <Metric label="Purchase" value={f.purchasePrice != null ? fmtGBP(f.purchasePrice) : "—"} />
-        <Metric label="GDV" value={f.gdv != null ? fmtGBP(f.gdv) : "—"} tone={uplift && uplift > 0 ? "text-primary" : "text-foreground"} />
-        <Metric label="Monthly rent" value={f.monthlyRent != null ? fmtGBP(f.monthlyRent) : "—"} />
-        <Metric label="Gross yield" value={f.grossYield != null ? fmtPct(f.grossYield) : "—"} tone={f.grossYield != null ? yieldTone(f.grossYield) : undefined} />
-        <Metric label="ROI" value={f.roi != null ? fmtPct(f.roi) : "—"} tone={f.roi != null ? yieldTone(f.roi) : undefined} />
-        <Metric label="Cash left in" value={f.cashLeftIn != null ? fmtGBP(Math.round(f.cashLeftIn)) : "—"} />
-        {upliftPct != null && (
-          <Metric label="Uplift" value={`${fmtGBP(Math.round(uplift!))} (${fmtPct(upliftPct)})`} tone={upliftPct > 0 ? "text-primary" : "text-muted-foreground"} />
-        )}
-        {f.monthlyCF != null && (
-          <Metric label="Monthly CF (IO)" value={fmtGBP(Math.round(f.monthlyCF))} tone={f.monthlyCF >= 0 ? "text-foreground" : "text-destructive"} />
-        )}
-      </div>
-
-      {f.verdictLabel && (
-        <p className={`px-3 pb-2 text-[11px] font-medium ${verdictTone}`}>{f.verdictLabel}</p>
-      )}
-
-      <div className="mt-auto flex gap-1 border-t border-border bg-card/30 px-2 py-1.5">
-        <Button asChild size="sm" variant="ghost" className="h-7 text-xs">
-          <Link to="/refinance" search={{ id: deal.id } as never}>Open deal</Link>
-        </Button>
-        <Button asChild size="sm" variant="ghost" className="h-7 text-xs">
-          <Link to="/properties">All deals</Link>
-        </Button>
-        <Button size="sm" variant="ghost" className="ml-auto h-7 text-xs text-destructive hover:text-destructive" onClick={onDelete}>
-          Delete
-        </Button>
-      </div>
     </div>
   );
 }
@@ -648,8 +377,7 @@ function MapPlaceholder({ rows, selectedId, onPick }: { rows: Row[]; selectedId:
     const next = new Map<string, google.maps.Marker>();
     const bounds = new google.maps.LatLngBounds();
 
-    const mappable = rows.filter((r) => r.lat !== 0 || r.lng !== 0);
-    for (const r of mappable) {
+    for (const r of rows) {
       const y_ = r.m.grossYieldHmo;
       const color = y_ >= 12 ? "#10b981" : y_ >= 9 ? "#a3e635" : y_ >= 7 ? "#facc15" : "#fb923c";
       const isActive = r.id === selectedId;
@@ -679,11 +407,11 @@ function MapPlaceholder({ rows, selectedId, onPick }: { rows: Row[]; selectedId:
       if (!next.has(id)) m.setMap(null);
     }
     markersRef.current = next;
-    if (mappable.length > 0 && !selectedId) {
+    if (rows.length > 0 && !selectedId) {
       map.fitBounds(bounds, 64);
     } else if (selectedId) {
       const sel = rows.find((r) => r.id === selectedId);
-      if (sel && (sel.lat !== 0 || sel.lng !== 0)) map.panTo({ lat: sel.lat, lng: sel.lng });
+      if (sel) map.panTo({ lat: sel.lat, lng: sel.lng });
     }
   }, [ready, rows, selectedId, onPick]);
 

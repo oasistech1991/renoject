@@ -1,51 +1,68 @@
-## Problem
+## Goal
 
-In `/market`, the "My Deals" toggle currently squeezes each saved property into the live‑market `Listing` shape and then runs `applyFilters`. Two issues compound:
+From any saved deal, press **Export** and get a polished, branded PDF ready to send to investors. Two flavours generated in a single PDF document:
 
-1. `applyFilters` calls `metricsFor(l)` again, **overwriting** the metrics I mapped from the saved deal — so the real `grossYield`, `ROI`, `cashLeftIn`, `verdictLabel` from the `properties.metrics` JSON never make it to the UI.
-2. The mapper invents `beds=3`, `sqft=1000`, `propertyType="terraced"`, an Unsplash photo, and a missing postcode/town — so cards show wrong/fake info, the address line is broken, and most numeric filters (yield, BMV, £/sqft) compare against bogus values.
+1. **Calculator Sheet** — styled exactly like the attached Renoject reference (black background, orange section header bars, white data tables).
+2. **Pitch Deck** — multi-page investor presentation with hero photo, narrative, and exit strategy.
 
-Net result: deals render but the data is wrong/empty and doesn't match what's actually saved.
+## Visual style (matches reference)
 
-## Fix
+- **Background**: pure black (`#000`)
+- **Section header bars**: bold orange (`#F26A1F`) full-width, white uppercase title left-aligned
+- **Data tables**: white fill, black text, 1px hairline borders (`#1f1f1f`), zebra-free, label left / value right
+- **Total rows**: orange fill, white bold text
+- **Body font**: Helvetica/Arial (jsPDF built-in — keeps bundle tiny)
+- **Page**: A4 portrait, 14mm margins
 
-Treat "My Deals" as its own view inside `/market` instead of trying to reuse the live‑market card pipeline.
+## Document structure
 
-### Scope (frontend only, single file: `src/routes/market.tsx`)
+### Pages 1–2: Pitch Deck
+1. **Cover** — Hartstone Holdings wordmark top, hero photo full-bleed below, property name + location + headline ROI / Money Left In overlay at bottom.
+2. **Investment Summary** — short narrative (auto-generated from method/inputs: "Three-bed terrace in {area} acquired below market value, refurbished and refinanced. Investor capital returned within {x} years at {ROI}% net annual return."), key-metrics strip (Purchase, GDV, Money Left In, ROI, Cashflow, Yield), photo gallery (up to 4 images, 2×2 grid).
 
-1. **Drop `dealToListing` + `applyFilters` for deals mode.** Fetch `properties` rows (`id, name, source, inputs, metrics, updated_at`) into a separate `deals` array typed against the actual JSON shape.
+### Pages 3+: Calculator Sheet (Renoject layout)
+3. **KEY METRICS** — orange header, 2-column table (Purchase Price, Fixtures, Refurb, GDV / Mortgage Payment, Management %, Mgmt Fee, Utilities).
+4. **TENURE + STRESS TEST + REVENUE** — three stacked panels matching reference.
+5. **MONTHLY OPERATING COSTS** — orange header + table (Management, Utilities, Repairs, Insurance, Service Charge, Total).
+6. **CASH PURCHASE / BRIDGING FINANCE PURCHASE / MORTGAGE PURCHASE** — conditionally rendered based on `inferMethod`. Each has COSTS table → TOTAL CASH INVESTED orange row → REFINANCE table → FLIP table (matching reference exactly).
+7. **Contact footer** on last page — Hartstone Holdings details + disclaimer.
 
-2. **New `DealCard` component**, rendered only in deals mode, that surfaces the real stored fields:
-   - Title: `name`, with the `source` shown via existing `sourceLabel()` as a small badge.
-   - Headline figures (from `metrics` first, falling back to `inputs`):
-     - Purchase price (`inputs.purchasePrice`)
-     - GDV (`inputs.gdv`) and uplift vs purchase
-     - Monthly rent (`inputs.monthlyRent`)
-     - Gross yield (`metrics.grossYield`)
-     - ROI on cash left in (`metrics.roiOnCashLeftIn` or `metrics.roiIO`)
-     - Cash left in (`metrics.cashLeftIn`) and verdict label (`metrics.verdictLabel`)
-     - Updated date
-   - Primary action: **Open deal** → `<Link to="/refinance" search={{ id }}>`.
-   - Secondary action: **Delete** (same `supabase.from("properties").delete()` pattern already used on `/properties`).
+All numbers come from the saved `inputs`, freshly recomputed via `calculateRefinance(inputs)` to guarantee accuracy.
 
-3. **Filter bar in deals mode**: collapse to the filters that actually apply to saved deals — text search (matches `name` + `inputs.postcode`), min/max purchase price, and a min ROI / min gross yield using `metrics.*`. Hide the live‑market chips (property type, listing type, Article 4, condition, £/sqft, rooms) since they don't exist on saved deals. The existing `mode` toggle stays at the top.
+## Implementation
 
-4. **Stats line in deals mode**: count + avg gross yield + avg ROI computed from `metrics`.
+### Dependencies
+- `bun add jspdf jspdf-autotable` — pure-browser, no server function needed.
 
-5. **Map**: hide the map column entirely in deals mode (saved deals have no lat/lng) and let the list span full width. No more empty map placeholder.
+### New files
+- **`src/lib/investor-pdf.ts`** — `exportInvestorPack(property, mediaRows)`:
+  - Loads signed URLs from `property-media` bucket (reuses pattern in `PropertyMedia.tsx`), fetches each as dataURL.
+  - Recomputes metrics via `calculateRefinance`.
+  - Builds pages with `jspdf-autotable` using a shared `orangeHeader()` helper for the header bars (rectangle + text), a shared `dataTable()` helper for label/value tables, and an `orangeTotalRow()` helper.
+  - Conditional sections by `inferMethod` (btl/brrr/cash/mortgage).
+  - Saves as `Hartstone Holdings — {propertyName} — Investor Pack.pdf`.
 
-6. **Empty / loading / signed‑out states**: keep the existing copy ("Sign in to view your saved deals", "No saved deals yet", loading spinner).
+- **`src/components/property/ExportInvestorPackButton.tsx`** — reusable button:
+  - Props: `propertyId`, optional pre-loaded `property` to skip fetch.
+  - Fetches row + media, calls `exportInvestorPack`, toasts on success/error, shows spinner while generating.
 
-7. Live Market mode is unchanged.
+### Edits
+- **`src/routes/properties.tsx`** — add `<ExportInvestorPackButton size="sm">` per row alongside existing actions.
+- **Property detail page** (open `src/routes/refinance.tsx` during build to find the saved-deal banner) — add a prominent `<ExportInvestorPackButton>` next to the deal title when a saved property is loaded.
 
-### Out of scope
+### Server impact
+None. Fully client-side. No new tables, no migrations, no edge functions.
 
-- No DB schema changes, no new routes, no changes to `/properties` or `/refinance`.
-- No geocoding of saved deals (so still no map pins for them — handled by hiding the map in deals mode).
-- No realtime subscription.
+## Acceptance
 
-### Technical notes
+- Pressing **Export** from list or detail produces a single branded PDF within ~2s.
+- Page 1 cover uses property's hero image at full bleed; page 2 shows 4-photo gallery + narrative + metrics.
+- Calculator pages match the Renoject reference 1:1 (black bg, orange header bars, white tables, orange totals).
+- Sections conditionally render based on purchase method.
+- File downloads with a clear branded filename.
 
-- Read `inputs` / `metrics` as `Record<string, unknown>` and coerce per‑field with `Number(...)` + fallbacks; legacy rows (some have `__btl` nested blob, some don't have `gdv`) need defensive defaults so a missing field renders `—` instead of `£NaN`.
-- Use `metrics.roiOnCashLeftIn ?? metrics.roiIO` because BTL rows store `roiIO` and BRRR rows store `roiOnCashLeftIn`.
-- Keep `Listing`/`Row` types untouched — `DealCard` takes a new local `Deal` type.
+## Out of scope
+
+- No PowerPoint output (PDF only, per earlier choice).
+- No saving generated PDFs to storage — regenerated on demand.
+- No emailing — you forward the downloaded file manually.
