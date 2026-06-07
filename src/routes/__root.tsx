@@ -16,13 +16,18 @@ import { Toaster } from "@/components/ui/sonner";
 import { supabase } from "@/integrations/supabase/client";
 import type { Session } from "@supabase/supabase-js";
 import { useEntitlement } from "@/hooks/useEntitlement";
-import { Lock, Loader2, ChevronDown, Calculator, Building2, ShieldCheck, Tag, Home } from "lucide-react";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+  Lock,
+  Loader2,
+  Home,
+  Calculator,
+  Building2,
+  ShieldCheck,
+  Tag,
+  Menu,
+  X,
+  LogOut,
+} from "lucide-react";
 
 function NotFoundComponent() {
   return (
@@ -103,6 +108,12 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       {
         rel: "stylesheet",
         href: appCss,
+      },
+      { rel: "preconnect", href: "https://fonts.googleapis.com" },
+      { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
+      {
+        rel: "stylesheet",
+        href: "https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600&family=Sora:wght@600;700&display=swap",
       },
     ],
     scripts: [
@@ -234,7 +245,7 @@ function AuthGate() {
 
   return (
     <>
-      <TopNav
+      <AppShell
         session={session}
         isAdmin={adminUnlocked}
         onSignOut={() => {
@@ -245,8 +256,9 @@ function AuthGate() {
           }
           supabase.auth.signOut();
         }}
-      />
-      {isPublicPath ? <Outlet /> : <SubscriptionGate />}
+      >
+        {isPublicPath ? <Outlet /> : <SubscriptionGate />}
+      </AppShell>
       <Toaster />
     </>
   );
@@ -349,119 +361,173 @@ function SignInScreen({ onUnlock }: { onUnlock: () => void }) {
   );
 }
 
-function TopNav({
-  onSignOut,
+const SIDEBAR_ITEMS: Array<{ to: string; label: string; icon: typeof Home }> = [
+  { to: "/", label: "Home", icon: Home },
+  { to: "/refinance", label: "Calculators", icon: Calculator },
+  { to: "/market", label: "Market Deals", icon: Building2 },
+  { to: "/hmo-compliance", label: "Compliance", icon: ShieldCheck },
+  { to: "/pricing", label: "Pricing", icon: Tag },
+];
+
+function AppShell({
+  children,
   session,
   isAdmin,
+  onSignOut,
 }: {
-  onSignOut: () => void;
+  children: React.ReactNode;
   session: Session | null;
   isAdmin: boolean;
+  onSignOut: () => void;
 }) {
-  const linkBase =
-    "px-3 py-1.5 text-sm font-medium rounded-md transition-colors text-muted-foreground hover:text-foreground hover:bg-accent/60";
-  const activeCls = "bg-primary/15 text-foreground";
-  const triggerCls =
-    "inline-flex items-center gap-1 px-3 py-1.5 text-sm font-medium rounded-md transition-colors text-muted-foreground hover:text-foreground hover:bg-accent/60 focus:outline-none data-[state=open]:bg-accent/60 data-[state=open]:text-foreground";
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const initial = session?.user.email?.[0]?.toUpperCase() ?? "H";
 
-  const groups: Array<{
-    label: string;
-    icon: typeof Calculator;
-    items: Array<{ to: string; label: string; desc: string }>;
-  }> = [
-    {
-      label: "Calculators",
-      icon: Calculator,
-      items: [
-        { to: "/refinance", label: "Property Calculator", desc: "BTL, BRRR, mortgage & cash" },
-        { to: "/condition", label: "Renovation Calculator", desc: "Refurb cost estimates" },
-      ],
-    },
-    {
-      label: "Deals",
-      icon: Building2,
-      items: [
-        { to: "/properties", label: "View Deals", desc: "Curated investment opportunities" },
-        { to: "/market", label: "Market Search", desc: "Live deal matching" },
-        { to: "/forecast", label: "Forecast", desc: "Long-term cashflow projections" },
-        { to: "/tokenize", label: "Tokenize", desc: "Fractionalise property equity" },
-      ],
-    },
-    {
-      label: "Compliance & People",
-      icon: ShieldCheck,
-      items: [
-        { to: "/hmo-compliance", label: "HMO Floorplan Compliance", desc: "Licensing rule check" },
-        { to: "/tradesmen", label: "Tradesmen", desc: "Trusted contractor network" },
-      ],
-    },
-  ];
-
-  return (
-    <div className="sticky top-0 z-40 border-b border-border bg-background/80 backdrop-blur-xl">
-      <nav className="mx-auto flex h-14 max-w-7xl items-center gap-1 px-6">
-        <Link to="/" className="mr-6 flex items-center gap-2 text-sm font-bold tracking-wide text-foreground">
-          <span className="flex h-7 w-7 items-center justify-center rounded-md bg-primary/15 text-primary">
-            <Home className="h-3.5 w-3.5" />
+  const sidebarBody = (
+    <>
+      <div className="p-6">
+        <Link to="/" className="flex items-center gap-2 text-foreground" onClick={() => setMobileOpen(false)}>
+          <span className="flex h-8 w-8 items-center justify-center rounded bg-muted-foreground/80">
+            <Home className="h-5 w-5 text-background" />
           </span>
-          HARTSTONE HOLDINGS
+          <span className="font-display text-sm font-bold uppercase tracking-tight leading-tight">
+            Hartstone<br />Holdings
+          </span>
+        </Link>
+      </div>
+
+      <nav className="flex-1 px-4 py-4 space-y-1">
+        <Link
+          to="/"
+          activeOptions={{ exact: true }}
+          onClick={() => setMobileOpen(false)}
+          className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+          activeProps={{ className: "flex items-center gap-3 px-3 py-2 rounded-lg text-sm bg-accent text-foreground font-medium" }}
+        >
+          <Home className="h-4 w-4" />
+          <span>Home</span>
         </Link>
 
-        <div className="hidden items-center gap-1 md:flex">
-          <Link to="/" className={linkBase} activeOptions={{ exact: true }} activeProps={{ className: `${linkBase} ${activeCls}` }}>
-            Home
-          </Link>
-          {groups.map((group) => {
-            const Icon = group.icon;
-            return (
-              <DropdownMenu key={group.label}>
-                <DropdownMenuTrigger className={triggerCls}>
-                  <Icon className="h-3.5 w-3.5 opacity-70" />
-                  {group.label}
-                  <ChevronDown className="h-3 w-3 opacity-60 transition-transform data-[state=open]:rotate-180" />
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="start" className="w-72 p-1.5">
-                  {group.items.map((item) => (
-                    <DropdownMenuItem key={item.to} asChild className="cursor-pointer rounded-md p-0">
-                      <Link
-                        to={item.to as "/refinance"}
-                        className="flex w-full flex-col items-start gap-0.5 px-3 py-2.5 text-sm"
-                      >
-                        <span className="font-medium text-foreground">{item.label}</span>
-                        <span className="text-xs text-muted-foreground">{item.desc}</span>
-                      </Link>
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
-            );
-          })}
-          <Link to="/pricing" className={linkBase} activeProps={{ className: `${linkBase} ${activeCls}` }}>
-            <span className="inline-flex items-center gap-1">
-              <Tag className="h-3.5 w-3.5 opacity-70" />
-              Pricing
-            </span>
-          </Link>
+        <div className="pt-4 pb-2 px-3 text-[10px] uppercase tracking-widest font-bold text-muted-foreground opacity-70">
+          Tools
         </div>
 
-        <div className="ml-auto flex items-center gap-2">
-          {session ? (
+        {SIDEBAR_ITEMS.slice(1).map((item) => {
+          const Icon = item.icon;
+          return (
             <Link
-              to="/account"
-              className="hidden max-w-[180px] truncate rounded-md border border-border bg-card/40 px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground sm:inline-flex"
+              key={item.to}
+              to={item.to as "/refinance"}
+              onClick={() => setMobileOpen(false)}
+              className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+              activeProps={{ className: "flex items-center gap-3 px-3 py-2 rounded-lg text-sm bg-accent text-foreground font-medium" }}
             >
-              {session.user.email}
+              <Icon className="h-4 w-4" />
+              <span>{item.label}</span>
             </Link>
-          ) : !isAdmin ? (
-            <Link to="/auth" className={linkBase}>
-              Sign in
-            </Link>
-          ) : null}
-          <Button variant="outline" size="sm" onClick={onSignOut}>
-            Sign out
-          </Button>
-        </div>
+          );
+        })}
       </nav>
+
+      <div className="p-4 border-t border-border">
+        {session || isAdmin ? (
+          <div className="flex items-center gap-3 px-3 py-2">
+            <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center text-xs font-bold text-foreground">
+              {initial}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-semibold text-foreground truncate">
+                {session?.user.email ?? "Admin"}
+              </p>
+              <button
+                onClick={onSignOut}
+                className="inline-flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground"
+              >
+                <LogOut className="h-3 w-3" /> Sign out
+              </button>
+            </div>
+          </div>
+        ) : (
+          <Link
+            to="/auth"
+            onClick={() => setMobileOpen(false)}
+            className="flex w-full items-center justify-center rounded-md border border-border px-3 py-2 text-xs font-semibold text-foreground hover:bg-accent transition-colors"
+          >
+            Sign in
+          </Link>
+        )}
+      </div>
+    </>
+  );
+
+  return (
+    <div className="flex min-h-screen w-full bg-background text-muted-foreground">
+      {/* Desktop sidebar */}
+      <aside className="hidden lg:flex w-64 shrink-0 flex-col border-r border-border bg-background">
+        {sidebarBody}
+      </aside>
+
+      {/* Mobile sidebar drawer */}
+      {mobileOpen && (
+        <>
+          <div
+            className="fixed inset-0 z-40 bg-black/50 lg:hidden"
+            onClick={() => setMobileOpen(false)}
+          />
+          <aside className="fixed inset-y-0 left-0 z-50 flex w-64 flex-col border-r border-border bg-background lg:hidden">
+            {sidebarBody}
+          </aside>
+        </>
+      )}
+
+      {/* Main column */}
+      <div className="flex flex-1 flex-col min-w-0">
+        <header className="sticky top-0 z-30 flex h-14 items-center justify-between gap-3 border-b border-border bg-background/80 px-4 lg:px-8 backdrop-blur-sm">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setMobileOpen((v) => !v)}
+              className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-border text-foreground hover:bg-accent lg:hidden"
+              aria-label="Toggle sidebar"
+            >
+              {mobileOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
+            </button>
+            <div className="flex items-center gap-2 text-xs">
+              <span className="font-semibold text-muted-foreground">Dashboard</span>
+              <span className="text-muted-foreground">/</span>
+              <span className="font-semibold text-foreground">Overview</span>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            {session ? (
+              <Link
+                to="/account"
+                className="hidden max-w-[200px] truncate rounded-md border border-border px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground sm:inline-flex"
+              >
+                {session.user.email}
+              </Link>
+            ) : !isAdmin ? (
+              <Link
+                to="/auth"
+                className="rounded-md border border-border px-3 py-1.5 text-xs font-semibold text-foreground hover:bg-accent transition-colors"
+              >
+                Sign in
+              </Link>
+            ) : null}
+            <Link
+              to="/pricing"
+              className="rounded-md bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:opacity-90 transition-all"
+            >
+              Get Started
+            </Link>
+            {(session || isAdmin) && (
+              <Button variant="outline" size="sm" onClick={onSignOut}>
+                Sign out
+              </Button>
+            )}
+          </div>
+        </header>
+        <main className="flex-1">{children}</main>
+      </div>
     </div>
   );
 }
