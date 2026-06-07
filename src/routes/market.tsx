@@ -532,6 +532,63 @@ function Metric({ label, value, tone }: { label: string; value: string; tone?: s
   );
 }
 
+function DealCard({ deal, onDelete }: { deal: Deal; onDelete: () => void }) {
+  const f = dealFields(deal);
+  const uplift = f.gdv != null && f.purchasePrice != null ? f.gdv - f.purchasePrice : undefined;
+  const upliftPct = uplift != null && f.purchasePrice ? (uplift / f.purchasePrice) * 100 : undefined;
+  const updated = new Date(deal.updated_at).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+  const verdictTone =
+    f.verdict === "full" ? "text-primary" :
+    f.verdict === "partial" ? "text-foreground" :
+    f.verdict ? "text-muted-foreground" : "text-muted-foreground";
+  return (
+    <div className="flex flex-col overflow-hidden rounded-lg border border-border bg-background transition-colors hover:border-primary/50">
+      <div className="flex items-start justify-between gap-2 border-b border-border px-3 py-2.5">
+        <div className="min-w-0">
+          <p className="truncate text-sm font-semibold">{deal.name}</p>
+          <p className="mt-0.5 flex items-center gap-2 text-[11px] text-muted-foreground">
+            <span className="rounded-full border border-border px-1.5 py-0.5 text-[10px] uppercase tracking-wider">{sourceLabel(deal.source)}</span>
+            {f.postcode && <span>{f.postcode}</span>}
+            {f.method && <span className="uppercase">{f.method}</span>}
+          </p>
+        </div>
+        <span className="shrink-0 text-[10px] text-muted-foreground">{updated}</span>
+      </div>
+
+      <div className="grid grid-cols-2 gap-x-3 gap-y-2 px-3 py-3 text-xs">
+        <Metric label="Purchase" value={f.purchasePrice != null ? fmtGBP(f.purchasePrice) : "—"} />
+        <Metric label="GDV" value={f.gdv != null ? fmtGBP(f.gdv) : "—"} tone={uplift && uplift > 0 ? "text-primary" : "text-foreground"} />
+        <Metric label="Monthly rent" value={f.monthlyRent != null ? fmtGBP(f.monthlyRent) : "—"} />
+        <Metric label="Gross yield" value={f.grossYield != null ? fmtPct(f.grossYield) : "—"} tone={f.grossYield != null ? yieldTone(f.grossYield) : undefined} />
+        <Metric label="ROI" value={f.roi != null ? fmtPct(f.roi) : "—"} tone={f.roi != null ? yieldTone(f.roi) : undefined} />
+        <Metric label="Cash left in" value={f.cashLeftIn != null ? fmtGBP(Math.round(f.cashLeftIn)) : "—"} />
+        {upliftPct != null && (
+          <Metric label="Uplift" value={`${fmtGBP(Math.round(uplift!))} (${fmtPct(upliftPct)})`} tone={upliftPct > 0 ? "text-primary" : "text-muted-foreground"} />
+        )}
+        {f.monthlyCF != null && (
+          <Metric label="Monthly CF (IO)" value={fmtGBP(Math.round(f.monthlyCF))} tone={f.monthlyCF >= 0 ? "text-foreground" : "text-destructive"} />
+        )}
+      </div>
+
+      {f.verdictLabel && (
+        <p className={`px-3 pb-2 text-[11px] font-medium ${verdictTone}`}>{f.verdictLabel}</p>
+      )}
+
+      <div className="mt-auto flex gap-1 border-t border-border bg-card/30 px-2 py-1.5">
+        <Button asChild size="sm" variant="ghost" className="h-7 text-xs">
+          <Link to="/refinance" search={{ id: deal.id } as never}>Open deal</Link>
+        </Button>
+        <Button asChild size="sm" variant="ghost" className="h-7 text-xs">
+          <Link to="/properties">All deals</Link>
+        </Button>
+        <Button size="sm" variant="ghost" className="ml-auto h-7 text-xs text-destructive hover:text-destructive" onClick={onDelete}>
+          Delete
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 function MapPlaceholder({ rows, selectedId, onPick }: { rows: Row[]; selectedId: string | null; onPick: (id: string) => void }) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<google.maps.Map | null>(null);
