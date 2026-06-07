@@ -178,8 +178,20 @@ function RefinancePage() {
 
   const autoStamp = () => set("stampDuty", calcStampDuty(inputs.purchasePrice));
   const reset = () => {
-    setInputs(defaults);
-    setBtlInputs(btlDefaults);
+    const zeroRef = Object.fromEntries(
+      Object.entries(defaults).map(([k, v]) => [
+        k,
+        typeof v === "number" ? 0 : typeof v === "boolean" ? false : v,
+      ])
+    ) as RefinanceInputs;
+    const zeroBtl = Object.fromEntries(
+      Object.entries(btlDefaults).map(([k, v]) => [
+        k,
+        typeof v === "number" ? 0 : typeof v === "boolean" ? false : v,
+      ])
+    ) as BTLInputs;
+    setInputs(zeroRef);
+    setBtlInputs(zeroBtl);
     setMethod("brrr");
     setPropertyName("");
     setPropertyId(null);
