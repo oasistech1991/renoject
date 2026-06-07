@@ -553,6 +553,17 @@ function RefinancePage() {
                 <Button size="sm" variant="outline" onClick={onPickFile} disabled={importing}>
                   PDF
                 </Button>
+                <input
+                  ref={imageRef}
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  className="hidden"
+                  onChange={onImagesChosen}
+                />
+                <Button size="sm" variant="outline" onClick={onPickImages} disabled={importing}>
+                  Images
+                </Button>
               </div>
             </div>
             {importMsg && (
