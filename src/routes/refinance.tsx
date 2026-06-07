@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { PROPERTY_SOURCES, type PropertySource } from "@/lib/sources";
 import { PropertyMedia } from "@/components/property/PropertyMedia";
-import { parsePropertyPdf, parsePropertyUrl } from "@/lib/import-deal.functions";
+import { parsePropertyPdf, parsePropertyUrl, parsePropertyImages } from "@/lib/import-deal.functions";
 
 export const Route = createFileRoute("/refinance")({
   validateSearch: (s: Record<string, unknown>) => ({
@@ -121,8 +121,10 @@ function RefinancePage() {
   const [importMsg, setImportMsg] = useState<string | null>(null);
   const [importUrl, setImportUrl] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
+  const imageRef = useRef<HTMLInputElement>(null);
   const parsePdf = useServerFn(parsePropertyPdf);
   const parseUrl = useServerFn(parsePropertyUrl);
+  const parseImages = useServerFn(parsePropertyImages);
   const set = <K extends keyof RefinanceInputs>(k: K, v: RefinanceInputs[K]) =>
     setInputs((p) => ({ ...p, [k]: v }));
   const setB = <K extends keyof BTLInputs>(k: K, v: BTLInputs[K]) =>
@@ -177,10 +179,15 @@ function RefinancePage() {
   const autoStamp = () => set("stampDuty", calcStampDuty(inputs.purchasePrice));
   const reset = () => {
     setInputs(defaults);
+    setBtlInputs(btlDefaults);
+    setMethod("brrr");
     setPropertyName("");
     setPropertyId(null);
     setSource("");
     setSavedAt(null);
+    setLoadError(null);
+    setImportUrl("");
+    setImportMsg(null);
     navigate({ search: { id: undefined }, replace: true });
   };
 
