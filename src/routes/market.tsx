@@ -344,6 +344,30 @@ function FilterBar({
             </button>
           ))}
         </div>
+        {mode === "deals" ? (
+          <div className="flex flex-wrap items-center gap-2">
+            <Input
+              placeholder="Search by name, postcode or source…"
+              className="h-9 w-72"
+              value={filters.query ?? ""}
+              onChange={(e) => set("query", e.target.value || undefined)}
+            />
+            <NumInput placeholder="Min £" value={filters.minPrice} onChange={(v) => set("minPrice", v)} />
+            <NumInput placeholder="Max £" value={filters.maxPrice} onChange={(v) => set("maxPrice", v)} />
+            <NumInput placeholder="Min yield %" value={filters.minHmoYield} onChange={(v) => set("minHmoYield", v)} className="w-32" />
+            <NumInput placeholder="Min ROI %" value={filters.minRoi} onChange={(v) => set("minRoi", v)} className="w-28" />
+
+            <div className="ml-auto flex items-center gap-3 text-xs">
+              <span className="text-muted-foreground">
+                <b className="text-foreground">{stats.count}</b> deals · avg gross yield{" "}
+                <b className="text-primary">{fmtPct(stats.avgYield)}</b> · avg ROI{" "}
+                <b className="text-primary">{fmtPct(stats.avgBmv)}</b>
+              </span>
+              <Button size="sm" variant="outline" onClick={reset}>Reset</Button>
+            </div>
+          </div>
+        ) : (
+        <>
         <div className="flex flex-wrap items-center gap-2">
           <Input
             placeholder="Postcode, town or street…"
@@ -406,6 +430,8 @@ function FilterBar({
             <Button size="sm" variant="outline" onClick={reset}>Reset</Button>
           </div>
         </div>
+        </>
+        )}
       </div>
     </div>
   );
