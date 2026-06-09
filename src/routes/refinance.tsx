@@ -698,6 +698,25 @@ function RefinancePage() {
                   </Button>
                 ))}
               </div>
+              <div className="mt-3 rounded-md border border-dashed border-border bg-muted/30 p-3">
+                <div className="mb-2 text-xs font-medium text-muted-foreground">
+                  Load RENOJECT example (£300k → £400k GDV, £2,400 pcm)
+                </div>
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+                  <Button type="button" size="sm" variant="outline"
+                    onClick={() => { setInputs(renojectCash); setMethod("cash"); }}>
+                    Cash purchase
+                  </Button>
+                  <Button type="button" size="sm" variant="outline"
+                    onClick={() => { setInputs(renojectBridging); setMethod("brrr"); }}>
+                    Bridging finance
+                  </Button>
+                  <Button type="button" size="sm" variant="outline"
+                    onClick={() => { setInputs(renojectMortgage); setMethod("mortgage"); }}>
+                    Mortgage purchase
+                  </Button>
+                </div>
+              </div>
             </InputGroup>
 
             {method !== "btl" && (
