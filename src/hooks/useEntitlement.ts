@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { getPaddleEnvironment } from "@/lib/paddle";
 
 export type Entitlement = {
   loading: boolean;
@@ -22,7 +21,7 @@ const DEFAULT: Entitlement = {
   userId: null,
   email: null,
   isSubscriber: false,
-  isEntitled: false,
+  isEntitled: true,
   subscriptionStatus: null,
   currentPeriodEnd: null,
   cancelAtPeriodEnd: false,
@@ -34,7 +33,7 @@ function readAdminFlag(): boolean {
 }
 
 export function useEntitlement(): Entitlement {
-  const [state, setState] = useState<Entitlement>(DEFAULT);
+  const [state, setState] = useState<Entitlement>({ ...DEFAULT, loading: true });
 
   useEffect(() => {
     let active = true;
@@ -44,44 +43,15 @@ export function useEntitlement(): Entitlement {
       const { data: { session } } = await supabase.auth.getSession();
       const user = session?.user ?? null;
 
-      if (!user) {
-        if (!active) return;
-        setState({ ...DEFAULT, loading: false, isAdmin, isEntitled: isAdmin });
-        return;
-      }
-
-      const env = getPaddleEnvironment();
-      const { data: sub } = await supabase
-        .from("subscriptions")
-        .select("status, current_period_end, cancel_at_period_end")
-        .eq("user_id", user.id)
-        .eq("environment", env)
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      const now = Date.now();
-      const periodEnd = sub?.current_period_end ? new Date(sub.current_period_end).getTime() : null;
-      const isActive =
-        !!sub &&
-        (
-          (["active", "trialing", "past_due"].includes(sub.status) &&
-            (!periodEnd || periodEnd > now)) ||
-          (sub.status === "canceled" && periodEnd != null && periodEnd > now)
-        );
-
       if (!active) return;
       setState({
+        ...DEFAULT,
         loading: false,
         isAdmin,
-        isAuthenticated: true,
-        userId: user.id,
-        email: user.email ?? null,
-        isSubscriber: !!isActive,
-        isEntitled: isAdmin || !!isActive,
-        subscriptionStatus: sub?.status ?? null,
-        currentPeriodEnd: sub?.current_period_end ?? null,
-        cancelAtPeriodEnd: !!sub?.cancel_at_period_end,
+        isAuthenticated: !!user,
+        userId: user?.id ?? null,
+        email: user?.email ?? null,
+        isEntitled: true,
       });
     };
 
