@@ -68,10 +68,10 @@ function Index() {
               </svg>
             </Link>
             <Link
-              to="/pricing"
+              to="/market"
               className="inline-flex items-center rounded-lg border border-muted px-6 py-3 text-sm font-bold text-foreground transition-all hover:bg-accent"
             >
-              See pricing
+              Browse Market
             </Link>
           </div>
         </div>
