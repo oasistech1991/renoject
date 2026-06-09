@@ -678,44 +678,20 @@ function RefinancePage() {
         <div className="grid gap-8 lg:grid-cols-[400px_1fr]">
           {/* Inputs */}
           <section className="space-y-6">
-            <InputGroup title="Purchase method">
-              <div className="grid grid-cols-2 gap-0 overflow-hidden rounded-md border border-border sm:grid-cols-4">
-                {([
-                  ["mortgage", "Mortgage"],
-                  ["cash", "Cash"],
-                  ["brrr", "BRRR"],
-                  ["btl", "BTL"],
-                ] as const).map(([key, label]) => (
-                  <Button
-                    key={key}
-                    type="button"
-                    variant={method === key ? "secondary" : "ghost"}
-                    size="sm"
-                    className="rounded-none"
-                    onClick={() => setMethod(key)}
-                  >
-                    {label}
-                  </Button>
-                ))}
-              </div>
-              <div className="mt-3 rounded-md border border-dashed border-border bg-muted/30 p-3">
-                <div className="mb-2 text-xs font-medium text-muted-foreground">
-                  Load RENOJECT example (£300k → £400k GDV, £2,400 pcm)
-                </div>
-                <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-                  <Button type="button" size="sm" variant="outline"
-                    onClick={() => { setInputs(renojectCash); setMethod("cash"); }}>
-                    Cash purchase
-                  </Button>
-                  <Button type="button" size="sm" variant="outline"
-                    onClick={() => { setInputs(renojectBridging); setMethod("brrr"); }}>
-                    Bridging finance
-                  </Button>
-                  <Button type="button" size="sm" variant="outline"
-                    onClick={() => { setInputs(renojectMortgage); setMethod("mortgage"); }}>
-                    Mortgage purchase
-                  </Button>
-                </div>
+            <InputGroup title="Load RENOJECT example (£300k → £400k GDV, £2,400 pcm)">
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+                <Button type="button" size="sm" variant="outline"
+                  onClick={() => { setInputs(renojectCash); setMethod("cash"); }}>
+                  Cash purchase
+                </Button>
+                <Button type="button" size="sm" variant="outline"
+                  onClick={() => { setInputs(renojectBridging); setMethod("brrr"); }}>
+                  Bridging finance
+                </Button>
+                <Button type="button" size="sm" variant="outline"
+                  onClick={() => { setInputs(renojectMortgage); setMethod("mortgage"); }}>
+                  Mortgage purchase
+                </Button>
               </div>
             </InputGroup>
 
