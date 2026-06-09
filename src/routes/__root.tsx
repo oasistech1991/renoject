@@ -506,12 +506,6 @@ function AppShell({
                 Sign in
               </Link>
             ) : null}
-            <Link
-              to="/pricing"
-              className="rounded-md bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:opacity-90 transition-all"
-            >
-              Get Started
-            </Link>
             {(session || isAdmin) && (
               <Button variant="outline" size="sm" onClick={onSignOut}>
                 Sign out
