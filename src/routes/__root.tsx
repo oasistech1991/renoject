@@ -15,15 +15,12 @@ import { Button } from "@/components/ui/button";
 import { Toaster } from "@/components/ui/sonner";
 import { supabase } from "@/integrations/supabase/client";
 import type { Session } from "@supabase/supabase-js";
-import { useEntitlement } from "@/hooks/useEntitlement";
 import {
-  Lock,
   Loader2,
   Home,
   Calculator,
   Building2,
   ShieldCheck,
-  Tag,
   Menu,
   X,
   LogOut,
