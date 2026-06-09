@@ -151,7 +151,8 @@ const renojectBridging: RefinanceInputs = {
   bridgeArrangementPct: 1,
   bridgeArrangementAmount: 2250,
   bridgeExitPct: 0,
-  bridgeInterestRolled: true,
+  bridgeInterestRolled: false,
+  refiFees: 3750,
 };
 
 const renojectMortgage: RefinanceInputs = {
