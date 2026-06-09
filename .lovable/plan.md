@@ -1,73 +1,26 @@
-## Goal
+# Make all features free
 
-On `/refinance`, add a one-click way to load the exact figures from the RENOJECT PDF (430.pdf) into the calculator, for all three purchase methods the PDF shows (Cash, Bridging, Mortgage refinance).
+Remove the Pro paywall so every tool (Market Search, Tradesmen background checks, etc.) is accessible to anyone — no subscription or sign-in required to use them.
 
-## UI
+## Changes
 
-Add a small "Load RENOJECT example" panel near the top of the inputs, with three buttons:
-- Cash purchase
-- Bridging finance
-- Mortgage purchase
+1. **`src/components/PaywallGate.tsx`** — make it a pass-through that always renders `children`. Keeps the import surface intact so no route files need editing.
 
-Clicking a button overwrites the current inputs with the matching scenario below. A short toast confirms which scenario was loaded.
+2. **`src/hooks/useEntitlement.ts`** — always return `isEntitled: true` (still load auth session so `email`/`userId` stay accurate for the account page), skip the subscription query.
 
-## Values to prefill (taken verbatim from the PDF)
+3. **Navigation / pricing entry points** — remove "Pricing" / "Upgrade" links from the header/nav (wherever they appear). Keep `/pricing` and `/account` routes reachable directly for now but stop promoting them.
 
-### Shared across all three scenarios
-- Purchase price: £300,000
-- Fixtures & Fittings: £0
-- Refurb cost: £0
-- Furnishing: £0
-- Legal fees: £1,500
-- Stamp Duty: £15,000
-- Additional fees: £0
-- Auction fees: £0
-- Sourcing fee: £15,000
-- Conservative GDV: £400,000
-- Refi LTV: 75% → new loan £300,000
-- Refi rate: 6.00% (sheet shows £1,250/mo interest-only on £300k)
-- Lettable units: 1
-- Current monthly rent: £0
-- Achievable monthly rent: £2,400
-- Management: 10% (£240)
-- Insurance & compliance: £60/mo
-- Maintenance / voids / ground rent / other: £0
-- Refurb months: 0 (no refurb shown)
-- Flip: sale £400,000, legal £1,500, agency £8,000
+4. **`src/routes/pricing.tsx`** — replace with a simple "All features are free" message and a link back home. Removes the Subscribe button and Paddle checkout call.
 
-### 1. Cash purchase
-- Bridge: off
-- Deposit: 100% (£300,000 cash) → purchase loan £0
-- Broker fees: £0, Lender fee: £0
-- Expected totals from calc: Total cash in £331,500, cash released £300,000, money left in £31,500, ROI ~27.6%, flip profit ~£59,000
+5. **`src/components/PaymentTestModeBanner.tsx`** — render nothing (no checkouts happen anymore).
 
-### 2. Bridging finance
-- Bridge: on
-- Bridge LTV: 75% of purchase (£225,000)
-- Bridge rate: 1.00% PCM (12% PA), interest rolled, term 6 months
-- Bridge arrangement: 2% (PDF shows £0 separately but lender fees £2,250 ≈ 1% of bridge — will set arrangement 1% = £2,250 to match the £2,250 lender fee line)
-- Bridge exit: 0%
-- Broker fees: £995, Lender fee: £2,250, Legal fees on bridge purchase: £3,000 (per PDF)
-- Refi: as shared
-- Expected: Total cash in ~£114,995, money left in ~£53,495, ROI ~16.3%
+## Left intact (not removed)
 
-### 3. Mortgage purchase
-- Bridge: off
-- Deposit: 25% (£75,000), purchase loan £225,000
-- Purchase rate: 5.00% PA
-- Broker fees: £995, Lender fee: £6,000
-- Legal fees: £1,500
-- Refi: as shared
-- Expected: Total cash in ~£109,745, money left in ~£84,745, ROI ~10.3%
+- Paddle integration code, `subscriptions` table, webhook route, server functions. They become dormant but stay in the repo so re-enabling paid plans later is a one-file revert. Tell me if you'd rather I delete them entirely.
+- `/account` page — still useful for sign-out and showing signed-in email.
+- Auth (sign in / sign up) stays available but is not required to use any tool.
 
-## Notes / caveats
+## Confirm before I build
 
-- The PDF's "Mortgage Payment £1,375" headline figure uses a slightly different rate than the 6% refi rate shown in the table; I'll use the table's 6% / £1,250 numbers since those drive the calc.
-- The stress-test row (6.5% → £1,625 / net £475) is informational on the PDF; our calculator doesn't have a separate stress field, so it's not prefilled — the stress ICR badges already shown in the UI will reflect it automatically.
-- Existing inputs are overwritten when a scenario button is clicked; an Undo isn't included to keep scope small.
-
-## Files touched
-
-- `src/routes/refinance.tsx` — add the three preset constants and a small button row that calls `setInputs(...)`.
-
-No backend or schema changes.
+- OK to keep Paddle code dormant rather than ripping it out?
+- Remove the "Pricing" link from the nav entirely, or leave it pointing at the new "everything is free" page?
