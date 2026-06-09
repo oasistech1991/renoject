@@ -339,7 +339,6 @@ const TOOL_ITEMS: Array<{ to: string; label: string; icon: typeof Home }> = [
 ];
 
 const ACCOUNT_ITEMS: Array<{ to: string; label: string; icon: typeof Home; authOnly?: boolean }> = [
-  { to: "/pricing", label: "Pricing", icon: Tag },
   { to: "/account", label: "Account", icon: UserCircle, authOnly: true },
 ];
 
@@ -411,7 +410,7 @@ function AppShell({
           return (
             <Link
               key={item.to}
-              to={item.to as "/pricing"}
+              to={item.to as "/account"}
               onClick={() => setMobileOpen(false)}
               className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
               activeProps={{ className: "flex items-center gap-3 px-3 py-2 rounded-lg text-sm bg-accent text-foreground font-medium" }}
