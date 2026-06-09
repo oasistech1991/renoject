@@ -85,6 +85,86 @@ const defaults: RefinanceInputs = {
 
 type CalcMethod = "mortgage" | "cash" | "brrr" | "btl";
 
+// RENOJECT example PDF (£300k → £400k GDV, £2,400 pcm rent) — three purchase scenarios.
+const renojectBase: RefinanceInputs = {
+  ...defaults,
+  purchasePrice: 300000,
+  stampDuty: 15000,
+  legalFees: 1500,
+  surveyFees: 0,
+  fixturesFittings: 0,
+  furnishing: 0,
+  additionalFees: 0,
+  auctionFees: 0,
+  sourcingFee: 15000,
+  refurbCost: 0,
+  refurbMonths: 0,
+  holdingMonthly: 0,
+  gdv: 400000,
+  refiLtv: 75,
+  refiRate: 6.0,
+  refiTermYears: 25,
+  refiFees: 0,
+  lettableUnits: 1,
+  currentMonthlyRent: 0,
+  monthlyRent: 2400,
+  managementPct: 10,
+  maintenancePct: 0,
+  voidsPct: 0,
+  insurance: 60,
+  groundRent: 0,
+  otherMonthly: 0,
+  flipEnabled: true,
+  flipSalePrice: 400000,
+  flipLegalFees: 1500,
+  flipAgencyFee: 8000,
+};
+
+const renojectCash: RefinanceInputs = {
+  ...renojectBase,
+  depositIsPct: true,
+  depositPct: 100,
+  deposit: 300000,
+  purchaseRate: 0,
+  brokerFees: 0,
+  lenderFee: 0,
+  useBridge: false,
+};
+
+const renojectBridging: RefinanceInputs = {
+  ...renojectBase,
+  depositIsPct: true,
+  depositPct: 25,
+  deposit: 75000,
+  purchaseRate: 0,
+  legalFees: 3000,
+  brokerFees: 995,
+  lenderFee: 2250,
+  useBridge: true,
+  bridgeLoanPct: 75,
+  bridgeFundsRefurb: false,
+  bridgeRateIsPCM: true,
+  bridgeRatePCM: 1.0,
+  bridgeRate: 12.0,
+  bridgeTermMonths: 6,
+  bridgeArrangementIsPct: true,
+  bridgeArrangementPct: 1,
+  bridgeArrangementAmount: 2250,
+  bridgeExitPct: 0,
+  bridgeInterestRolled: true,
+};
+
+const renojectMortgage: RefinanceInputs = {
+  ...renojectBase,
+  depositIsPct: true,
+  depositPct: 25,
+  deposit: 75000,
+  purchaseRate: 5.0,
+  brokerFees: 995,
+  lenderFee: 6000,
+  useBridge: false,
+};
+
 const btlDefaults: BTLInputs = {
   purchasePrice: 200000,
   deposit: 50000,
