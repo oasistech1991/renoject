@@ -236,16 +236,11 @@ function AuthGate() {
   const isPublicPath = PUBLIC_PATHS.has(path);
   const unlocked = adminUnlocked || !!session;
 
-  if (!unlocked && !isPublicPath) {
-    return (
-      <>
-        <SignInScreen onUnlock={() => setAdminUnlocked(true)} />
-        <Toaster />
-      </>
-    );
-  }
+  // All routes are publicly accessible — no sign-in or subscription required.
+  void isPublicPath;
+  void unlocked;
 
-  if (isPublicPath && !sessionLoaded) {
+  if (!sessionLoaded) {
     // Public legal/auth pages don't need to wait, render immediately
   }
 
@@ -263,49 +258,14 @@ function AuthGate() {
           supabase.auth.signOut();
         }}
       >
-        {isPublicPath ? <Outlet /> : <SubscriptionGate />}
+        <Outlet />
       </AppShell>
       <Toaster />
     </>
   );
 }
 
-function SubscriptionGate() {
-  const ent = useEntitlement();
-  if (ent.loading) {
-    return (
-      <div className="flex min-h-[60vh] items-center justify-center">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-      </div>
-    );
-  }
-  if (ent.isEntitled) return <Outlet />;
-  return (
-    <div className="mx-auto flex min-h-[70vh] max-w-xl flex-col items-center justify-center px-6 py-16 text-center">
-      <div className="mb-5 flex h-14 w-14 items-center justify-center rounded-full border border-border bg-card">
-        <Lock className="h-6 w-6 text-primary" />
-      </div>
-      <h1 className="text-2xl font-semibold tracking-tight">Subscribe to continue</h1>
-      <p className="mt-3 text-sm text-muted-foreground">
-        Full access to Hartstone Holdings is £1/month. Subscribe to unlock every tool.
-      </p>
-      <div className="mt-6 flex flex-wrap items-center justify-center gap-2">
-        <Link
-          to="/pricing"
-          className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
-        >
-          View pricing
-        </Link>
-        <Link
-          to="/account"
-          className="inline-flex items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent"
-        >
-          Manage account
-        </Link>
-      </div>
-    </div>
-  );
-}
+
 
 function SignInScreen({ onUnlock }: { onUnlock: () => void }) {
   const [username, setUsername] = useState("");
