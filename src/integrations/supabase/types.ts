@@ -124,6 +124,60 @@ export type Database = {
         }
         Relationships: []
       }
+      portfolio_timeline_entries: {
+        Row: {
+          assigned_to_property_id: string | null
+          created_at: string
+          id: string
+          notes: string | null
+          property_id: string
+          purchase_date: string | null
+          refi_month_offset: number | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          assigned_to_property_id?: string | null
+          created_at?: string
+          id?: string
+          notes?: string | null
+          property_id: string
+          purchase_date?: string | null
+          refi_month_offset?: number | null
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          assigned_to_property_id?: string | null
+          created_at?: string
+          id?: string
+          notes?: string | null
+          property_id?: string
+          purchase_date?: string | null
+          refi_month_offset?: number | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "portfolio_timeline_entries_assigned_to_property_id_fkey"
+            columns: ["assigned_to_property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "portfolio_timeline_entries_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       properties: {
         Row: {
           created_at: string

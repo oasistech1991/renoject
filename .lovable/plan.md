@@ -1,26 +1,85 @@
-# Make all features free
 
-Remove the Pro paywall so every tool (Market Search, Tradesmen background checks, etc.) is accessible to anyone — no subscription or sign-in required to use them.
+# Portfolio Timeline — manage capital recycling across deals
 
-## Changes
+A new `/portfolio-timeline` page (signed-in) that turns your saved Properties (those marked "in portfolio") into a multi-deal capital plan: when each deal refinances, how much cash comes out, and which next deal that cash is earmarked for.
 
-1. **`src/components/PaywallGate.tsx`** — make it a pass-through that always renders `children`. Keeps the import surface intact so no route files need editing.
+## What you'll see
 
-2. **`src/hooks/useEntitlement.ts`** — always return `isEntitled: true` (still load auth session so `email`/`userId` stay accurate for the account page), skip the subscription query.
+Four linked views on one page, all driven by the same deal list at the top.
 
-3. **Navigation / pricing entry points** — remove "Pricing" / "Upgrade" links from the header/nav (wherever they appear). Keep `/pricing` and `/account` routes reachable directly for now but stop promoting them.
+### 1. Gantt timeline (primary)
+Horizontal bars, one per deal, on a month-by-month axis (today → +5 yrs by default, zoomable).
+Each bar segments:
+- Purchase + refurb (amber)
+- Bridging hold (red, if bridge used)
+- Refi event (vertical marker with £ pulled out)
+- Post-refi hold (green)
+- Optional sale/flip exit (grey end-cap)
 
-4. **`src/routes/pricing.tsx`** — replace with a simple "All features are free" message and a link back home. Removes the Subscribe button and Paddle checkout call.
+Hover a bar = deal summary. Click = open the underlying Refinance scenario.
 
-5. **`src/components/PaymentTestModeBanner.tsx`** — render nothing (no checkouts happen anymore).
+### 2. Cash waterfall (cumulative chart)
+Stacked area / line over the same time axis:
+- Cash deployed (negative) per month
+- Cash released at each refi (positive spikes)
+- Running "free capital available" line — what's sitting uncommitted
 
-## Left intact (not removed)
+Lets you spot months where you're cash-rich or about to run dry.
 
-- Paddle integration code, `subscriptions` table, webhook route, server functions. They become dormant but stay in the repo so re-enabling paid plans later is a one-file revert. Tell me if you'd rather I delete them entirely.
-- `/account` page — still useful for sign-out and showing signed-in email.
-- Auth (sign in / sign up) stays available but is not required to use any tool.
+### 3. Sankey — capital flow
+Nodes = deals. Flows = refi proceeds from Deal A → deposit/refurb on Deal B (manual links you set). Surplus that isn't assigned flows to a "Reserve" node. Immediately shows recycled vs trapped equity.
 
-## Confirm before I build
+### 4. Redeployment planner table
+One row per upcoming refi event, sorted by date:
 
-- OK to keep Paddle code dormant rather than ripping it out?
-- Remove the "Pricing" link from the nav entirely, or leave it pointing at the new "everything is free" page?
+| Refi date | Source deal | Cash out | Assigned to | Gap (months) | Status |
+
+"Assigned to" is a dropdown of your other portfolio deals (or "Reserve"). Status = on-track / short by £X / surplus £X based on the target deal's totalCashIn.
+
+## Inputs we already have vs need
+
+The `properties` table stores `inputs` (jsonb with purchasePrice, refurbMonths, gdv, refiLtv, bridgeTermMonths, etc.) and `metrics` (cashLeftIn, cashReleased, totalCashIn). That's enough to compute £ amounts.
+
+What's missing per deal, for the timeline:
+- **purchase_date** (anchors the bar on the axis)
+- **refi_month_offset** (override of refurbMonths if you actually refinanced later)
+- **assigned_to_property_id** (which deal absorbs this refi's cash)
+- **status** (planned / live / refinanced / sold) — for colouring + filtering
+- **notes** (free text)
+
+## Data model
+
+New table `portfolio_timeline_entries`:
+- `property_id` (FK → properties, unique — one row per property)
+- `user_id`
+- `purchase_date` (date)
+- `refi_month_offset` (int, nullable — falls back to inputs.refurbMonths)
+- `assigned_to_property_id` (uuid, nullable)
+- `status` (text: planned/live/refinanced/sold)
+- `notes` (text)
+- standard `created_at` / `updated_at` + RLS scoped to `user_id`
+
+Editing a row never touches the underlying `properties.inputs` — it's a planning overlay.
+
+## File-level changes
+
+- **Migration**: create `portfolio_timeline_entries` + GRANTs + RLS (own-row only) + updated_at trigger.
+- **`src/lib/portfolio-timeline.functions.ts`** — serverFns: `listTimeline()` (joins properties + entries, computes derived fields like refi_date, cash_out, cash_in_needed), `upsertEntry(...)`, `deleteEntry(id)`. Uses `requireSupabaseAuth`.
+- **`src/lib/portfolio-timeline.ts`** — pure helpers: compute refi date, free-capital series month-by-month, sankey link builder, status calculator.
+- **`src/routes/_authenticated/portfolio-timeline.tsx`** — page route (must live under `_authenticated/` since it needs the user's deals; create `_authenticated/route.tsx` if it doesn't exist).
+- **Components** under `src/components/portfolio/`:
+  - `GanttTimeline.tsx` (SVG-based; no new dep needed)
+  - `CashWaterfallChart.tsx` (Recharts — already in project)
+  - `CapitalFlowSankey.tsx` (Recharts has Sankey)
+  - `RedeploymentTable.tsx` (shadcn Table + Select per row)
+  - `DealEditorSheet.tsx` (edit purchase_date / refi offset / assignment / status / notes)
+- **Nav**: add "Portfolio Timeline" link in the signed-in header next to Properties.
+
+## Out of scope (flag for later)
+
+- Auto-suggesting which deal to assign cash to (today's plan is manual only, as you chose).
+- Tax/CGT modelling on flips.
+- Multi-scenario comparison (Plan A vs Plan B).
+- Importing dates from PDF deal packs.
+
+Tell me if you'd rather put the page outside `_authenticated/` (public + sign-in CTA) or skip any of the 4 visuals to ship faster.

@@ -329,6 +329,7 @@ const TOOL_ITEMS: Array<{ to: string; label: string; icon: typeof Home }> = [
   { to: "/condition", label: "Renovation", icon: Hammer },
   { to: "/market", label: "Market Search", icon: Search },
   { to: "/properties", label: "View Deals", icon: Building2 },
+  { to: "/portfolio-timeline", label: "Portfolio Timeline", icon: LineChart },
   { to: "/forecast", label: "Forecast", icon: LineChart },
   { to: "/hmo-compliance", label: "HMO Compliance", icon: ShieldCheck },
   { to: "/tradesmen", label: "Tradesmen", icon: Wrench },
