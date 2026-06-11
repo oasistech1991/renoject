@@ -19,6 +19,7 @@ import { Route as RefinanceRouteImport } from './routes/refinance'
 import { Route as PropertiesRouteImport } from './routes/properties'
 import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as PricingRouteImport } from './routes/pricing'
+import { Route as PortfolioTimelineRouteImport } from './routes/portfolio-timeline'
 import { Route as MarketRouteImport } from './routes/market'
 import { Route as HmoComplianceRouteImport } from './routes/hmo-compliance'
 import { Route as ForecastRouteImport } from './routes/forecast'
@@ -78,6 +79,11 @@ const PricingRoute = PricingRouteImport.update({
   path: '/pricing',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PortfolioTimelineRoute = PortfolioTimelineRouteImport.update({
+  id: '/portfolio-timeline',
+  path: '/portfolio-timeline',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const MarketRoute = MarketRouteImport.update({
   id: '/market',
   path: '/market',
@@ -128,6 +134,7 @@ export interface FileRoutesByFullPath {
   '/forecast': typeof ForecastRoute
   '/hmo-compliance': typeof HmoComplianceRoute
   '/market': typeof MarketRoute
+  '/portfolio-timeline': typeof PortfolioTimelineRoute
   '/pricing': typeof PricingRoute
   '/privacy': typeof PrivacyRoute
   '/properties': typeof PropertiesRoute
@@ -148,6 +155,7 @@ export interface FileRoutesByTo {
   '/forecast': typeof ForecastRoute
   '/hmo-compliance': typeof HmoComplianceRoute
   '/market': typeof MarketRoute
+  '/portfolio-timeline': typeof PortfolioTimelineRoute
   '/pricing': typeof PricingRoute
   '/privacy': typeof PrivacyRoute
   '/properties': typeof PropertiesRoute
@@ -169,6 +177,7 @@ export interface FileRoutesById {
   '/forecast': typeof ForecastRoute
   '/hmo-compliance': typeof HmoComplianceRoute
   '/market': typeof MarketRoute
+  '/portfolio-timeline': typeof PortfolioTimelineRoute
   '/pricing': typeof PricingRoute
   '/privacy': typeof PrivacyRoute
   '/properties': typeof PropertiesRoute
@@ -191,6 +200,7 @@ export interface FileRouteTypes {
     | '/forecast'
     | '/hmo-compliance'
     | '/market'
+    | '/portfolio-timeline'
     | '/pricing'
     | '/privacy'
     | '/properties'
@@ -211,6 +221,7 @@ export interface FileRouteTypes {
     | '/forecast'
     | '/hmo-compliance'
     | '/market'
+    | '/portfolio-timeline'
     | '/pricing'
     | '/privacy'
     | '/properties'
@@ -231,6 +242,7 @@ export interface FileRouteTypes {
     | '/forecast'
     | '/hmo-compliance'
     | '/market'
+    | '/portfolio-timeline'
     | '/pricing'
     | '/privacy'
     | '/properties'
@@ -252,6 +264,7 @@ export interface RootRouteChildren {
   ForecastRoute: typeof ForecastRoute
   HmoComplianceRoute: typeof HmoComplianceRoute
   MarketRoute: typeof MarketRoute
+  PortfolioTimelineRoute: typeof PortfolioTimelineRoute
   PricingRoute: typeof PricingRoute
   PrivacyRoute: typeof PrivacyRoute
   PropertiesRoute: typeof PropertiesRoute
@@ -337,6 +350,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PricingRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/portfolio-timeline': {
+      id: '/portfolio-timeline'
+      path: '/portfolio-timeline'
+      fullPath: '/portfolio-timeline'
+      preLoaderRoute: typeof PortfolioTimelineRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/market': {
       id: '/market'
       path: '/market'
@@ -404,6 +424,7 @@ const rootRouteChildren: RootRouteChildren = {
   ForecastRoute: ForecastRoute,
   HmoComplianceRoute: HmoComplianceRoute,
   MarketRoute: MarketRoute,
+  PortfolioTimelineRoute: PortfolioTimelineRoute,
   PricingRoute: PricingRoute,
   PrivacyRoute: PrivacyRoute,
   PropertiesRoute: PropertiesRoute,
