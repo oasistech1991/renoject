@@ -287,6 +287,16 @@ function PortfolioTimelinePage() {
         allDeals={allDeals}
         onClose={() => setRefiOpenId(null)}
         onSave={(patch) => refiDeal && saveEntry(refiDeal.property.id, patch)}
+        onSaveProperty={async (propertyId, patch) => {
+          const target = properties.find((p) => p.id === propertyId);
+          if (!target) return;
+          const nextInputs = { ...(target.inputs ?? {}), ...patch.inputs };
+          const update: any = { inputs: nextInputs };
+          if (patch.name !== undefined) update.name = patch.name;
+          const { error } = await supabase.from("properties").update(update).eq("id", propertyId);
+          if (error) { toast.error(error.message); return; }
+          setProperties((prev) => prev.map((p) => p.id === propertyId ? { ...p, ...update } as any : p));
+        }}
       />
 
       <AddPlannedDealSheet
@@ -570,19 +580,28 @@ function Legend() {
 /* ---------- refi drill-down ---------- */
 
 function RefiDrillSheet({
-  open, deal, allDeals, onClose, onSave,
+  open, deal, allDeals, onClose, onSave, onSaveProperty,
 }: {
   open: boolean;
   deal: DealRow | null;
   allDeals: DealRow[];
   onClose: () => void;
   onSave: (patch: Partial<TimelineEntry>) => void;
+  onSaveProperty: (propertyId: string, patch: { name?: string; inputs: Record<string, any> }) => Promise<void>;
 }) {
   const [purchaseDate, setPurchaseDate] = useState("");
   const [refiOffset, setRefiOffset] = useState("");
   const [assignedTo, setAssignedTo] = useState<string>("__none");
   const [status, setStatus] = useState<TimelineStatus>("planned");
   const [notes, setNotes] = useState("");
+  const [name, setName] = useState("");
+  const [purchasePrice, setPurchasePrice] = useState("");
+  const [gdv, setGdv] = useState("");
+  const [refiLtv, setRefiLtv] = useState("");
+  const [refurbMonths, setRefurbMonths] = useState("");
+  const [refurbCost, setRefurbCost] = useState("");
+  const [monthlyRent, setMonthlyRent] = useState("");
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (!deal) return;
@@ -591,6 +610,14 @@ function RefiDrillSheet({
     setAssignedTo(deal.assignedTo ?? "__none");
     setStatus(deal.status);
     setNotes(deal.entry?.notes ?? "");
+    const inp = deal.property.inputs ?? {};
+    setName(deal.property.name ?? "");
+    setPurchasePrice(String(inp.purchasePrice ?? ""));
+    setGdv(String(inp.gdv ?? ""));
+    setRefiLtv(String(inp.refiLtv ?? ""));
+    setRefurbMonths(String(inp.refurbMonths ?? ""));
+    setRefurbCost(String(inp.refurbCost ?? ""));
+    setMonthlyRent(String(inp.monthlyRent ?? inp.currentMonthlyRent ?? ""));
   }, [deal]);
 
   if (!deal) return null;
@@ -614,6 +641,24 @@ function RefiDrillSheet({
         </SheetHeader>
 
         <div className="mt-6 space-y-4">
+          <div className="rounded-lg border p-3 space-y-3">
+            <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Deal details</div>
+            <div><Label htmlFor="dname">Name</Label><Input id="dname" value={name} onChange={(e) => setName(e.target.value)} /></div>
+            <div className="grid grid-cols-2 gap-3">
+              <div><Label>Purchase price (£)</Label><Input type="number" value={purchasePrice} onChange={(e) => setPurchasePrice(e.target.value)} /></div>
+              <div><Label>GDV (£)</Label><Input type="number" value={gdv} onChange={(e) => setGdv(e.target.value)} /></div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div><Label>Refi LTV (%)</Label><Input type="number" value={refiLtv} onChange={(e) => setRefiLtv(e.target.value)} /></div>
+              <div><Label>Refurb (months)</Label><Input type="number" value={refurbMonths} onChange={(e) => setRefurbMonths(e.target.value)} /></div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div><Label>Refurb cost (£)</Label><Input type="number" value={refurbCost} onChange={(e) => setRefurbCost(e.target.value)} /></div>
+              <div><Label>Monthly rent (£)</Label><Input type="number" value={monthlyRent} onChange={(e) => setMonthlyRent(e.target.value)} /></div>
+            </div>
+            <p className="text-[11px] text-muted-foreground">Full model lives on the <Link to="/refinance" search={{ id: deal.property.id } as any} className="underline">Refinance page</Link>.</p>
+          </div>
+
           <div className="grid grid-cols-2 gap-3">
             <div>
               <Label htmlFor="pdate">Purchase date</Label>
@@ -667,15 +712,26 @@ function RefiDrillSheet({
         </div>
 
         <SheetFooter className="mt-6 flex-row gap-2">
-          <Button variant="outline" onClick={onClose}>Cancel</Button>
-          <Button onClick={() => {
-            onSave({
+          <Button variant="outline" onClick={onClose} disabled={saving}>Cancel</Button>
+          <Button disabled={saving} onClick={async () => {
+            setSaving(true);
+            const num = (s: string) => s === "" ? undefined : Number(s);
+            const inputsPatch: Record<string, any> = {};
+            if (num(purchasePrice) !== undefined) inputsPatch.purchasePrice = num(purchasePrice);
+            if (num(gdv) !== undefined) inputsPatch.gdv = num(gdv);
+            if (num(refiLtv) !== undefined) inputsPatch.refiLtv = num(refiLtv);
+            if (num(refurbMonths) !== undefined) inputsPatch.refurbMonths = num(refurbMonths);
+            if (num(refurbCost) !== undefined) inputsPatch.refurbCost = num(refurbCost);
+            if (num(monthlyRent) !== undefined) inputsPatch.monthlyRent = num(monthlyRent);
+            await onSaveProperty(deal.property.id, { name: name.trim() || undefined, inputs: inputsPatch });
+            await onSave({
               purchase_date: purchaseDate || null,
               refi_month_offset: refiOffset === "" ? null : Number(refiOffset),
               assigned_to_property_id: assignedTo === "__none" ? null : assignedTo,
               status,
               notes: notes || null,
             });
+            setSaving(false);
             toast.success("Saved");
             onClose();
           }}>Save</Button>
