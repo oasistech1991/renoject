@@ -1181,10 +1181,28 @@ function BalanceRow({ series, pxPerMonth, labelCol }: { series: BalancePoint[]; 
 
 /* ---------- balance chart with refi markers ---------- */
 
+type ChartViewRange = "6m" | "1y" | "2y" | "3y" | "all";
+const VIEW_RANGE_MONTHS: Record<ChartViewRange, number> = {
+  "6m": 6,
+  "1y": 12,
+  "2y": 24,
+  "3y": 36,
+  all: Infinity,
+};
+
 function BalanceChart({ series, deals }: { series: BalancePoint[]; deals: DealRow[] }) {
+  const [viewRange, setViewRange] = useState<ChartViewRange>("all");
   if (!series.length) return null;
 
-  const data = series.map((p) => ({
+  const nowKey = monthKey(new Date());
+  const nowIndex = series.findIndex((p) => monthKey(p.date) === nowKey);
+  const startIndex = nowIndex >= 0 ? nowIndex : 0;
+  const monthsLimit = VIEW_RANGE_MONTHS[viewRange];
+  const visibleSeries = monthsLimit === Infinity
+    ? series
+    : series.slice(startIndex, startIndex + monthsLimit);
+
+  const data = visibleSeries.map((p) => ({
     key: monthKey(p.date),
     label: p.date.toLocaleDateString("en-GB", { month: "short", year: "2-digit" }),
     balance: Math.round(p.balance),
@@ -1214,16 +1232,41 @@ function BalanceChart({ series, deals }: { series: BalancePoint[]; deals: DealRo
 
   const tickEvery = Math.max(1, Math.ceil(data.length / 14));
 
+  const viewOptions: { key: ChartViewRange; label: string }[] = [
+    { key: "6m", label: "6 months" },
+    { key: "1y", label: "1 year" },
+    { key: "2y", label: "2 years" },
+    { key: "3y", label: "3 years" },
+    { key: "all", label: "All" },
+  ];
+
   return (
     <div className="rounded-lg border bg-card p-4">
-      <div className="mb-3 flex items-center justify-between gap-3">
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-sm font-semibold">Monthly cash balance</h2>
           <p className="text-xs text-muted-foreground">Starts at your starting capital, applies injections, refi releases (markers) and deal deployments each month.</p>
         </div>
-        <div className="flex items-center gap-3 text-[11px] text-muted-foreground">
-          <span className="inline-flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-emerald-500" />Balance</span>
-          <span className="inline-flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-amber-500 ring-2 ring-amber-200" />Refi event</span>
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex items-center gap-1 rounded-md border bg-background p-0.5">
+            {viewOptions.map((opt) => (
+              <button
+                key={opt.key}
+                onClick={() => setViewRange(opt.key)}
+                className={`px-2.5 py-1 text-xs rounded transition-colors ${
+                  viewRange === opt.key
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+          <div className="flex items-center gap-3 text-[11px] text-muted-foreground">
+            <span className="inline-flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-emerald-500" />Balance</span>
+            <span className="inline-flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-amber-500 ring-2 ring-amber-200" />Refi event</span>
+          </div>
         </div>
       </div>
       <div className="h-64 w-full">
