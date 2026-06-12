@@ -124,6 +124,60 @@ export type Database = {
         }
         Relationships: []
       }
+      portfolio_capital_injections: {
+        Row: {
+          amount: number
+          created_at: string
+          date: string
+          id: string
+          label: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          amount?: number
+          created_at?: string
+          date: string
+          id?: string
+          label?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          date?: string
+          id?: string
+          label?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      portfolio_capital_settings: {
+        Row: {
+          created_at: string
+          starting_capital: number
+          starting_date: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          starting_capital?: number
+          starting_date?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          starting_capital?: number
+          starting_date?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       portfolio_timeline_entries: {
         Row: {
           assigned_to_property_id: string | null
