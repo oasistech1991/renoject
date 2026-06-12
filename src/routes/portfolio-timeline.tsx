@@ -222,6 +222,45 @@ function PortfolioTimelinePage() {
     scrollRef.current.scrollTo({ left: Math.max(0, x + LABEL_COL - scrollRef.current.clientWidth / 2), behavior: "smooth" });
   }
 
+  async function saveCapitalSettings(next: { starting_capital?: number; starting_date?: string }) {
+    if (!session) return;
+    const payload = {
+      user_id: session.user.id,
+      starting_capital: next.starting_capital ?? startingCapital,
+      starting_date: next.starting_date ?? startingDateISO,
+    };
+    const { error } = await supabase
+      .from("portfolio_capital_settings")
+      .upsert(payload, { onConflict: "user_id" });
+    if (error) { toast.error(error.message); return; }
+    if (next.starting_capital !== undefined) setStartingCapital(next.starting_capital);
+    if (next.starting_date !== undefined) setStartingDateISO(next.starting_date);
+  }
+
+  async function addInjection() {
+    if (!session) return;
+    const today = new Date().toISOString().slice(0, 10);
+    const { data, error } = await supabase
+      .from("portfolio_capital_injections")
+      .insert({ user_id: session.user.id, date: today, amount: 0, label: "" })
+      .select()
+      .single();
+    if (error) { toast.error(error.message); return; }
+    setInjections((prev) => [...prev, { id: (data as any).id, date: (data as any).date, amount: Number((data as any).amount ?? 0), label: (data as any).label ?? "" }]);
+  }
+
+  async function updateInjection(id: string, patch: Partial<CapitalInjection>) {
+    setInjections((prev) => prev.map((i) => (i.id === id ? { ...i, ...patch } : i)));
+    const { error } = await supabase.from("portfolio_capital_injections").update(patch as any).eq("id", id);
+    if (error) toast.error(error.message);
+  }
+
+  async function deleteInjection(id: string) {
+    setInjections((prev) => prev.filter((i) => i.id !== id));
+    const { error } = await supabase.from("portfolio_capital_injections").delete().eq("id", id);
+    if (error) toast.error(error.message);
+  }
+
   if (!session) {
     return (
       <div className="mx-auto max-w-3xl px-6 py-16 text-center">
