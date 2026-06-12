@@ -446,7 +446,7 @@ function AxisRow({ months, pxPerMonth, labelCol, startDate }: { months: Date[]; 
   );
 }
 
-function CapitalOverlay({ months, points, pxPerMonth, labelCol, startDate }: { months: Date[]; points: number[]; pxPerMonth: number; labelCol: number; startDate: Date }) {
+function CapitalOverlay({ months, points, pxPerMonth, labelCol, startDate, label = "Free capital" }: { months: Date[]; points: number[]; pxPerMonth: number; labelCol: number; startDate: Date; label?: string }) {
   const width = months.length * pxPerMonth;
   const height = 80;
   const max = Math.max(1, ...points.map(Math.abs));
@@ -467,7 +467,7 @@ function CapitalOverlay({ months, points, pxPerMonth, labelCol, startDate }: { m
     <div className="flex border-b border-border bg-card">
       <div style={{ width: labelCol, height }} className="border-r border-border flex items-center px-3 text-xs text-muted-foreground">
         <div>
-          <div className="text-[10px] uppercase tracking-wide">Free capital</div>
+          <div className="text-[10px] uppercase tracking-wide">{label}</div>
           <div className="font-medium text-foreground tabular-nums">{fmtShort(points[points.length - 1] ?? 0)}</div>
         </div>
       </div>
