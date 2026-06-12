@@ -1013,3 +1013,155 @@ function KpiTile({ label, sub, value, valueClass }: { label: string; sub: string
     </div>
   );
 }
+
+/* ---------- capital setup card ---------- */
+
+function CapitalSetupCard({
+  startingCapital,
+  startingDate,
+  injections,
+  currentBalance,
+  onChangeStarting,
+  onChangeStartingDate,
+  onAddInjection,
+  onUpdateInjection,
+  onDeleteInjection,
+}: {
+  startingCapital: number;
+  startingDate: string;
+  injections: Array<CapitalInjection & { id: string }>;
+  currentBalance: number;
+  onChangeStarting: (v: number) => void;
+  onChangeStartingDate: (v: string) => void;
+  onAddInjection: () => void;
+  onUpdateInjection: (id: string, patch: Partial<CapitalInjection>) => void;
+  onDeleteInjection: (id: string) => void;
+}) {
+  const [localStart, setLocalStart] = useState(String(startingCapital));
+  useEffect(() => { setLocalStart(String(startingCapital)); }, [startingCapital]);
+
+  return (
+    <div className="rounded-lg border bg-card p-4">
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div className="flex flex-wrap items-end gap-3">
+          <div>
+            <Label className="text-xs font-medium text-muted-foreground">Starting capital</Label>
+            <div className="relative mt-1">
+              <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">£</span>
+              <Input
+                type="number"
+                inputMode="decimal"
+                value={localStart}
+                onChange={(e) => setLocalStart(e.target.value)}
+                onBlur={() => {
+                  const n = parseFloat(localStart) || 0;
+                  if (n !== startingCapital) onChangeStarting(n);
+                }}
+                className="pl-7 w-40 tabular-nums"
+              />
+            </div>
+          </div>
+          <div>
+            <Label className="text-xs font-medium text-muted-foreground">From</Label>
+            <Input
+              type="date"
+              value={startingDate}
+              onChange={(e) => onChangeStartingDate(e.target.value)}
+              className="mt-1 w-40"
+            />
+          </div>
+        </div>
+        <div className="text-right">
+          <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Cash balance now</div>
+          <div className={`text-2xl font-semibold tabular-nums ${currentBalance < 0 ? "text-red-600" : "text-emerald-600"}`}>{fmtGBP(currentBalance)}</div>
+        </div>
+      </div>
+
+      <div className="mt-4 border-t pt-3">
+        <div className="flex items-center justify-between">
+          <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Cash injections (personal funds, etc.)</div>
+          <Button size="sm" variant="outline" onClick={onAddInjection}><Plus className="h-3.5 w-3.5 mr-1" />Add</Button>
+        </div>
+
+        {injections.length === 0 ? (
+          <p className="mt-2 text-xs text-muted-foreground">No injections yet. Add money coming in from outside the portfolio (savings, bonus, gifts…).</p>
+        ) : (
+          <div className="mt-2 space-y-1.5">
+            {injections.map((inj) => (
+              <div key={inj.id} className="flex flex-wrap items-center gap-2">
+                <Input
+                  type="date"
+                  value={inj.date}
+                  onChange={(e) => onUpdateInjection(inj.id, { date: e.target.value })}
+                  className="h-8 w-40"
+                />
+                <div className="relative">
+                  <span className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">£</span>
+                  <Input
+                    type="number"
+                    inputMode="decimal"
+                    value={String(inj.amount)}
+                    onChange={(e) => onUpdateInjection(inj.id, { amount: parseFloat(e.target.value) || 0 })}
+                    className="h-8 w-32 pl-6 tabular-nums"
+                  />
+                </div>
+                <Input
+                  type="text"
+                  placeholder="Label (e.g. Personal savings)"
+                  value={inj.label ?? ""}
+                  onChange={(e) => onUpdateInjection(inj.id, { label: e.target.value })}
+                  className="h-8 flex-1 min-w-[180px]"
+                />
+                <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => onDeleteInjection(inj.id)} title="Delete injection">
+                  <Trash2 className="h-4 w-4 text-muted-foreground" />
+                </Button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ---------- bottom balance row ---------- */
+
+function BalanceRow({ series, pxPerMonth, labelCol }: { series: BalancePoint[]; pxPerMonth: number; labelCol: number }) {
+  const showLabel = pxPerMonth >= 36;
+  return (
+    <div className="sticky bottom-0 z-10 flex border-t-2 border-border bg-card/95 backdrop-blur">
+      <div style={{ width: labelCol }} className="border-r border-border px-3 py-2 text-xs">
+        <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Cash balance</div>
+        <div className="font-medium tabular-nums">{series.length ? fmtShort(series[series.length - 1].balance) : "—"}</div>
+      </div>
+      <TooltipProvider delayDuration={100}>
+        <div className="relative flex" style={{ width: series.length * pxPerMonth }}>
+          {series.map((p, i) => {
+            const neg = p.balance < 0;
+            return (
+              <Tooltip key={i}>
+                <TooltipTrigger asChild>
+                  <div
+                    className={`flex items-center justify-center border-r border-border/40 text-[10px] tabular-nums ${neg ? "text-red-600 bg-red-500/5" : "text-foreground"}`}
+                    style={{ width: pxPerMonth, height: 36 }}
+                  >
+                    {showLabel ? fmtShort(p.balance) : ""}
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent side="top" className="text-[11px]">
+                  <div className="font-medium">{p.date.toLocaleDateString("en-GB", { month: "short", year: "numeric" })}</div>
+                  <div className="mt-1 grid grid-cols-2 gap-x-3 gap-y-0.5 tabular-nums">
+                    <span className="text-muted-foreground">Injected</span><span>{fmtGBP(p.injected)}</span>
+                    <span className="text-muted-foreground">Refi in</span><span className="text-emerald-600">{fmtGBP(p.released)}</span>
+                    <span className="text-muted-foreground">Deployed</span><span className="text-red-600">−{fmtGBP(p.deployed)}</span>
+                    <span className="font-medium">Balance</span><span className={`font-medium ${neg ? "text-red-600" : ""}`}>{fmtGBP(p.balance)}</span>
+                  </div>
+                </TooltipContent>
+              </Tooltip>
+            );
+          })}
+        </div>
+      </TooltipProvider>
+    </div>
+  );
+}
