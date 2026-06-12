@@ -310,6 +310,8 @@ function PortfolioTimelinePage() {
         onDeleteInjection={deleteInjection}
       />
 
+      <BalanceChart series={balanceSeries} deals={allDeals} />
+
       <RefiSummaryStrip
         deals={allDeals}
         onOpenRefi={(id) => setRefiOpenId(id)}
