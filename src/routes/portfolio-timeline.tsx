@@ -220,6 +220,11 @@ function PortfolioTimelinePage() {
         <Button onClick={() => setAddOpen(true)}><Plus className="h-4 w-4 mr-1.5" /> Add planned deal</Button>
       </header>
 
+      <RefiSummaryStrip
+        deals={allDeals}
+        onOpenRefi={(id) => setRefiOpenId(id)}
+      />
+
       {/* Toolbar */}
       <div className="flex flex-wrap items-center gap-2 rounded-lg border bg-card px-3 py-2">
         <div className="flex items-center gap-1">
@@ -813,5 +818,113 @@ function AddPlannedDealSheet({ open, onClose, onCreated }: { open: boolean; onCl
         </SheetFooter>
       </SheetContent>
     </Sheet>
+  );
+}
+
+/* ---------- Refi summary strip ---------- */
+
+type RefiWindow = "6" | "12" | "24" | "all";
+const WINDOW_LABELS: Record<RefiWindow, string> = {
+  "6": "Next 6 months",
+  "12": "Next 12 months",
+  "24": "Next 24 months",
+  "all": "All upcoming",
+};
+
+function RefiSummaryStrip({ deals, onOpenRefi }: { deals: DealRow[]; onOpenRefi: (id: string) => void }) {
+  const [win, setWin] = useState<RefiWindow>("12");
+
+  if (deals.length === 0) return null;
+
+  const now = new Date();
+  const horizon = win === "all" ? null : addMonths(now, parseInt(win, 10));
+
+  const upcoming = deals.filter((d) =>
+    d.refiDate >= now && (horizon == null || d.refiDate <= horizon)
+  );
+
+  const refisDue = upcoming.length;
+  const capitalOut = upcoming.reduce((s, d) => s + Math.max(0, d.cashOut), 0);
+  const capitalLeftIn = deals.reduce((s, d) => s + Math.max(0, d.cashLeftIn), 0);
+
+  const weightedIn = upcoming.reduce((s, d) => s + Math.max(0, d.totalCashIn), 0);
+  const weightedOut = upcoming.reduce((s, d) => s + Math.max(0, d.cashOut), 0);
+  const avgRecycle = weightedIn > 0 ? (weightedOut / weightedIn) * 100 : 0;
+  const recycleColor =
+    weightedIn === 0 ? "text-muted-foreground"
+      : avgRecycle >= 90 ? "text-emerald-600"
+      : avgRecycle >= 60 ? "text-amber-600"
+      : "text-red-600";
+
+  const unassigned = upcoming.filter((d) => d.cashOut > 0 && !d.assignedTo);
+  const unassignedTotal = unassigned.reduce((s, d) => s + d.cashOut, 0);
+
+  const nextRefi = [...upcoming].sort((a, b) => a.refiDate.getTime() - b.refiDate.getTime())[0] ?? null;
+  const nextAssignedTo = nextRefi?.assignedTo
+    ? deals.find((d) => d.property.id === nextRefi.assignedTo)?.property.name
+    : null;
+
+  return (
+    <div className="rounded-lg border bg-card p-4 space-y-3">
+      <div className="flex items-center justify-between gap-3">
+        <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Refi overview</div>
+        <Select value={win} onValueChange={(v) => setWin(v as RefiWindow)}>
+          <SelectTrigger className="h-8 w-[170px]"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            {(["6", "12", "24", "all"] as RefiWindow[]).map((k) => (
+              <SelectItem key={k} value={k}>{WINDOW_LABELS[k]}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className={`grid gap-3 ${unassignedTotal > 0 ? "md:grid-cols-5" : "md:grid-cols-4"} grid-cols-2`}>
+        <KpiTile label="Refis due" sub={WINDOW_LABELS[win].toLowerCase()} value={String(refisDue)} />
+        <KpiTile label="Capital out" sub={`across ${refisDue} refi${refisDue === 1 ? "" : "s"}`} value={refisDue ? fmtShort(capitalOut) : "—"} />
+        <KpiTile label="Capital left in" sub="portfolio-wide" value={fmtShort(capitalLeftIn)} />
+        <KpiTile label="Avg recycle" sub="capital-weighted" value={weightedIn ? `${Math.round(avgRecycle)}%` : "—"} valueClass={recycleColor} />
+        {unassignedTotal > 0 && (
+          <button
+            onClick={() => unassigned[0] && onOpenRefi(unassigned[0].property.id)}
+            className="rounded-md border border-amber-500/40 bg-amber-500/5 px-3 py-2 text-left hover:bg-amber-500/10 transition-colors"
+          >
+            <div className="text-[10px] uppercase tracking-wide text-amber-700 dark:text-amber-400">Unassigned pull-out</div>
+            <div className="mt-0.5 text-lg font-semibold tabular-nums text-amber-700 dark:text-amber-400">{fmtShort(unassignedTotal)}</div>
+            <div className="text-[11px] text-amber-700/80 dark:text-amber-400/80">{unassigned.length} refi{unassigned.length === 1 ? "" : "s"} · click to assign</div>
+          </button>
+        )}
+      </div>
+
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-1 border-t border-border pt-3 text-sm">
+        <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Next refi</span>
+        {nextRefi ? (
+          <>
+            <span className="font-medium">{nextRefi.property.name || "Untitled"}</span>
+            <span className="text-muted-foreground">·</span>
+            <span className="tabular-nums">{nextRefi.refiDate.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}</span>
+            <span className="text-muted-foreground">·</span>
+            <span className="tabular-nums text-emerald-600">{fmtShort(nextRefi.cashOut)} out</span>
+            <span className="text-muted-foreground">·</span>
+            {nextAssignedTo ? (
+              <span className="text-muted-foreground">→ {nextAssignedTo}</span>
+            ) : (
+              <button onClick={() => onOpenRefi(nextRefi.property.id)} className="text-amber-600 hover:underline font-medium">Unassigned — assign</button>
+            )}
+          </>
+        ) : (
+          <span className="text-muted-foreground">No refis in this window.</span>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function KpiTile({ label, sub, value, valueClass }: { label: string; sub: string; value: string; valueClass?: string }) {
+  return (
+    <div className="rounded-md border bg-background px-3 py-2">
+      <div className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</div>
+      <div className={`mt-0.5 text-lg font-semibold tabular-nums ${valueClass ?? ""}`}>{value}</div>
+      <div className="text-[11px] text-muted-foreground">{sub}</div>
+    </div>
   );
 }
