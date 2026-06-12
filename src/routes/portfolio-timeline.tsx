@@ -52,6 +52,17 @@ import {
   ExternalLink,
   Trash2,
 } from "lucide-react";
+import {
+  ResponsiveContainer,
+  ComposedChart,
+  Line,
+  Area,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  ReferenceDot,
+  Tooltip as RTooltip,
+} from "recharts";
 
 export const Route = createFileRoute("/portfolio-timeline")({
   head: () => ({
@@ -298,6 +309,8 @@ function PortfolioTimelinePage() {
         onUpdateInjection={updateInjection}
         onDeleteInjection={deleteInjection}
       />
+
+      <BalanceChart series={balanceSeries} deals={allDeals} />
 
       <RefiSummaryStrip
         deals={allDeals}
@@ -1162,6 +1175,133 @@ function BalanceRow({ series, pxPerMonth, labelCol }: { series: BalancePoint[]; 
           })}
         </div>
       </TooltipProvider>
+    </div>
+  );
+}
+
+/* ---------- balance chart with refi markers ---------- */
+
+function BalanceChart({ series, deals }: { series: BalancePoint[]; deals: DealRow[] }) {
+  if (!series.length) return null;
+
+  const data = series.map((p) => ({
+    key: monthKey(p.date),
+    label: p.date.toLocaleDateString("en-GB", { month: "short", year: "2-digit" }),
+    balance: Math.round(p.balance),
+    deployed: Math.round(p.deployed),
+    released: Math.round(p.released),
+    injected: Math.round(p.injected),
+  }));
+
+  // One marker per refi event, snapped to its month bucket
+  const indexByKey = new Map(data.map((d, i) => [d.key, i]));
+  const refiMarkers = deals
+    .filter((d) => d.cashOut > 0)
+    .map((d) => {
+      const k = monthKey(d.refiDate);
+      const i = indexByKey.get(k);
+      if (i == null) return null;
+      return {
+        key: d.property.id,
+        x: data[i].label,
+        y: data[i].balance,
+        name: d.property.name || "Untitled",
+        cashOut: d.cashOut,
+        date: d.refiDate,
+      };
+    })
+    .filter((m): m is NonNullable<typeof m> => m != null);
+
+  const tickEvery = Math.max(1, Math.ceil(data.length / 14));
+
+  return (
+    <div className="rounded-lg border bg-card p-4">
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <div>
+          <h2 className="text-sm font-semibold">Monthly cash balance</h2>
+          <p className="text-xs text-muted-foreground">Starts at your starting capital, applies injections, refi releases (markers) and deal deployments each month.</p>
+        </div>
+        <div className="flex items-center gap-3 text-[11px] text-muted-foreground">
+          <span className="inline-flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-emerald-500" />Balance</span>
+          <span className="inline-flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-amber-500 ring-2 ring-amber-200" />Refi event</span>
+        </div>
+      </div>
+      <div className="h-64 w-full">
+        <ResponsiveContainer width="100%" height="100%">
+          <ComposedChart data={data} margin={{ top: 8, right: 16, left: 4, bottom: 0 }}>
+            <defs>
+              <linearGradient id="balFill" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="hsl(140 60% 45%)" stopOpacity={0.35} />
+                <stop offset="100%" stopColor="hsl(140 60% 45%)" stopOpacity={0} />
+              </linearGradient>
+            </defs>
+            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+            <XAxis
+              dataKey="label"
+              tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
+              interval={tickEvery - 1}
+              tickLine={false}
+              axisLine={{ stroke: "hsl(var(--border))" }}
+            />
+            <YAxis
+              tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
+              tickFormatter={(v) => fmtShort(Number(v))}
+              width={60}
+              tickLine={false}
+              axisLine={{ stroke: "hsl(var(--border))" }}
+            />
+            <RTooltip
+              cursor={{ stroke: "hsl(var(--border))" }}
+              content={({ active, payload, label }) => {
+                if (!active || !payload?.length) return null;
+                const row = payload[0].payload as typeof data[number];
+                return (
+                  <div className="rounded-md border bg-popover px-3 py-2 text-[11px] text-popover-foreground shadow">
+                    <div className="font-medium">{label}</div>
+                    <div className="mt-1 grid grid-cols-2 gap-x-3 gap-y-0.5 tabular-nums">
+                      <span className="text-muted-foreground">Injected</span><span>{fmtGBP(row.injected)}</span>
+                      <span className="text-muted-foreground">Refi in</span><span className="text-emerald-600">{fmtGBP(row.released)}</span>
+                      <span className="text-muted-foreground">Deployed</span><span className="text-red-600">−{fmtGBP(row.deployed)}</span>
+                      <span className="font-medium">Balance</span><span className={`font-medium ${row.balance < 0 ? "text-red-600" : ""}`}>{fmtGBP(row.balance)}</span>
+                    </div>
+                  </div>
+                );
+              }}
+            />
+            <Area type="monotone" dataKey="balance" stroke="none" fill="url(#balFill)" isAnimationActive={false} />
+            <Line
+              type="monotone"
+              dataKey="balance"
+              stroke="hsl(140 60% 40%)"
+              strokeWidth={2}
+              dot={false}
+              activeDot={{ r: 4 }}
+              isAnimationActive={false}
+            />
+            {refiMarkers.map((m) => (
+              <ReferenceDot
+                key={m.key}
+                x={m.x}
+                y={m.y}
+                r={6}
+                fill="hsl(38 92% 50%)"
+                stroke="hsl(38 92% 95%)"
+                strokeWidth={2}
+                ifOverflow="extendDomain"
+                label={{
+                  value: `↻ ${fmtShort(m.cashOut)}`,
+                  position: "top",
+                  fill: "hsl(38 92% 35%)",
+                  fontSize: 10,
+                }}
+              />
+            ))}
+          </ComposedChart>
+        </ResponsiveContainer>
+      </div>
+      {refiMarkers.length === 0 && (
+        <p className="mt-2 text-[11px] text-muted-foreground">No refinances scheduled yet — markers will appear here when a deal has cash released.</p>
+      )}
     </div>
   );
 }
