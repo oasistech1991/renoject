@@ -33,6 +33,9 @@ import { toast } from "sonner";
 import {
   buildDealRow,
   buildCashSeries,
+  buildBalanceSeries,
+  type BalancePoint,
+  type CapitalInjection,
   type DealRow,
   type PropertyLite,
   type TimelineEntry,
@@ -47,6 +50,7 @@ import {
   Lock,
   Unlock,
   ExternalLink,
+  Trash2,
 } from "lucide-react";
 
 export const Route = createFileRoute("/portfolio-timeline")({
@@ -83,6 +87,9 @@ function PortfolioTimelinePage() {
   const [loading, setLoading] = useState(true);
   const [properties, setProperties] = useState<PropertyLite[]>([]);
   const [entries, setEntries] = useState<TimelineEntry[]>([]);
+  const [startingCapital, setStartingCapital] = useState<number>(0);
+  const [startingDateISO, setStartingDateISO] = useState<string>(() => new Date().toISOString().slice(0, 10));
+  const [injections, setInjections] = useState<Array<CapitalInjection & { id: string }>>([]);
 
   const [pxPerMonth, setPxPerMonth] = useState(28);
   const [range, setRange] = useState<RangePreset>("5y");
@@ -100,16 +107,25 @@ function PortfolioTimelinePage() {
 
   const reload = useCallback(async () => {
     setLoading(true);
-    const [{ data: props }, { data: ents }] = await Promise.all([
+    const [{ data: props }, { data: ents }, { data: capSet }, { data: injs }] = await Promise.all([
       supabase
         .from("properties")
         .select("id,name,inputs,metrics,in_portfolio,created_at")
         .eq("in_portfolio", true)
         .order("created_at", { ascending: true }),
       supabase.from("portfolio_timeline_entries").select("*"),
+      supabase.from("portfolio_capital_settings").select("*").maybeSingle(),
+      supabase.from("portfolio_capital_injections").select("*").order("date", { ascending: true }),
     ]);
     setProperties((props ?? []) as any);
     setEntries((ents ?? []) as any);
+    if (capSet) {
+      setStartingCapital(Number((capSet as any).starting_capital ?? 0));
+      setStartingDateISO(((capSet as any).starting_date as string) ?? new Date().toISOString().slice(0, 10));
+    }
+    setInjections(((injs ?? []) as any[]).map((r) => ({
+      id: r.id, date: r.date, amount: Number(r.amount ?? 0), label: r.label ?? "",
+    })));
     setLoading(false);
   }, []);
 
@@ -165,6 +181,18 @@ function PortfolioTimelinePage() {
     [months, seriesByMonth],
   );
 
+  const balanceSeries: BalancePoint[] = useMemo(
+    () => buildBalanceSeries(
+      deals,
+      startingCapital,
+      new Date(startingDateISO),
+      injections,
+      months,
+    ),
+    [deals, startingCapital, startingDateISO, injections, months],
+  );
+  const balancePoints = useMemo(() => balanceSeries.map((p) => p.balance), [balanceSeries]);
+
   async function saveEntry(propertyId: string, patch: Partial<TimelineEntry>) {
     if (!session) return;
     const existing = entries.find((e) => e.property_id === propertyId);
@@ -194,6 +222,45 @@ function PortfolioTimelinePage() {
     scrollRef.current.scrollTo({ left: Math.max(0, x + LABEL_COL - scrollRef.current.clientWidth / 2), behavior: "smooth" });
   }
 
+  async function saveCapitalSettings(next: { starting_capital?: number; starting_date?: string }) {
+    if (!session) return;
+    const payload = {
+      user_id: session.user.id,
+      starting_capital: next.starting_capital ?? startingCapital,
+      starting_date: next.starting_date ?? startingDateISO,
+    };
+    const { error } = await supabase
+      .from("portfolio_capital_settings")
+      .upsert(payload, { onConflict: "user_id" });
+    if (error) { toast.error(error.message); return; }
+    if (next.starting_capital !== undefined) setStartingCapital(next.starting_capital);
+    if (next.starting_date !== undefined) setStartingDateISO(next.starting_date);
+  }
+
+  async function addInjection() {
+    if (!session) return;
+    const today = new Date().toISOString().slice(0, 10);
+    const { data, error } = await supabase
+      .from("portfolio_capital_injections")
+      .insert({ user_id: session.user.id, date: today, amount: 0, label: "" })
+      .select()
+      .single();
+    if (error) { toast.error(error.message); return; }
+    setInjections((prev) => [...prev, { id: (data as any).id, date: (data as any).date, amount: Number((data as any).amount ?? 0), label: (data as any).label ?? "" }]);
+  }
+
+  async function updateInjection(id: string, patch: Partial<CapitalInjection>) {
+    setInjections((prev) => prev.map((i) => (i.id === id ? { ...i, ...patch } : i)));
+    const { error } = await supabase.from("portfolio_capital_injections").update(patch as any).eq("id", id);
+    if (error) toast.error(error.message);
+  }
+
+  async function deleteInjection(id: string) {
+    setInjections((prev) => prev.filter((i) => i.id !== id));
+    const { error } = await supabase.from("portfolio_capital_injections").delete().eq("id", id);
+    if (error) toast.error(error.message);
+  }
+
   if (!session) {
     return (
       <div className="mx-auto max-w-3xl px-6 py-16 text-center">
@@ -219,6 +286,18 @@ function PortfolioTimelinePage() {
         </div>
         <Button onClick={() => setAddOpen(true)}><Plus className="h-4 w-4 mr-1.5" /> Add planned deal</Button>
       </header>
+
+      <CapitalSetupCard
+        startingCapital={startingCapital}
+        startingDate={startingDateISO}
+        injections={injections}
+        currentBalance={balancePoints[balancePoints.length - 1] ?? 0}
+        onChangeStarting={(v) => saveCapitalSettings({ starting_capital: v })}
+        onChangeStartingDate={(v) => saveCapitalSettings({ starting_date: v })}
+        onAddInjection={addInjection}
+        onUpdateInjection={updateInjection}
+        onDeleteInjection={deleteInjection}
+      />
 
       <RefiSummaryStrip
         deals={allDeals}
@@ -260,7 +339,8 @@ function PortfolioTimelinePage() {
           <div style={{ width: LABEL_COL + chartWidth, minWidth: "100%" }}>
             <CapitalOverlay
               months={months}
-              points={freePoints}
+              points={balancePoints}
+              label="Cash balance"
               pxPerMonth={pxPerMonth}
               labelCol={LABEL_COL}
               startDate={startDate}
@@ -282,6 +362,11 @@ function PortfolioTimelinePage() {
               ))}
             </div>
             <Legend />
+            <BalanceRow
+              series={balanceSeries}
+              pxPerMonth={pxPerMonth}
+              labelCol={LABEL_COL}
+            />
           </div>
         </div>
       )}
@@ -361,7 +446,7 @@ function AxisRow({ months, pxPerMonth, labelCol, startDate }: { months: Date[]; 
   );
 }
 
-function CapitalOverlay({ months, points, pxPerMonth, labelCol, startDate }: { months: Date[]; points: number[]; pxPerMonth: number; labelCol: number; startDate: Date }) {
+function CapitalOverlay({ months, points, pxPerMonth, labelCol, startDate, label = "Free capital" }: { months: Date[]; points: number[]; pxPerMonth: number; labelCol: number; startDate: Date; label?: string }) {
   const width = months.length * pxPerMonth;
   const height = 80;
   const max = Math.max(1, ...points.map(Math.abs));
@@ -382,7 +467,7 @@ function CapitalOverlay({ months, points, pxPerMonth, labelCol, startDate }: { m
     <div className="flex border-b border-border bg-card">
       <div style={{ width: labelCol, height }} className="border-r border-border flex items-center px-3 text-xs text-muted-foreground">
         <div>
-          <div className="text-[10px] uppercase tracking-wide">Free capital</div>
+          <div className="text-[10px] uppercase tracking-wide">{label}</div>
           <div className="font-medium text-foreground tabular-nums">{fmtShort(points[points.length - 1] ?? 0)}</div>
         </div>
       </div>
@@ -925,6 +1010,158 @@ function KpiTile({ label, sub, value, valueClass }: { label: string; sub: string
       <div className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</div>
       <div className={`mt-0.5 text-lg font-semibold tabular-nums ${valueClass ?? ""}`}>{value}</div>
       <div className="text-[11px] text-muted-foreground">{sub}</div>
+    </div>
+  );
+}
+
+/* ---------- capital setup card ---------- */
+
+function CapitalSetupCard({
+  startingCapital,
+  startingDate,
+  injections,
+  currentBalance,
+  onChangeStarting,
+  onChangeStartingDate,
+  onAddInjection,
+  onUpdateInjection,
+  onDeleteInjection,
+}: {
+  startingCapital: number;
+  startingDate: string;
+  injections: Array<CapitalInjection & { id: string }>;
+  currentBalance: number;
+  onChangeStarting: (v: number) => void;
+  onChangeStartingDate: (v: string) => void;
+  onAddInjection: () => void;
+  onUpdateInjection: (id: string, patch: Partial<CapitalInjection>) => void;
+  onDeleteInjection: (id: string) => void;
+}) {
+  const [localStart, setLocalStart] = useState(String(startingCapital));
+  useEffect(() => { setLocalStart(String(startingCapital)); }, [startingCapital]);
+
+  return (
+    <div className="rounded-lg border bg-card p-4">
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div className="flex flex-wrap items-end gap-3">
+          <div>
+            <Label className="text-xs font-medium text-muted-foreground">Starting capital</Label>
+            <div className="relative mt-1">
+              <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">£</span>
+              <Input
+                type="number"
+                inputMode="decimal"
+                value={localStart}
+                onChange={(e) => setLocalStart(e.target.value)}
+                onBlur={() => {
+                  const n = parseFloat(localStart) || 0;
+                  if (n !== startingCapital) onChangeStarting(n);
+                }}
+                className="pl-7 w-40 tabular-nums"
+              />
+            </div>
+          </div>
+          <div>
+            <Label className="text-xs font-medium text-muted-foreground">From</Label>
+            <Input
+              type="date"
+              value={startingDate}
+              onChange={(e) => onChangeStartingDate(e.target.value)}
+              className="mt-1 w-40"
+            />
+          </div>
+        </div>
+        <div className="text-right">
+          <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Cash balance now</div>
+          <div className={`text-2xl font-semibold tabular-nums ${currentBalance < 0 ? "text-red-600" : "text-emerald-600"}`}>{fmtGBP(currentBalance)}</div>
+        </div>
+      </div>
+
+      <div className="mt-4 border-t pt-3">
+        <div className="flex items-center justify-between">
+          <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Cash injections (personal funds, etc.)</div>
+          <Button size="sm" variant="outline" onClick={onAddInjection}><Plus className="h-3.5 w-3.5 mr-1" />Add</Button>
+        </div>
+
+        {injections.length === 0 ? (
+          <p className="mt-2 text-xs text-muted-foreground">No injections yet. Add money coming in from outside the portfolio (savings, bonus, gifts…).</p>
+        ) : (
+          <div className="mt-2 space-y-1.5">
+            {injections.map((inj) => (
+              <div key={inj.id} className="flex flex-wrap items-center gap-2">
+                <Input
+                  type="date"
+                  value={inj.date}
+                  onChange={(e) => onUpdateInjection(inj.id, { date: e.target.value })}
+                  className="h-8 w-40"
+                />
+                <div className="relative">
+                  <span className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">£</span>
+                  <Input
+                    type="number"
+                    inputMode="decimal"
+                    value={String(inj.amount)}
+                    onChange={(e) => onUpdateInjection(inj.id, { amount: parseFloat(e.target.value) || 0 })}
+                    className="h-8 w-32 pl-6 tabular-nums"
+                  />
+                </div>
+                <Input
+                  type="text"
+                  placeholder="Label (e.g. Personal savings)"
+                  value={inj.label ?? ""}
+                  onChange={(e) => onUpdateInjection(inj.id, { label: e.target.value })}
+                  className="h-8 flex-1 min-w-[180px]"
+                />
+                <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => onDeleteInjection(inj.id)} title="Delete injection">
+                  <Trash2 className="h-4 w-4 text-muted-foreground" />
+                </Button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ---------- bottom balance row ---------- */
+
+function BalanceRow({ series, pxPerMonth, labelCol }: { series: BalancePoint[]; pxPerMonth: number; labelCol: number }) {
+  const showLabel = pxPerMonth >= 36;
+  return (
+    <div className="sticky bottom-0 z-10 flex border-t-2 border-border bg-card/95 backdrop-blur">
+      <div style={{ width: labelCol }} className="border-r border-border px-3 py-2 text-xs">
+        <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Cash balance</div>
+        <div className="font-medium tabular-nums">{series.length ? fmtShort(series[series.length - 1].balance) : "—"}</div>
+      </div>
+      <TooltipProvider delayDuration={100}>
+        <div className="relative flex" style={{ width: series.length * pxPerMonth }}>
+          {series.map((p, i) => {
+            const neg = p.balance < 0;
+            return (
+              <Tooltip key={i}>
+                <TooltipTrigger asChild>
+                  <div
+                    className={`flex items-center justify-center border-r border-border/40 text-[10px] tabular-nums ${neg ? "text-red-600 bg-red-500/5" : "text-foreground"}`}
+                    style={{ width: pxPerMonth, height: 36 }}
+                  >
+                    {showLabel ? fmtShort(p.balance) : ""}
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent side="top" className="text-[11px]">
+                  <div className="font-medium">{p.date.toLocaleDateString("en-GB", { month: "short", year: "numeric" })}</div>
+                  <div className="mt-1 grid grid-cols-2 gap-x-3 gap-y-0.5 tabular-nums">
+                    <span className="text-muted-foreground">Injected</span><span>{fmtGBP(p.injected)}</span>
+                    <span className="text-muted-foreground">Refi in</span><span className="text-emerald-600">{fmtGBP(p.released)}</span>
+                    <span className="text-muted-foreground">Deployed</span><span className="text-red-600">−{fmtGBP(p.deployed)}</span>
+                    <span className="font-medium">Balance</span><span className={`font-medium ${neg ? "text-red-600" : ""}`}>{fmtGBP(p.balance)}</span>
+                  </div>
+                </TooltipContent>
+              </Tooltip>
+            );
+          })}
+        </div>
+      </TooltipProvider>
     </div>
   );
 }

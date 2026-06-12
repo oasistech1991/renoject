@@ -102,6 +102,97 @@ export function monthLabel(d: Date): string {
   return d.toLocaleDateString("en-GB", { month: "short", year: "2-digit" });
 }
 
+export interface CapitalInjection {
+  id?: string;
+  date: string; // YYYY-MM-DD
+  amount: number;
+  label?: string | null;
+}
+
+export interface BalancePoint {
+  month: string;
+  date: Date;
+  deployed: number;
+  released: number;
+  injected: number;
+  balance: number;
+}
+
+/** Running monthly cash balance = starting capital + injections + refi releases - deployments. */
+export function buildBalanceSeries(
+  deals: DealRow[],
+  startingCapital: number,
+  startingDate: Date,
+  injections: CapitalInjection[],
+  axisMonths?: Date[],
+): BalancePoint[] {
+  // Determine the month range
+  let months: Date[];
+  if (axisMonths && axisMonths.length) {
+    months = axisMonths.map((d) => {
+      const r = new Date(d); r.setDate(1); r.setHours(0, 0, 0, 0); return r;
+    });
+  } else {
+    const candidates: number[] = [startingDate.getTime()];
+    for (const d of deals) {
+      candidates.push(d.purchaseDate.getTime(), d.refiDate.getTime());
+    }
+    for (const inj of injections) {
+      const dt = new Date(inj.date).getTime();
+      if (!isNaN(dt)) candidates.push(dt);
+    }
+    const start = new Date(Math.min(...candidates));
+    start.setDate(1); start.setHours(0, 0, 0, 0);
+    const end = new Date(Math.max(...candidates));
+    end.setMonth(end.getMonth() + 6);
+    months = [];
+    for (let d = new Date(start); d <= end; d.setMonth(d.getMonth() + 1)) {
+      months.push(new Date(d));
+    }
+  }
+
+  const deployByKey = new Map<string, number>();
+  const releaseByKey = new Map<string, number>();
+  const injectByKey = new Map<string, number>();
+  for (const deal of deals) {
+    const pk = monthKey(deal.purchaseDate);
+    deployByKey.set(pk, (deployByKey.get(pk) ?? 0) + deal.totalCashIn);
+    if (deal.cashOut > 0) {
+      const rk = monthKey(deal.refiDate);
+      releaseByKey.set(rk, (releaseByKey.get(rk) ?? 0) + deal.cashOut);
+    }
+  }
+  for (const inj of injections) {
+    const dt = new Date(inj.date);
+    if (isNaN(dt.getTime())) continue;
+    const k = monthKey(dt);
+    injectByKey.set(k, (injectByKey.get(k) ?? 0) + Number(inj.amount || 0));
+  }
+
+  const startKey = monthKey(startingDate);
+  let balance = 0;
+  let seeded = false;
+  return months.map((d) => {
+    const k = monthKey(d);
+    if (!seeded && k >= startKey) {
+      balance += startingCapital;
+      seeded = true;
+    }
+    const deployed = deployByKey.get(k) ?? 0;
+    const released = releaseByKey.get(k) ?? 0;
+    const injected = injectByKey.get(k) ?? 0;
+    balance += injected + released - deployed;
+    return {
+      month: monthLabel(d),
+      date: new Date(d),
+      deployed,
+      released,
+      injected,
+      balance,
+    };
+  });
+}
+
 /** Build month-by-month cash series for cumulative chart. */
 export function buildCashSeries(deals: DealRow[]): Array<{
   month: string;
