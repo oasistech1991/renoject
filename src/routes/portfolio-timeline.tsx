@@ -287,6 +287,18 @@ function PortfolioTimelinePage() {
         <Button onClick={() => setAddOpen(true)}><Plus className="h-4 w-4 mr-1.5" /> Add planned deal</Button>
       </header>
 
+      <CapitalSetupCard
+        startingCapital={startingCapital}
+        startingDate={startingDateISO}
+        injections={injections}
+        currentBalance={balancePoints[balancePoints.length - 1] ?? 0}
+        onChangeStarting={(v) => saveCapitalSettings({ starting_capital: v })}
+        onChangeStartingDate={(v) => saveCapitalSettings({ starting_date: v })}
+        onAddInjection={addInjection}
+        onUpdateInjection={updateInjection}
+        onDeleteInjection={deleteInjection}
+      />
+
       <RefiSummaryStrip
         deals={allDeals}
         onOpenRefi={(id) => setRefiOpenId(id)}
@@ -327,7 +339,8 @@ function PortfolioTimelinePage() {
           <div style={{ width: LABEL_COL + chartWidth, minWidth: "100%" }}>
             <CapitalOverlay
               months={months}
-              points={freePoints}
+              points={balancePoints}
+              label="Cash balance"
               pxPerMonth={pxPerMonth}
               labelCol={LABEL_COL}
               startDate={startDate}
@@ -349,6 +362,11 @@ function PortfolioTimelinePage() {
               ))}
             </div>
             <Legend />
+            <BalanceRow
+              series={balanceSeries}
+              pxPerMonth={pxPerMonth}
+              labelCol={LABEL_COL}
+            />
           </div>
         </div>
       )}
