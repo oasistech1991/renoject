@@ -181,6 +181,18 @@ function PortfolioTimelinePage() {
     [months, seriesByMonth],
   );
 
+  const balanceSeries: BalancePoint[] = useMemo(
+    () => buildBalanceSeries(
+      deals,
+      startingCapital,
+      new Date(startingDateISO),
+      injections,
+      months,
+    ),
+    [deals, startingCapital, startingDateISO, injections, months],
+  );
+  const balancePoints = useMemo(() => balanceSeries.map((p) => p.balance), [balanceSeries]);
+
   async function saveEntry(propertyId: string, patch: Partial<TimelineEntry>) {
     if (!session) return;
     const existing = entries.find((e) => e.property_id === propertyId);
