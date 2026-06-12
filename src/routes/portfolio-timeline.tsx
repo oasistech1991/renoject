@@ -33,6 +33,9 @@ import { toast } from "sonner";
 import {
   buildDealRow,
   buildCashSeries,
+  buildBalanceSeries,
+  type BalancePoint,
+  type CapitalInjection,
   type DealRow,
   type PropertyLite,
   type TimelineEntry,
@@ -47,6 +50,7 @@ import {
   Lock,
   Unlock,
   ExternalLink,
+  Trash2,
 } from "lucide-react";
 
 export const Route = createFileRoute("/portfolio-timeline")({
