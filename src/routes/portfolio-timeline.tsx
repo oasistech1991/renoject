@@ -52,6 +52,17 @@ import {
   ExternalLink,
   Trash2,
 } from "lucide-react";
+import {
+  ResponsiveContainer,
+  ComposedChart,
+  Line,
+  Area,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  ReferenceDot,
+  Tooltip as RTooltip,
+} from "recharts";
 
 export const Route = createFileRoute("/portfolio-timeline")({
   head: () => ({
