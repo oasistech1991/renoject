@@ -220,6 +220,11 @@ function PortfolioTimelinePage() {
         <Button onClick={() => setAddOpen(true)}><Plus className="h-4 w-4 mr-1.5" /> Add planned deal</Button>
       </header>
 
+      <RefiSummaryStrip
+        deals={allDeals}
+        onOpenRefi={(id) => setRefiOpenId(id)}
+      />
+
       {/* Toolbar */}
       <div className="flex flex-wrap items-center gap-2 rounded-lg border bg-card px-3 py-2">
         <div className="flex items-center gap-1">
