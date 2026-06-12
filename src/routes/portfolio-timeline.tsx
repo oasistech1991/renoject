@@ -287,6 +287,16 @@ function PortfolioTimelinePage() {
         allDeals={allDeals}
         onClose={() => setRefiOpenId(null)}
         onSave={(patch) => refiDeal && saveEntry(refiDeal.property.id, patch)}
+        onSaveProperty={async (propertyId, patch) => {
+          const target = properties.find((p) => p.id === propertyId);
+          if (!target) return;
+          const nextInputs = { ...(target.inputs ?? {}), ...patch.inputs };
+          const update: any = { inputs: nextInputs };
+          if (patch.name !== undefined) update.name = patch.name;
+          const { error } = await supabase.from("properties").update(update).eq("id", propertyId);
+          if (error) { toast.error(error.message); return; }
+          setProperties((prev) => prev.map((p) => p.id === propertyId ? { ...p, ...update } as any : p));
+        }}
       />
 
       <AddPlannedDealSheet
