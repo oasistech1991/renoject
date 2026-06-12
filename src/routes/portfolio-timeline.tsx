@@ -87,6 +87,9 @@ function PortfolioTimelinePage() {
   const [loading, setLoading] = useState(true);
   const [properties, setProperties] = useState<PropertyLite[]>([]);
   const [entries, setEntries] = useState<TimelineEntry[]>([]);
+  const [startingCapital, setStartingCapital] = useState<number>(0);
+  const [startingDateISO, setStartingDateISO] = useState<string>(() => new Date().toISOString().slice(0, 10));
+  const [injections, setInjections] = useState<Array<CapitalInjection & { id: string }>>([]);
 
   const [pxPerMonth, setPxPerMonth] = useState(28);
   const [range, setRange] = useState<RangePreset>("5y");
@@ -104,16 +107,25 @@ function PortfolioTimelinePage() {
 
   const reload = useCallback(async () => {
     setLoading(true);
-    const [{ data: props }, { data: ents }] = await Promise.all([
+    const [{ data: props }, { data: ents }, { data: capSet }, { data: injs }] = await Promise.all([
       supabase
         .from("properties")
         .select("id,name,inputs,metrics,in_portfolio,created_at")
         .eq("in_portfolio", true)
         .order("created_at", { ascending: true }),
       supabase.from("portfolio_timeline_entries").select("*"),
+      supabase.from("portfolio_capital_settings").select("*").maybeSingle(),
+      supabase.from("portfolio_capital_injections").select("*").order("date", { ascending: true }),
     ]);
     setProperties((props ?? []) as any);
     setEntries((ents ?? []) as any);
+    if (capSet) {
+      setStartingCapital(Number((capSet as any).starting_capital ?? 0));
+      setStartingDateISO(((capSet as any).starting_date as string) ?? new Date().toISOString().slice(0, 10));
+    }
+    setInjections(((injs ?? []) as any[]).map((r) => ({
+      id: r.id, date: r.date, amount: Number(r.amount ?? 0), label: r.label ?? "",
+    })));
     setLoading(false);
   }, []);
 
