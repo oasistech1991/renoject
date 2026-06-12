@@ -1,85 +1,101 @@
 
-# Portfolio Timeline — manage capital recycling across deals
+# Portfolio Timeline → Gantt-only command centre
 
-A new `/portfolio-timeline` page (signed-in) that turns your saved Properties (those marked "in portfolio") into a multi-deal capital plan: when each deal refinances, how much cash comes out, and which next deal that cash is earmarked for.
+Strip the page back to ONE primary visual: a rich, interactive Gantt that shows every portfolio deal on a shared time axis, with a capital overlay above it and a refi drill-down panel beside it. The waterfall, Sankey, and redeployment table are removed.
 
-## What you'll see
+## Layout
 
-Four linked views on one page, all driven by the same deal list at the top.
+```text
+┌────────────────────────────────────────────────────────────┐
+│  Toolbar:  [Zoom −/+]  [Today]  [Range: 2y · 5y · 10y]      │
+│            [Filter: status ▼]   [+ Add planned deal]        │
+├────────────────────────────────────────────────────────────┤
+│  Free-capital overlay (area chart, same x-axis as Gantt)    │
+│  · shaded red when < £0, green when > £0                    │
+│  · hover = month total, deployed, released, free            │
+├────────────────────────────────────────────────────────────┤
+│  Month/quarter/year axis · TODAY vertical line              │
+│  ──────────────────────────────────────────────────────     │
+│  Deal A  ▓▓▓▓▒▒▒▒│●─────────────────────                    │
+│  Deal B          ▓▓▓▓│●──────────────                       │
+│  Deal C                    ▓▓▓▓│●──────                     │
+│  …                                                          │
+└────────────────────────────────────────────────────────────┘
+        (click a ● refi marker → side sheet opens)
+```
 
-### 1. Gantt timeline (primary)
-Horizontal bars, one per deal, on a month-by-month axis (today → +5 yrs by default, zoomable).
-Each bar segments:
-- Purchase + refurb (amber)
-- Bridging hold (red, if bridge used)
-- Refi event (vertical marker with £ pulled out)
-- Post-refi hold (green)
-- Optional sale/flip exit (grey end-cap)
+## Bar anatomy
 
-Hover a bar = deal summary. Click = open the underlying Refinance scenario.
+Each row = one deal. Segments coloured by phase:
 
-### 2. Cash waterfall (cumulative chart)
-Stacked area / line over the same time axis:
-- Cash deployed (negative) per month
-- Cash released at each refi (positive spikes)
-- Running "free capital available" line — what's sitting uncommitted
+- **Amber** — Purchase + refurb (`purchaseDate` → `purchaseDate + refurbMonths`)
+- **Red** — Bridge hold (only if `useBridge`, overlays refurb tail to bridge end)
+- **● marker** — Refi event at `refiDate` with `£ pulled out` label above
+- **Green** — Post-refi hold (refi → end of visible range or sale)
+- **Grey end-cap** — Sale/flip exit (if status = sold)
 
-Lets you spot months where you're cash-rich or about to run dry.
+On each bar:
+- Left: deal name + status pill (planned / live / refinanced / sold)
+- Inside purchase segment: `£ in: totalCashIn`
+- Above refi marker: `£ out: cashReleased` (green if positive, red if negative pull)
+- Right of bar: mini sparkline = monthly cashflow post-refi
+- Hover tooltip: GDV, refi LTV, ICR, cash left in, assigned-to deal name
 
-### 3. Sankey — capital flow
-Nodes = deals. Flows = refi proceeds from Deal A → deposit/refurb on Deal B (manual links you set). Surplus that isn't assigned flows to a "Reserve" node. Immediately shows recycled vs trapped equity.
+## Interactions
 
-### 4. Redeployment planner table
-One row per upcoming refi event, sorted by date:
+- **Drag a bar horizontally** → updates `purchase_date` (snap to month, persists on drop)
+- **Drag the refi marker** → updates `refi_month_offset` (snap to month)
+- **Resize right edge** → adjusts post-refi hold for visual planning (display only)
+- **Click bar body** → opens existing Refinance scenario in new tab
+- **Click ● refi marker** → opens **Refi drill-down sheet** (right side):
+  - Source deal summary (£ in, £ out, GDV, debt cleared)
+  - "Assign pull-out to" dropdown → other portfolio deals or Reserve
+  - Live gap calculation: "Cash available 14 May 2027 → Deal C needs deposit 02 Aug 2027 = 2.6 month buffer"
+  - Shortfall/surplus pill: `Surplus £12,400` or `Short £8,100`
+  - Notes textarea
+  - Save / delete
+- **Zoom controls**: − / + buttons change pixels-per-month; **Range** preset jumps to 2y/5y/10y window
+- **Today button** scrolls to the today line
+- **Filter** chips: All · Planned · Live · Refinanced · Sold
+- **+ Add planned deal**: opens sheet to create a stub property (name + estimated purchase price + refi LTV + purchase date) so future deals appear on the timeline before they're modelled in full
 
-| Refi date | Source deal | Cash out | Assigned to | Gap (months) | Status |
+## Capital overlay (kept from waterfall, simplified)
 
-"Assigned to" is a dropdown of your other portfolio deals (or "Reserve"). Status = on-track / short by £X / surplus £X based on the target deal's totalCashIn.
+A single thin area chart sitting flush above the Gantt, sharing its x-axis exactly:
+- Y = running free capital (£)
+- Fill green above zero, red below
+- Vertical guides on every refi marker
+- Hover shows the same month under inspection in both panels
 
-## Inputs we already have vs need
+This replaces the standalone waterfall chart — same information, half the page.
 
-The `properties` table stores `inputs` (jsonb with purchasePrice, refurbMonths, gdv, refiLtv, bridgeTermMonths, etc.) and `metrics` (cashLeftIn, cashReleased, totalCashIn). That's enough to compute £ amounts.
+## Removed
 
-What's missing per deal, for the timeline:
-- **purchase_date** (anchors the bar on the axis)
-- **refi_month_offset** (override of refurbMonths if you actually refinanced later)
-- **assigned_to_property_id** (which deal absorbs this refi's cash)
-- **status** (planned / live / refinanced / sold) — for colouring + filtering
-- **notes** (free text)
+- `CashWaterfallChart` (folded into capital overlay)
+- `CapitalFlowSankey` (deleted)
+- `RedeploymentTable` (folded into the refi drill-down sheet)
 
-## Data model
+## Data / persistence
 
-New table `portfolio_timeline_entries`:
-- `property_id` (FK → properties, unique — one row per property)
-- `user_id`
-- `purchase_date` (date)
-- `refi_month_offset` (int, nullable — falls back to inputs.refurbMonths)
-- `assigned_to_property_id` (uuid, nullable)
-- `status` (text: planned/live/refinanced/sold)
-- `notes` (text)
-- standard `created_at` / `updated_at` + RLS scoped to `user_id`
+No schema change. Existing `portfolio_timeline_entries` already has the fields we need (`purchase_date`, `refi_month_offset`, `assigned_to_property_id`, `status`, `notes`). Drag interactions call existing `upsertEntry` serverFn (debounced 400 ms on drop).
 
-Editing a row never touches the underlying `properties.inputs` — it's a planning overlay.
+The "+ Add planned deal" creates a row in `properties` with `in_portfolio: true` and a minimal `inputs` payload so it shows up alongside fully modelled deals.
 
-## File-level changes
+## Technical changes
 
-- **Migration**: create `portfolio_timeline_entries` + GRANTs + RLS (own-row only) + updated_at trigger.
-- **`src/lib/portfolio-timeline.functions.ts`** — serverFns: `listTimeline()` (joins properties + entries, computes derived fields like refi_date, cash_out, cash_in_needed), `upsertEntry(...)`, `deleteEntry(id)`. Uses `requireSupabaseAuth`.
-- **`src/lib/portfolio-timeline.ts`** — pure helpers: compute refi date, free-capital series month-by-month, sankey link builder, status calculator.
-- **`src/routes/_authenticated/portfolio-timeline.tsx`** — page route (must live under `_authenticated/` since it needs the user's deals; create `_authenticated/route.tsx` if it doesn't exist).
-- **Components** under `src/components/portfolio/`:
-  - `GanttTimeline.tsx` (SVG-based; no new dep needed)
-  - `CashWaterfallChart.tsx` (Recharts — already in project)
-  - `CapitalFlowSankey.tsx` (Recharts has Sankey)
-  - `RedeploymentTable.tsx` (shadcn Table + Select per row)
-  - `DealEditorSheet.tsx` (edit purchase_date / refi offset / assignment / status / notes)
-- **Nav**: add "Portfolio Timeline" link in the signed-in header next to Properties.
+- **`src/routes/portfolio-timeline.tsx`** — replace body with new Gantt-only layout; remove imports for Sankey/waterfall/table
+- **`src/components/portfolio/GanttTimeline.tsx`** (new) — SVG-based, virtualised rows, drag handlers using pointer events, zoom state, today line, filter
+- **`src/components/portfolio/CapitalOverlay.tsx`** (new) — recharts AreaChart locked to the Gantt's x-domain (shared scale via prop)
+- **`src/components/portfolio/RefiDrillSheet.tsx`** (new) — shadcn Sheet, assignment dropdown, gap calc, notes, save
+- **`src/components/portfolio/AddPlannedDealSheet.tsx`** (new) — minimal stub creator
+- **`src/lib/portfolio-timeline.ts`** — add `dragUpdateEntry(...)` helper, shared scale type, drop unused Sankey + redeployment helpers
+- **`src/lib/portfolio-timeline.functions.ts`** — no change beyond what already exists; reuse `upsertEntry`
 
-## Out of scope (flag for later)
+## Out of scope
 
-- Auto-suggesting which deal to assign cash to (today's plan is manual only, as you chose).
-- Tax/CGT modelling on flips.
-- Multi-scenario comparison (Plan A vs Plan B).
-- Importing dates from PDF deal packs.
+- Multi-select bulk drag
+- Undo/redo
+- Real-time collaboration cursors
+- Exporting the Gantt as PDF (can follow up if useful)
 
-Tell me if you'd rather put the page outside `_authenticated/` (public + sign-in CTA) or skip any of the 4 visuals to ship faster.
+Tell me if you'd rather keep "+ Add planned deal" out of v1, or if drag-to-edit should be behind a lock toggle (so you don't move bars by accident).
