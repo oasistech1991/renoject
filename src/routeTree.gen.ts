@@ -21,6 +21,7 @@ import { Route as PortfolioTimelineRouteImport } from './routes/portfolio-timeli
 import { Route as MarketRouteImport } from './routes/market'
 import { Route as HmoComplianceRouteImport } from './routes/hmo-compliance'
 import { Route as ForecastRouteImport } from './routes/forecast'
+import { Route as FeedRouteImport } from './routes/feed'
 import { Route as ConditionRouteImport } from './routes/condition'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AccountRouteImport } from './routes/account'
@@ -86,6 +87,11 @@ const ForecastRoute = ForecastRouteImport.update({
   path: '/forecast',
   getParentRoute: () => rootRouteImport,
 } as any)
+const FeedRoute = FeedRouteImport.update({
+  id: '/feed',
+  path: '/feed',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ConditionRoute = ConditionRouteImport.update({
   id: '/condition',
   path: '/condition',
@@ -112,6 +118,7 @@ export interface FileRoutesByFullPath {
   '/account': typeof AccountRoute
   '/auth': typeof AuthRoute
   '/condition': typeof ConditionRoute
+  '/feed': typeof FeedRoute
   '/forecast': typeof ForecastRoute
   '/hmo-compliance': typeof HmoComplianceRoute
   '/market': typeof MarketRoute
@@ -130,6 +137,7 @@ export interface FileRoutesByTo {
   '/account': typeof AccountRoute
   '/auth': typeof AuthRoute
   '/condition': typeof ConditionRoute
+  '/feed': typeof FeedRoute
   '/forecast': typeof ForecastRoute
   '/hmo-compliance': typeof HmoComplianceRoute
   '/market': typeof MarketRoute
@@ -149,6 +157,7 @@ export interface FileRoutesById {
   '/account': typeof AccountRoute
   '/auth': typeof AuthRoute
   '/condition': typeof ConditionRoute
+  '/feed': typeof FeedRoute
   '/forecast': typeof ForecastRoute
   '/hmo-compliance': typeof HmoComplianceRoute
   '/market': typeof MarketRoute
@@ -169,6 +178,7 @@ export interface FileRouteTypes {
     | '/account'
     | '/auth'
     | '/condition'
+    | '/feed'
     | '/forecast'
     | '/hmo-compliance'
     | '/market'
@@ -187,6 +197,7 @@ export interface FileRouteTypes {
     | '/account'
     | '/auth'
     | '/condition'
+    | '/feed'
     | '/forecast'
     | '/hmo-compliance'
     | '/market'
@@ -205,6 +216,7 @@ export interface FileRouteTypes {
     | '/account'
     | '/auth'
     | '/condition'
+    | '/feed'
     | '/forecast'
     | '/hmo-compliance'
     | '/market'
@@ -224,6 +236,7 @@ export interface RootRouteChildren {
   AccountRoute: typeof AccountRoute
   AuthRoute: typeof AuthRoute
   ConditionRoute: typeof ConditionRoute
+  FeedRoute: typeof FeedRoute
   ForecastRoute: typeof ForecastRoute
   HmoComplianceRoute: typeof HmoComplianceRoute
   MarketRoute: typeof MarketRoute
@@ -324,6 +337,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ForecastRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/feed': {
+      id: '/feed'
+      path: '/feed'
+      fullPath: '/feed'
+      preLoaderRoute: typeof FeedRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/condition': {
       id: '/condition'
       path: '/condition'
@@ -360,6 +380,7 @@ const rootRouteChildren: RootRouteChildren = {
   AccountRoute: AccountRoute,
   AuthRoute: AuthRoute,
   ConditionRoute: ConditionRoute,
+  FeedRoute: FeedRoute,
   ForecastRoute: ForecastRoute,
   HmoComplianceRoute: HmoComplianceRoute,
   MarketRoute: MarketRoute,
