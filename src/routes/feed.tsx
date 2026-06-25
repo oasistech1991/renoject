@@ -210,6 +210,7 @@ function FeedPage() {
         hidden_fields: (p.hidden_fields ?? []) as HidableFieldKey[],
         property: propMap.get(p.property_id) ?? null,
         cover_resolved: p.cover_url ?? coverMap[p.property_id] ?? null,
+        media: mediaByProp[p.property_id] ?? [],
         reactions: reacts,
         comment_count: commentCountMap.get(p.id) ?? 0,
         interested: interestedSet.has(p.id),
