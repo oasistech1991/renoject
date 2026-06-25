@@ -562,6 +562,119 @@ function Stat({ label, value }: { label: string; value: string }) {
   );
 }
 
+function DealTypeBadge({ dealType, className = "" }: { dealType: string | null; className?: string }) {
+  const meta = dealTypeMeta(dealType);
+  return (
+    <span
+      className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold text-white shadow-sm backdrop-blur-sm ${className}`}
+      style={{ backgroundColor: meta.color }}
+    >
+      <span className="h-1.5 w-1.5 rounded-full bg-white/90" />
+      {meta.label}
+    </span>
+  );
+}
+
+function DealMediaGallery({
+  media,
+  fallback,
+  alt,
+  dealType,
+  onImageClick,
+}: {
+  media: MediaItem[];
+  fallback: string | null;
+  alt: string;
+  dealType: string | null;
+  onImageClick?: () => void;
+}) {
+  const items: MediaItem[] = media.length
+    ? media
+    : fallback
+      ? [{ kind: "image", url: fallback }]
+      : [];
+  const [idx, setIdx] = useState(0);
+  const total = items.length;
+  const safeIdx = Math.min(idx, Math.max(0, total - 1));
+  const current = items[safeIdx];
+
+  const go = (delta: number) => {
+    if (!total) return;
+    setIdx((i) => (i + delta + total) % total);
+  };
+
+  return (
+    <div className="group relative aspect-[16/9] w-full overflow-hidden bg-muted">
+      {current ? (
+        current.kind === "video" ? (
+          <video
+            key={current.url}
+            src={current.url}
+            controls
+            preload="metadata"
+            playsInline
+            className="h-full w-full object-cover"
+          />
+        ) : (
+          <button
+            type="button"
+            onClick={onImageClick}
+            className="block h-full w-full"
+            aria-label={`Open ${alt}`}
+          >
+            <img src={current.url} alt={alt} className="h-full w-full object-cover" />
+          </button>
+        )
+      ) : (
+        <div className="flex h-full w-full items-center justify-center text-muted-foreground">
+          <ImageOff className="h-8 w-8 opacity-50" />
+        </div>
+      )}
+
+      <div className="pointer-events-none absolute left-3 top-3">
+        <DealTypeBadge dealType={dealType} />
+      </div>
+
+      {total > 1 && (
+        <>
+          <div className="pointer-events-none absolute right-3 top-3 rounded-full bg-black/55 px-2 py-0.5 text-[11px] font-medium text-white">
+            {safeIdx + 1} / {total}
+          </div>
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); go(-1); }}
+            className="absolute left-2 top-1/2 hidden -translate-y-1/2 rounded-full bg-black/50 p-1.5 text-white opacity-0 transition-opacity group-hover:opacity-100 sm:block"
+            aria-label="Previous"
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </button>
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); go(1); }}
+            className="absolute right-2 top-1/2 hidden -translate-y-1/2 rounded-full bg-black/50 p-1.5 text-white opacity-0 transition-opacity group-hover:opacity-100 sm:block"
+            aria-label="Next"
+          >
+            <ChevronRight className="h-4 w-4" />
+          </button>
+          <div className="absolute inset-x-0 bottom-2 flex justify-center gap-1.5">
+            {items.map((_, i) => (
+              <button
+                key={i}
+                type="button"
+                onClick={(e) => { e.stopPropagation(); setIdx(i); }}
+                className={`h-1.5 rounded-full transition-all ${
+                  i === safeIdx ? "w-5 bg-white" : "w-1.5 bg-white/60 hover:bg-white/80"
+                }`}
+                aria-label={`Go to slide ${i + 1}`}
+              />
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 function PollBlock({
   price, yes, no, myVote, onVote,
 }: {
