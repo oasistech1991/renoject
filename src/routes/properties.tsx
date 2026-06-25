@@ -283,6 +283,32 @@ function PropertiesPage() {
     }
   };
 
+  const toggleFeed = async (propertyId: string, next: boolean) => {
+    const prev = new Set(feedPostIds);
+    const updated = new Set(feedPostIds);
+    if (next) updated.add(propertyId); else updated.delete(propertyId);
+    setFeedPostIds(updated);
+    const { data: sess } = await supabase.auth.getSession();
+    const userId = sess?.session?.user?.id;
+    if (!userId) {
+      alert("Sign in to publish to the client feed.");
+      setFeedPostIds(prev);
+      return;
+    }
+    if (next) {
+      const { error } = await supabase
+        .from("feed_posts")
+        .upsert(
+          { property_id: propertyId, author_id: userId, is_published: true } as any,
+          { onConflict: "property_id" },
+        );
+      if (error) { alert(error.message); setFeedPostIds(prev); }
+    } else {
+      const { error } = await supabase.from("feed_posts").delete().eq("property_id", propertyId);
+      if (error) { alert(error.message); setFeedPostIds(prev); }
+    }
+  };
+
   const visibleRows = rows.filter((r) => {
     if (filter === "all") return true;
     if (filter === "none") return !r.source;
