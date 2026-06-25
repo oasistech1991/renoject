@@ -446,18 +446,17 @@ function PostCard({
 
   const authorName = profile?.display_name ?? "Renoject";
   const date = new Date(post.created_at).toLocaleDateString();
+  const dealMeta = dealTypeMeta(post.deal_type);
 
   return (
     <article className="overflow-hidden rounded-xl border border-border bg-card">
-      {post.cover_resolved && (
-        <button onClick={onOpen} className="block w-full">
-          <img
-            src={post.cover_resolved}
-            alt={prop?.name ?? "Deal"}
-            className="aspect-[16/9] w-full object-cover"
-          />
-        </button>
-      )}
+      <DealMediaGallery
+        media={post.media}
+        fallback={post.cover_resolved}
+        alt={prop?.name ?? "Deal"}
+        dealType={post.deal_type}
+        onImageClick={onOpen}
+      />
       <div className="p-5">
         <div className="flex items-center gap-3">
           <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/20 text-sm font-semibold text-primary">
@@ -475,19 +474,20 @@ function PostCard({
 
         {post.caption && <p className="mt-2 whitespace-pre-wrap text-sm">{post.caption}</p>}
 
-        <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <Stat label="GDV" value={fmtGBP(inputs.gdv ?? 0)} />
+        <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
           {!hidden.has("purchasePrice") && (
-            <Stat label="Purchase" value={fmtGBP(inputs.purchasePrice ?? 0)} />
+            <Stat label="PP" value={fmtGBP(inputs.purchasePrice ?? 0)} />
           )}
+          {!hidden.has("refurbCost") && (
+            <Stat label="Refurb" value={fmtGBP(inputs.refurbCost ?? 0)} />
+          )}
+          <Stat label="End value" value={fmtGBP(inputs.gdv ?? 0)} />
+          <Stat label="Rent" value={fmtGBP(inputs.monthlyRent ?? 0)} />
+          <Stat label="Net cashflow" value={fmtGBP(metrics.monthlyCashflowIO ?? 0)} />
+          <Stat label="ROI" value={fmtPct(metrics.roiOnCashLeftIn ?? 0)} />
           <Stat label="Cash left in" value={fmtGBP(Math.max(0, metrics.cashLeftIn ?? 0))} />
-          <Stat label="Monthly CF" value={fmtGBP(metrics.monthlyCashflowIO ?? 0)} />
           {post.display_mode === "full" && (
             <>
-              <Stat label="ROI" value={fmtPct(metrics.roiOnCashLeftIn ?? 0)} />
-              {!hidden.has("refurbCost") && (
-                <Stat label="Refurb" value={fmtGBP(inputs.refurbCost ?? 0)} />
-              )}
               <Stat label="New loan" value={fmtGBP(metrics.newLoan ?? 0)} />
               <Stat label="Profit on paper" value={fmtGBP(metrics.profitOnPaper ?? 0)} />
             </>
