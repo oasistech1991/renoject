@@ -160,7 +160,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
             "UK property investment toolkit: BTL/BRRR calculators, HMO compliance, market search, renovation costs, forecasting, and trusted tradesmen.",
           offers: {
             "@type": "Offer",
-            price: "1.00",
+            price: "0",
             priceCurrency: "GBP",
           },
         }),
