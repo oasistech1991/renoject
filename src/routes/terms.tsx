@@ -70,7 +70,7 @@ function TermsPage() {
         particular purpose.
       </p>
 
-      <h2 className="mt-6 text-lg font-semibold">8. Liability</h2>
+      <h2 className="mt-6 text-lg font-semibold">7. Liability</h2>
       <p>
         To the fullest extent permitted by law, our aggregate liability for
         any claims arising from your use of the Service is limited to the
@@ -81,7 +81,7 @@ function TermsPage() {
         excluded.
       </p>
 
-      <h2 className="mt-6 text-lg font-semibold">9. Suspension &amp; termination</h2>
+      <h2 className="mt-6 text-lg font-semibold">8. Suspension &amp; termination</h2>
       <p>
         We may suspend or terminate access for material breach of these
         terms, non-payment, suspected fraud or security risk, or repeated
@@ -89,13 +89,13 @@ function TermsPage() {
         saved within 30 days; after that we may delete it.
       </p>
 
-      <h2 className="mt-6 text-lg font-semibold">10. Governing law</h2>
+      <h2 className="mt-6 text-lg font-semibold">9. Governing law</h2>
       <p>
         These terms are governed by the laws of England &amp; Wales, and the
         courts of England &amp; Wales have exclusive jurisdiction.
       </p>
 
-      <h2 className="mt-6 text-lg font-semibold">11. Changes</h2>
+      <h2 className="mt-6 text-lg font-semibold">10. Changes</h2>
       <p>
         We may update these terms from time to time. Material changes will be
         notified by email or in-app banner.
