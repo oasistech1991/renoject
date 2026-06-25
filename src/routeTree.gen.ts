@@ -26,6 +26,7 @@ import { Route as ConditionRouteImport } from './routes/condition'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AccountRouteImport } from './routes/account'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as FeedMapRouteImport } from './routes/feed.map'
 
 const TradesmenRoute = TradesmenRouteImport.update({
   id: '/tradesmen',
@@ -112,13 +113,18 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const FeedMapRoute = FeedMapRouteImport.update({
+  id: '/map',
+  path: '/map',
+  getParentRoute: () => FeedRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/account': typeof AccountRoute
   '/auth': typeof AuthRoute
   '/condition': typeof ConditionRoute
-  '/feed': typeof FeedRoute
+  '/feed': typeof FeedRouteWithChildren
   '/forecast': typeof ForecastRoute
   '/hmo-compliance': typeof HmoComplianceRoute
   '/market': typeof MarketRoute
@@ -131,13 +137,14 @@ export interface FileRoutesByFullPath {
   '/terms': typeof TermsRoute
   '/tokenize': typeof TokenizeRoute
   '/tradesmen': typeof TradesmenRoute
+  '/feed/map': typeof FeedMapRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/account': typeof AccountRoute
   '/auth': typeof AuthRoute
   '/condition': typeof ConditionRoute
-  '/feed': typeof FeedRoute
+  '/feed': typeof FeedRouteWithChildren
   '/forecast': typeof ForecastRoute
   '/hmo-compliance': typeof HmoComplianceRoute
   '/market': typeof MarketRoute
@@ -150,6 +157,7 @@ export interface FileRoutesByTo {
   '/terms': typeof TermsRoute
   '/tokenize': typeof TokenizeRoute
   '/tradesmen': typeof TradesmenRoute
+  '/feed/map': typeof FeedMapRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -157,7 +165,7 @@ export interface FileRoutesById {
   '/account': typeof AccountRoute
   '/auth': typeof AuthRoute
   '/condition': typeof ConditionRoute
-  '/feed': typeof FeedRoute
+  '/feed': typeof FeedRouteWithChildren
   '/forecast': typeof ForecastRoute
   '/hmo-compliance': typeof HmoComplianceRoute
   '/market': typeof MarketRoute
@@ -170,6 +178,7 @@ export interface FileRoutesById {
   '/terms': typeof TermsRoute
   '/tokenize': typeof TokenizeRoute
   '/tradesmen': typeof TradesmenRoute
+  '/feed/map': typeof FeedMapRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -191,6 +200,7 @@ export interface FileRouteTypes {
     | '/terms'
     | '/tokenize'
     | '/tradesmen'
+    | '/feed/map'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -210,6 +220,7 @@ export interface FileRouteTypes {
     | '/terms'
     | '/tokenize'
     | '/tradesmen'
+    | '/feed/map'
   id:
     | '__root__'
     | '/'
@@ -229,6 +240,7 @@ export interface FileRouteTypes {
     | '/terms'
     | '/tokenize'
     | '/tradesmen'
+    | '/feed/map'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -236,7 +248,7 @@ export interface RootRouteChildren {
   AccountRoute: typeof AccountRoute
   AuthRoute: typeof AuthRoute
   ConditionRoute: typeof ConditionRoute
-  FeedRoute: typeof FeedRoute
+  FeedRoute: typeof FeedRouteWithChildren
   ForecastRoute: typeof ForecastRoute
   HmoComplianceRoute: typeof HmoComplianceRoute
   MarketRoute: typeof MarketRoute
@@ -372,15 +384,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/feed/map': {
+      id: '/feed/map'
+      path: '/map'
+      fullPath: '/feed/map'
+      preLoaderRoute: typeof FeedMapRouteImport
+      parentRoute: typeof FeedRoute
+    }
   }
 }
+
+interface FeedRouteChildren {
+  FeedMapRoute: typeof FeedMapRoute
+}
+
+const FeedRouteChildren: FeedRouteChildren = {
+  FeedMapRoute: FeedMapRoute,
+}
+
+const FeedRouteWithChildren = FeedRoute._addFileChildren(FeedRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AccountRoute: AccountRoute,
   AuthRoute: AuthRoute,
   ConditionRoute: ConditionRoute,
-  FeedRoute: FeedRoute,
+  FeedRoute: FeedRouteWithChildren,
   ForecastRoute: ForecastRoute,
   HmoComplianceRoute: HmoComplianceRoute,
   MarketRoute: MarketRoute,
