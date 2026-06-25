@@ -301,8 +301,8 @@ function AddPropertyDialog({
 }: { open: boolean; onOpenChange: (b: boolean) => void; onCreated: () => void }) {
   const [address, setAddress] = useState("");
   const [postcode, setPostcode] = useState("");
-  const [propertyType, setPropertyType] = useState("btl");
-  const [status, setStatus] = useState("sourcing");
+  const [propertyType, setPropertyType] = useState<"btl" | "hmo" | "flip" | "commercial" | "mixed" | "dev_site" | "other">("btl");
+  const [status, setStatus] = useState<"sourcing" | "under_offer" | "owned" | "refurb" | "let" | "sold">("sourcing");
   const [purchasePrice, setPurchasePrice] = useState("");
   const [currentValue, setCurrentValue] = useState("");
   const [beds, setBeds] = useState("");
@@ -338,7 +338,7 @@ function AddPropertyDialog({
           <Input placeholder="Address" value={address} onChange={(e) => setAddress(e.target.value)} />
           <Input placeholder="Postcode" value={postcode} onChange={(e) => setPostcode(e.target.value)} />
           <div className="grid grid-cols-2 gap-2">
-            <Select value={propertyType} onValueChange={setPropertyType}>
+            <Select value={propertyType} onValueChange={(v) => setPropertyType(v as typeof propertyType)}>
               <SelectTrigger><SelectValue placeholder="Type" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="btl">Buy to let</SelectItem>
@@ -350,7 +350,7 @@ function AddPropertyDialog({
                 <SelectItem value="other">Other</SelectItem>
               </SelectContent>
             </Select>
-            <Select value={status} onValueChange={setStatus}>
+            <Select value={status} onValueChange={(v) => setStatus(v as typeof status)}>
               <SelectTrigger><SelectValue placeholder="Status" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="sourcing">Sourcing</SelectItem>
