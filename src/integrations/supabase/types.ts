@@ -74,6 +74,332 @@ export type Database = {
         }
         Relationships: []
       }
+      construction_attachments: {
+        Row: {
+          created_at: string
+          id: string
+          kind: string
+          schedule_id: string
+          status: string
+          task_id: string | null
+          title: string
+          url: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          kind?: string
+          schedule_id: string
+          status?: string
+          task_id?: string | null
+          title: string
+          url?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          kind?: string
+          schedule_id?: string
+          status?: string
+          task_id?: string | null
+          title?: string
+          url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "construction_attachments_schedule_id_fkey"
+            columns: ["schedule_id"]
+            isOneToOne: false
+            referencedRelation: "construction_schedules"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "construction_attachments_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "construction_tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      construction_daily_logs: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          crew_count: number | null
+          delay_reason: string | null
+          hours_worked: number | null
+          id: string
+          log_date: string
+          notes: string | null
+          schedule_id: string
+          task_id: string | null
+          weather: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          crew_count?: number | null
+          delay_reason?: string | null
+          hours_worked?: number | null
+          id?: string
+          log_date?: string
+          notes?: string | null
+          schedule_id: string
+          task_id?: string | null
+          weather?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          crew_count?: number | null
+          delay_reason?: string | null
+          hours_worked?: number | null
+          id?: string
+          log_date?: string
+          notes?: string | null
+          schedule_id?: string
+          task_id?: string | null
+          weather?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "construction_daily_logs_schedule_id_fkey"
+            columns: ["schedule_id"]
+            isOneToOne: false
+            referencedRelation: "construction_schedules"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "construction_daily_logs_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "construction_tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      construction_phases: {
+        Row: {
+          colour: string | null
+          created_at: string
+          id: string
+          name: string
+          position: number
+          schedule_id: string
+        }
+        Insert: {
+          colour?: string | null
+          created_at?: string
+          id?: string
+          name: string
+          position?: number
+          schedule_id: string
+        }
+        Update: {
+          colour?: string | null
+          created_at?: string
+          id?: string
+          name?: string
+          position?: number
+          schedule_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "construction_phases_schedule_id_fkey"
+            columns: ["schedule_id"]
+            isOneToOne: false
+            referencedRelation: "construction_schedules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      construction_schedules: {
+        Row: {
+          colour_palette: Json
+          created_at: string
+          id: string
+          is_template: boolean
+          name: string
+          non_working_dates: string[]
+          planned_finish: string | null
+          planned_start: string | null
+          property_id: string | null
+          template_of_id: string | null
+          updated_at: string
+          user_id: string
+          working_days: number[]
+        }
+        Insert: {
+          colour_palette?: Json
+          created_at?: string
+          id?: string
+          is_template?: boolean
+          name: string
+          non_working_dates?: string[]
+          planned_finish?: string | null
+          planned_start?: string | null
+          property_id?: string | null
+          template_of_id?: string | null
+          updated_at?: string
+          user_id: string
+          working_days?: number[]
+        }
+        Update: {
+          colour_palette?: Json
+          created_at?: string
+          id?: string
+          is_template?: boolean
+          name?: string
+          non_working_dates?: string[]
+          planned_finish?: string | null
+          planned_start?: string | null
+          property_id?: string | null
+          template_of_id?: string | null
+          updated_at?: string
+          user_id?: string
+          working_days?: number[]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "construction_schedules_template_of_id_fkey"
+            columns: ["template_of_id"]
+            isOneToOne: false
+            referencedRelation: "construction_schedules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      construction_task_links: {
+        Row: {
+          created_at: string
+          from_task_id: string
+          id: string
+          lag_days: number
+          link_type: string
+          schedule_id: string
+          to_task_id: string
+        }
+        Insert: {
+          created_at?: string
+          from_task_id: string
+          id?: string
+          lag_days?: number
+          link_type?: string
+          schedule_id: string
+          to_task_id: string
+        }
+        Update: {
+          created_at?: string
+          from_task_id?: string
+          id?: string
+          lag_days?: number
+          link_type?: string
+          schedule_id?: string
+          to_task_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "construction_task_links_from_task_id_fkey"
+            columns: ["from_task_id"]
+            isOneToOne: false
+            referencedRelation: "construction_tasks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "construction_task_links_schedule_id_fkey"
+            columns: ["schedule_id"]
+            isOneToOne: false
+            referencedRelation: "construction_schedules"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "construction_task_links_to_task_id_fkey"
+            columns: ["to_task_id"]
+            isOneToOne: false
+            referencedRelation: "construction_tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      construction_tasks: {
+        Row: {
+          actual_finish: string | null
+          actual_start: string | null
+          assignee_tradesman_id: string | null
+          created_at: string
+          duration_days: number
+          id: string
+          is_milestone: boolean
+          name: string
+          notes: string | null
+          percent_complete: number
+          phase_id: string | null
+          planned_finish: string | null
+          planned_start: string | null
+          position: number
+          priority: string
+          schedule_id: string
+          trade: string | null
+          updated_at: string
+        }
+        Insert: {
+          actual_finish?: string | null
+          actual_start?: string | null
+          assignee_tradesman_id?: string | null
+          created_at?: string
+          duration_days?: number
+          id?: string
+          is_milestone?: boolean
+          name: string
+          notes?: string | null
+          percent_complete?: number
+          phase_id?: string | null
+          planned_finish?: string | null
+          planned_start?: string | null
+          position?: number
+          priority?: string
+          schedule_id: string
+          trade?: string | null
+          updated_at?: string
+        }
+        Update: {
+          actual_finish?: string | null
+          actual_start?: string | null
+          assignee_tradesman_id?: string | null
+          created_at?: string
+          duration_days?: number
+          id?: string
+          is_milestone?: boolean
+          name?: string
+          notes?: string | null
+          percent_complete?: number
+          phase_id?: string | null
+          planned_finish?: string | null
+          planned_start?: string | null
+          position?: number
+          priority?: string
+          schedule_id?: string
+          trade?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "construction_tasks_phase_id_fkey"
+            columns: ["phase_id"]
+            isOneToOne: false
+            referencedRelation: "construction_phases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "construction_tasks_schedule_id_fkey"
+            columns: ["schedule_id"]
+            isOneToOne: false
+            referencedRelation: "construction_schedules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       crm_activities: {
         Row: {
           body: string | null
