@@ -27,7 +27,7 @@ import { Route as ConditionRouteImport } from './routes/condition'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AccountRouteImport } from './routes/account'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as FeedMapRouteImport } from './routes/feed.map'
+import { Route as FeedMapRouteImport } from './routes/feed_.map'
 
 const TradesmenRoute = TradesmenRouteImport.update({
   id: '/tradesmen',
@@ -120,9 +120,9 @@ const IndexRoute = IndexRouteImport.update({
   getParentRoute: () => rootRouteImport,
 } as any)
 const FeedMapRoute = FeedMapRouteImport.update({
-  id: '/map',
-  path: '/map',
-  getParentRoute: () => FeedRoute,
+  id: '/feed_/map',
+  path: '/feed/map',
+  getParentRoute: () => rootRouteImport,
 } as any)
 
 export interface FileRoutesByFullPath {
@@ -130,7 +130,7 @@ export interface FileRoutesByFullPath {
   '/account': typeof AccountRoute
   '/auth': typeof AuthRoute
   '/condition': typeof ConditionRoute
-  '/feed': typeof FeedRouteWithChildren
+  '/feed': typeof FeedRoute
   '/forecast': typeof ForecastRoute
   '/hmo-compliance': typeof HmoComplianceRoute
   '/market': typeof MarketRoute
@@ -151,7 +151,7 @@ export interface FileRoutesByTo {
   '/account': typeof AccountRoute
   '/auth': typeof AuthRoute
   '/condition': typeof ConditionRoute
-  '/feed': typeof FeedRouteWithChildren
+  '/feed': typeof FeedRoute
   '/forecast': typeof ForecastRoute
   '/hmo-compliance': typeof HmoComplianceRoute
   '/market': typeof MarketRoute
@@ -173,7 +173,7 @@ export interface FileRoutesById {
   '/account': typeof AccountRoute
   '/auth': typeof AuthRoute
   '/condition': typeof ConditionRoute
-  '/feed': typeof FeedRouteWithChildren
+  '/feed': typeof FeedRoute
   '/forecast': typeof ForecastRoute
   '/hmo-compliance': typeof HmoComplianceRoute
   '/market': typeof MarketRoute
@@ -187,7 +187,7 @@ export interface FileRoutesById {
   '/terms': typeof TermsRoute
   '/tokenize': typeof TokenizeRoute
   '/tradesmen': typeof TradesmenRoute
-  '/feed/map': typeof FeedMapRoute
+  '/feed_/map': typeof FeedMapRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -252,7 +252,7 @@ export interface FileRouteTypes {
     | '/terms'
     | '/tokenize'
     | '/tradesmen'
-    | '/feed/map'
+    | '/feed_/map'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -260,7 +260,7 @@ export interface RootRouteChildren {
   AccountRoute: typeof AccountRoute
   AuthRoute: typeof AuthRoute
   ConditionRoute: typeof ConditionRoute
-  FeedRoute: typeof FeedRouteWithChildren
+  FeedRoute: typeof FeedRoute
   ForecastRoute: typeof ForecastRoute
   HmoComplianceRoute: typeof HmoComplianceRoute
   MarketRoute: typeof MarketRoute
@@ -274,6 +274,7 @@ export interface RootRouteChildren {
   TermsRoute: typeof TermsRoute
   TokenizeRoute: typeof TokenizeRoute
   TradesmenRoute: typeof TradesmenRoute
+  FeedMapRoute: typeof FeedMapRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -404,32 +405,22 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/feed/map': {
-      id: '/feed/map'
-      path: '/map'
+    '/feed_/map': {
+      id: '/feed_/map'
+      path: '/feed/map'
       fullPath: '/feed/map'
       preLoaderRoute: typeof FeedMapRouteImport
-      parentRoute: typeof FeedRoute
+      parentRoute: typeof rootRouteImport
     }
   }
 }
-
-interface FeedRouteChildren {
-  FeedMapRoute: typeof FeedMapRoute
-}
-
-const FeedRouteChildren: FeedRouteChildren = {
-  FeedMapRoute: FeedMapRoute,
-}
-
-const FeedRouteWithChildren = FeedRoute._addFileChildren(FeedRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AccountRoute: AccountRoute,
   AuthRoute: AuthRoute,
   ConditionRoute: ConditionRoute,
-  FeedRoute: FeedRouteWithChildren,
+  FeedRoute: FeedRoute,
   ForecastRoute: ForecastRoute,
   HmoComplianceRoute: HmoComplianceRoute,
   MarketRoute: MarketRoute,
@@ -443,6 +434,7 @@ const rootRouteChildren: RootRouteChildren = {
   TermsRoute: TermsRoute,
   TokenizeRoute: TokenizeRoute,
   TradesmenRoute: TradesmenRoute,
+  FeedMapRoute: FeedMapRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
