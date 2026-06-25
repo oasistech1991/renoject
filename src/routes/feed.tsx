@@ -6,6 +6,8 @@ import { fmtGBP, fmtPct } from "@/lib/btl";
 import {
   REACTION_EMOJI,
   HIDABLE_FIELDS,
+  DEAL_TYPES,
+  dealTypeMeta,
   type ReactionKind,
   type FeedPostRow,
   type HidableFieldKey,
@@ -24,6 +26,9 @@ import {
   Settings,
   LayoutGrid,
   Check,
+  ChevronLeft,
+  ChevronRight,
+  ImageOff,
 } from "lucide-react";
 
 export const Route = createFileRoute("/feed")({
