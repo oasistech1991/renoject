@@ -13,17 +13,21 @@ export function ProjectsBoard({ onOpenProperty }: { onOpenProperty: (id: string)
   const [projects, setProjects] = useState<Project[]>([]);
   const [props, setProps] = useState<Record<string, Property>>({});
 
+  const load = async () => {
+    const [pj, pr] = await Promise.all([
+      supabase.from("crm_projects").select("*").order("created_at", { ascending: false }),
+      supabase.from("crm_properties").select("*"),
+    ]);
+    setProjects((pj.data as Project[]) ?? []);
+    const map: Record<string, Property> = {};
+    (pr.data ?? []).forEach((p: any) => { map[p.id] = p; });
+    setProps(map);
+  };
+  useEffect(() => { load(); }, []);
   useEffect(() => {
-    (async () => {
-      const [pj, pr] = await Promise.all([
-        supabase.from("crm_projects").select("*").order("created_at", { ascending: false }),
-        supabase.from("crm_properties").select("*"),
-      ]);
-      setProjects((pj.data as Project[]) ?? []);
-      const map: Record<string, Property> = {};
-      (pr.data ?? []).forEach((p: any) => { map[p.id] = p; });
-      setProps(map);
-    })();
+    const onChanged = () => load();
+    window.addEventListener("crm:data-changed", onChanged);
+    return () => window.removeEventListener("crm:data-changed", onChanged);
   }, []);
 
   const grouped = useMemo(() => {
