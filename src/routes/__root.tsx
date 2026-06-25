@@ -31,6 +31,7 @@ import {
   Coins,
   UserCircle,
   Users,
+  User,
 } from "lucide-react";
 
 function NotFoundComponent() {
