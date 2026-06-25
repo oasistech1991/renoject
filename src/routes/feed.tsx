@@ -366,18 +366,27 @@ function FeedPage() {
             </div>
           )}
           {visiblePosts.map((p) => (
-            <PostCard
-              key={p.id}
-              post={p}
-              profile={profiles[p.author_id]}
-              userId={userId}
-              onReact={toggleReact}
-              onSave={toggleSave}
-              onInterest={expressInterest}
-              onShare={share}
-              onVote={castVote}
-              onOpen={() => setOpenPostId(p.id)}
-            />
+            <div key={p.id} className="space-y-0">
+              <PostCard
+                post={p}
+                profile={profiles[p.author_id]}
+                userId={userId}
+                onReact={toggleReact}
+                onSave={toggleSave}
+                onInterest={expressInterest}
+                onShare={share}
+                onVote={castVote}
+                onOpen={() => setOpenPostId(openPostId === p.id ? null : p.id)}
+                expanded={openPostId === p.id}
+              />
+              {openPostId === p.id && (
+                <CommentsPanel
+                  post={p}
+                  userId={userId}
+                  onChanged={loadFeed}
+                />
+              )}
+            </div>
           ))}
         </div>
       )}
@@ -388,18 +397,6 @@ function FeedPage() {
 
       {!loading && tab === "inbox" && isAdmin && (
         <InboxView posts={posts} profiles={profiles} />
-      )}
-
-      {openPostId && (
-        <PostSheet
-          post={posts.find((p) => p.id === openPostId)!}
-          userId={userId}
-          onInterest={expressInterest}
-          onClose={() => {
-            setOpenPostId(null);
-            loadFeed();
-          }}
-        />
       )}
     </div>
   );
@@ -445,6 +442,7 @@ function PostCard({
   onShare: (id: string) => void;
   onVote: (id: string, vote: "yes" | "no") => void;
   onOpen: () => void;
+  expanded?: boolean;
 }) {
   const prop = post.property;
   const inputs = prop?.inputs ?? {};
@@ -744,15 +742,14 @@ function ReactBtn({
   );
 }
 
-// ---------------- Post detail sheet (with comments) ----------------
+// ---------------- Inline comments panel ----------------
 
-function PostSheet({
-  post, userId, onInterest, onClose,
+function CommentsPanel({
+  post, userId, onChanged,
 }: {
   post: FeedPost;
   userId: string;
-  onInterest: (postId: string) => void;
-  onClose: () => void;
+  onChanged: () => void;
 }) {
   const postId = post.id;
   const [comments, setComments] = useState<Comment[]>([]);
@@ -794,66 +791,46 @@ function PostSheet({
     else {
       setBody("");
       load();
+      onChanged();
     }
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 p-0 sm:items-center sm:p-6" onClick={onClose}>
-      <div
-        className="flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-t-xl border border-border bg-card sm:rounded-xl"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <header className="flex items-center justify-between border-b border-border p-4">
-          <div className="flex items-center gap-2">
-            <h3 className="text-sm font-semibold">{post.property?.name ?? "Deal"}</h3>
-            <DealTypeBadge dealType={post.deal_type} />
-          </div>
-          <button onClick={onClose} className="text-sm text-muted-foreground hover:text-foreground">Close</button>
-        </header>
-        <div className="flex-1 space-y-3 overflow-y-auto p-4">
-          <div className="-mx-4 -mt-4">
-            <DealMediaGallery
-              media={post.media}
-              fallback={post.cover_resolved}
-              alt={post.property?.name ?? "Deal"}
-              dealType={post.deal_type}
-            />
-          </div>
-          <SpeakToTeamBlock post={post} onInterest={() => onInterest(post.id)} />
-          <div className="pt-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            Comments
-          </div>
-          {comments.length === 0 && (
-            <p className="text-sm text-muted-foreground">Be the first to comment.</p>
-          )}
-          {comments.map((c) => {
-            const name = profiles[c.user_id]?.display_name ?? "User";
-            return (
-              <div key={c.id} className="flex gap-2">
-                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/20 text-xs font-semibold text-primary">
-                  {name[0]?.toUpperCase()}
-                </div>
-                <div className="flex-1 rounded-md bg-muted/40 px-3 py-2">
-                  <div className="text-xs font-medium">{name}</div>
-                  <div className="text-sm whitespace-pre-wrap">{c.body}</div>
-                </div>
+    <div className="-mt-px rounded-b-xl border-x border-b border-border bg-card">
+      <div className="space-y-3 p-4">
+        <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          Comments
+        </div>
+        {comments.length === 0 && (
+          <p className="text-sm text-muted-foreground">Be the first to comment.</p>
+        )}
+        {comments.map((c) => {
+          const name = profiles[c.user_id]?.display_name ?? "User";
+          return (
+            <div key={c.id} className="flex gap-2">
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/20 text-xs font-semibold text-primary">
+                {name[0]?.toUpperCase()}
               </div>
-            );
-          })}
-        </div>
-        <div className="flex gap-2 border-t border-border p-3">
-          <input
-            value={body}
-            onChange={(e) => setBody(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && submit()}
-            placeholder="Write a comment…"
-            className="flex-1 rounded-md border border-border bg-background px-3 py-2 text-sm"
-            maxLength={2000}
-          />
-          <Button onClick={submit} disabled={sending || !body.trim()}>
-            <Send className="h-4 w-4" />
-          </Button>
-        </div>
+              <div className="flex-1 rounded-md bg-muted/40 px-3 py-2">
+                <div className="text-xs font-medium">{name}</div>
+                <div className="whitespace-pre-wrap text-sm">{c.body}</div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      <div className="flex gap-2 border-t border-border p-3">
+        <input
+          value={body}
+          onChange={(e) => setBody(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && submit()}
+          placeholder="Write a comment…"
+          className="flex-1 rounded-md border border-border bg-background px-3 py-2 text-sm"
+          maxLength={2000}
+        />
+        <Button onClick={submit} disabled={sending || !body.trim()}>
+          <Send className="h-4 w-4" />
+        </Button>
       </div>
     </div>
   );
