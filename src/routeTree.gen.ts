@@ -25,6 +25,7 @@ import { Route as HmoComplianceRouteImport } from './routes/hmo-compliance'
 import { Route as ForecastRouteImport } from './routes/forecast'
 import { Route as FeedRouteImport } from './routes/feed'
 import { Route as CrmRouteImport } from './routes/crm'
+import { Route as ConstructionTimelineRouteImport } from './routes/construction-timeline'
 import { Route as ConditionRouteImport } from './routes/condition'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AccountRouteImport } from './routes/account'
@@ -111,6 +112,11 @@ const CrmRoute = CrmRouteImport.update({
   path: '/crm',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ConstructionTimelineRoute = ConstructionTimelineRouteImport.update({
+  id: '/construction-timeline',
+  path: '/construction-timeline',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ConditionRoute = ConditionRouteImport.update({
   id: '/condition',
   path: '/condition',
@@ -142,6 +148,7 @@ export interface FileRoutesByFullPath {
   '/account': typeof AccountRoute
   '/auth': typeof AuthRoute
   '/condition': typeof ConditionRoute
+  '/construction-timeline': typeof ConstructionTimelineRoute
   '/crm': typeof CrmRoute
   '/feed': typeof FeedRoute
   '/forecast': typeof ForecastRoute
@@ -165,6 +172,7 @@ export interface FileRoutesByTo {
   '/account': typeof AccountRoute
   '/auth': typeof AuthRoute
   '/condition': typeof ConditionRoute
+  '/construction-timeline': typeof ConstructionTimelineRoute
   '/crm': typeof CrmRoute
   '/feed': typeof FeedRoute
   '/forecast': typeof ForecastRoute
@@ -189,6 +197,7 @@ export interface FileRoutesById {
   '/account': typeof AccountRoute
   '/auth': typeof AuthRoute
   '/condition': typeof ConditionRoute
+  '/construction-timeline': typeof ConstructionTimelineRoute
   '/crm': typeof CrmRoute
   '/feed': typeof FeedRoute
   '/forecast': typeof ForecastRoute
@@ -214,6 +223,7 @@ export interface FileRouteTypes {
     | '/account'
     | '/auth'
     | '/condition'
+    | '/construction-timeline'
     | '/crm'
     | '/feed'
     | '/forecast'
@@ -237,6 +247,7 @@ export interface FileRouteTypes {
     | '/account'
     | '/auth'
     | '/condition'
+    | '/construction-timeline'
     | '/crm'
     | '/feed'
     | '/forecast'
@@ -260,6 +271,7 @@ export interface FileRouteTypes {
     | '/account'
     | '/auth'
     | '/condition'
+    | '/construction-timeline'
     | '/crm'
     | '/feed'
     | '/forecast'
@@ -284,6 +296,7 @@ export interface RootRouteChildren {
   AccountRoute: typeof AccountRoute
   AuthRoute: typeof AuthRoute
   ConditionRoute: typeof ConditionRoute
+  ConstructionTimelineRoute: typeof ConstructionTimelineRoute
   CrmRoute: typeof CrmRoute
   FeedRoute: typeof FeedRoute
   ForecastRoute: typeof ForecastRoute
@@ -417,6 +430,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CrmRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/construction-timeline': {
+      id: '/construction-timeline'
+      path: '/construction-timeline'
+      fullPath: '/construction-timeline'
+      preLoaderRoute: typeof ConstructionTimelineRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/condition': {
       id: '/condition'
       path: '/condition'
@@ -460,6 +480,7 @@ const rootRouteChildren: RootRouteChildren = {
   AccountRoute: AccountRoute,
   AuthRoute: AuthRoute,
   ConditionRoute: ConditionRoute,
+  ConstructionTimelineRoute: ConstructionTimelineRoute,
   CrmRoute: CrmRoute,
   FeedRoute: FeedRoute,
   ForecastRoute: ForecastRoute,
