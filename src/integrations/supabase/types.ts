@@ -156,6 +156,41 @@ export type Database = {
           },
         ]
       }
+      feed_poll_votes: {
+        Row: {
+          created_at: string
+          id: string
+          post_id: string
+          updated_at: string
+          user_id: string
+          vote: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          post_id: string
+          updated_at?: string
+          user_id: string
+          vote: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          post_id?: string
+          updated_at?: string
+          user_id?: string
+          vote?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "feed_poll_votes_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "feed_posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       feed_posts: {
         Row: {
           author_id: string
