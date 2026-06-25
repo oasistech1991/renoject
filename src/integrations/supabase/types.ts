@@ -2203,6 +2203,11 @@ export type Database = {
         | "snagging"
         | "complete"
         | "refinanced"
+        | "deal_agreed"
+        | "exchange"
+        | "completion"
+        | "architect"
+        | "under_construction"
       crm_project_type:
         | "light_refurb"
         | "heavy_refurb"
@@ -2406,6 +2411,11 @@ export const Constants = {
         "snagging",
         "complete",
         "refinanced",
+        "deal_agreed",
+        "exchange",
+        "completion",
+        "architect",
+        "under_construction",
       ],
       crm_project_type: [
         "light_refurb",
