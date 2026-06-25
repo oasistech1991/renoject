@@ -101,7 +101,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { property: "og:description", content: "Property investment tools by RENOJECT — Property calculator, HMO compliance checker and renovation calculator." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
-      { name: "twitter:site", content: "@RenojectHoldings" },
+      { name: "twitter:site", content: "@renoject" },
       { name: "twitter:title", content: "RENOJECT" },
       { name: "twitter:description", content: "Property investment tools by RENOJECT — Property calculator, HMO compliance checker and renovation calculator." },
       { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/c1276a80-d9e7-4e45-ab8c-0ace548ad884/id-preview-f90c6f5c--33ab3ec4-e05b-416f-827e-db8cec69c227.lovable.app-1779874236024.png" },
@@ -356,11 +356,11 @@ function AppShell({
     <>
       <div className="p-6">
         <Link to="/" className="flex items-center gap-2 text-foreground" onClick={() => setMobileOpen(false)}>
-          <span className="flex h-8 w-8 items-center justify-center rounded bg-muted-foreground/80">
-            <Home className="h-5 w-5 text-background" />
+          <span className="flex h-8 w-8 items-center justify-center rounded bg-primary font-display text-base font-extrabold text-primary-foreground">
+            R
           </span>
-          <span className="font-display text-sm font-bold uppercase tracking-tight leading-tight">
-            Renoject<br />Holdings
+          <span className="font-display text-base font-extrabold uppercase tracking-[0.18em] leading-none">
+            RENOJECT
           </span>
         </Link>
       </div>
