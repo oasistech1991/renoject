@@ -645,6 +645,101 @@ function PollOption({
   );
 }
 
+function PollBreakdown({
+  post,
+  onVote,
+}: {
+  post: FeedPost;
+  onVote: (v: "yes" | "no") => void;
+}) {
+  const price = post.property?.inputs?.purchasePrice ?? 0;
+  const yes = post.poll_yes;
+  const no = post.poll_no;
+  const total = yes + no;
+  const yesPct = total ? Math.round((yes / total) * 100) : 0;
+  const noPct = total ? 100 - yesPct : 0;
+  const myVote = post.my_vote;
+
+  return (
+    <div className="rounded-lg border border-border bg-muted/30 p-4">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            Buyer poll
+          </div>
+          <div className="mt-1 text-base font-semibold">
+            Would you buy at {fmtGBP(price)}?
+          </div>
+        </div>
+        {myVote ? (
+          <span className="inline-flex items-center gap-1 rounded-full bg-primary/15 px-2.5 py-1 text-xs font-medium text-primary">
+            <Check className="h-3.5 w-3.5" />
+            Your vote: {myVote === "yes" ? "Yes" : "No"}
+          </span>
+        ) : (
+          <span className="rounded-full bg-muted px-2.5 py-1 text-xs text-muted-foreground">
+            Not voted yet
+          </span>
+        )}
+      </div>
+
+      <div className="mt-4 grid grid-cols-3 gap-2 text-center">
+        <div className="rounded-md bg-background px-3 py-2">
+          <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Yes</div>
+          <div className="text-lg font-semibold tabular-nums">{yes}</div>
+          <div className="text-[11px] text-muted-foreground">{yesPct}%</div>
+        </div>
+        <div className="rounded-md bg-background px-3 py-2">
+          <div className="text-[10px] uppercase tracking-wider text-muted-foreground">No</div>
+          <div className="text-lg font-semibold tabular-nums">{no}</div>
+          <div className="text-[11px] text-muted-foreground">{noPct}%</div>
+        </div>
+        <div className="rounded-md bg-background px-3 py-2">
+          <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Total</div>
+          <div className="text-lg font-semibold tabular-nums">{total}</div>
+          <div className="text-[11px] text-muted-foreground">vote{total === 1 ? "" : "s"}</div>
+        </div>
+      </div>
+
+      {total > 0 && (
+        <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-muted">
+          <div
+            className="h-full bg-primary"
+            style={{ width: `${yesPct}%` }}
+            aria-label={`Yes ${yesPct}%`}
+          />
+        </div>
+      )}
+
+      <div className="mt-4 grid grid-cols-2 gap-2">
+        <PollOption
+          label="Yes, I'd buy"
+          count={yes}
+          pct={yesPct}
+          total={total}
+          selected={myVote === "yes"}
+          tone="yes"
+          onClick={() => onVote("yes")}
+        />
+        <PollOption
+          label="No, too high"
+          count={no}
+          pct={noPct}
+          total={total}
+          selected={myVote === "no"}
+          tone="no"
+          onClick={() => onVote("no")}
+        />
+      </div>
+      {myVote && (
+        <p className="mt-2 text-[11px] text-muted-foreground">
+          Tap your current choice again to clear it.
+        </p>
+      )}
+    </div>
+  );
+}
+
 function ReactBtn({
   icon, count, active, onClick,
 }: { icon: React.ReactNode; count: number; active: boolean; onClick: () => void }) {
