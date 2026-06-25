@@ -310,7 +310,7 @@ function PropertiesPage() {
             <Link to="/forecast">
               <Button size="sm" variant="outline">Portfolio forecast</Button>
             </Link>
-            <Link to="/refinance">
+            <Link to="/refinance" search={{}}>
               <Button size="sm">+ New property</Button>
             </Link>
           </div>
@@ -432,7 +432,7 @@ function PropertiesPage() {
               Open the calculator, name a deal and hit Save.
             </p>
             <div className="mt-4">
-              <Link to="/refinance">
+              <Link to="/refinance" search={{}}>
                 <Button>Open calculator</Button>
               </Link>
             </div>

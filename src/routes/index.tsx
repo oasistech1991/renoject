@@ -60,6 +60,7 @@ function Index() {
           <div className="flex flex-wrap gap-3">
             <Link
               to="/refinance"
+              search={{}}
               className="inline-flex items-center gap-2 rounded-lg bg-primary px-6 py-3 text-sm font-bold text-primary-foreground transition-all hover:opacity-90"
             >
               Open Property Calculator
@@ -92,6 +93,7 @@ function Index() {
               <Link
                 key={t.to}
                 to={t.to as "/refinance"}
+                search={{}}
                 className="group rounded-xl border border-border bg-card/60 p-5 transition-all hover:border-ring hover:bg-card"
               >
                 <div className="mb-4 flex items-start justify-between">
