@@ -13,7 +13,7 @@ import { toast } from "sonner";
 import {
   Loader2, ShieldAlert, Users, LineChart, ListChecks, Phone, Mail,
   StickyNote, CalendarClock, MessageSquare, ThumbsUp, Vote, Bookmark,
-  ArrowRightCircle, CheckCircle2, Plus, TrendingUp, AlertCircle,
+  ArrowRightCircle, CheckCircle2, Plus, TrendingUp, AlertCircle, Building2 as BuildingPlus,
 } from "lucide-react";
 import {
   Home as HomeIcon, Hammer, Building2, KeyRound, Wrench, BarChart3, Inbox,
@@ -128,6 +128,7 @@ function CrmPage() {
   const [posts, setPosts] = useState<Record<string, FeedPost>>({});
   const [activeContact, setActiveContact] = useState<Contact | null>(null);
   const [newTaskOpen, setNewTaskOpen] = useState(false);
+  const [addPropertyOpen, setAddPropertyOpen] = useState(false);
   const [activePropertyId, setActivePropertyId] = useState<string | null>(null);
   const [view, setView] = useState<string>("home");
 
@@ -198,7 +199,11 @@ function CrmPage() {
             <h1 className="text-2xl font-bold text-foreground">{VIEW_TITLE[view] ?? "CRM"}</h1>
             <p className="text-sm text-muted-foreground">{VIEW_DESC[view] ?? ""}</p>
           </div>
-          <Button onClick={() => setNewTaskOpen(true)}><Plus className="mr-1 h-4 w-4" /> New task</Button>
+          <PrimaryAction
+            view={view}
+            onAddProperty={() => setAddPropertyOpen(true)}
+            onNewTask={() => setNewTaskOpen(true)}
+          />
         </div>
 
         {view === "home" && <HomeBoard onJump={setView} />}
@@ -249,7 +254,124 @@ function CrmPage() {
         meId={userId}
         onCreated={refresh}
       />
+
+      <AddPropertyDialog
+        open={addPropertyOpen}
+        onOpenChange={setAddPropertyOpen}
+        onCreated={() => { setAddPropertyOpen(false); }}
+      />
     </div>
+  );
+}
+
+/* ===================== Contextual primary action ===================== */
+function PrimaryAction({
+  view, onAddProperty, onNewTask,
+}: { view: string; onAddProperty: () => void; onNewTask: () => void }) {
+  const dispatch = (key: string) =>
+    window.dispatchEvent(new CustomEvent("crm:primary-action", { detail: { view: key } }));
+
+  const map: Record<string, { label: string; onClick: () => void } | null> = {
+    home: { label: "Add property", onClick: onAddProperty },
+    properties: { label: "Add property", onClick: onAddProperty },
+    tenancies: { label: "New tenancy", onClick: () => { dispatch("tenancies"); toast.message("Open a property to add a tenancy"); } },
+    rent: { label: "Log payment", onClick: () => { dispatch("rent"); toast.message("Click a cell in the rent grid to log a payment"); } },
+    expenses: { label: "Add expense", onClick: () => dispatch("expenses") },
+    tasks: { label: "New task", onClick: onNewTask },
+    compliance: { label: "Add certificate", onClick: () => dispatch("compliance") },
+    documents: { label: "Upload document", onClick: () => dispatch("documents") },
+    suppliers: { label: "Add supplier", onClick: () => dispatch("suppliers") },
+    sales: { label: "Add deal", onClick: () => dispatch("sales") },
+    projects: { label: "Add project", onClick: () => dispatch("projects") },
+    lettings_legacy: { label: "Add unit", onClick: () => dispatch("lettings_legacy") },
+    leads: { label: "Add lead", onClick: () => dispatch("leads") },
+    investors: { label: "Add investor", onClick: () => dispatch("investors") },
+    reports: null,
+  };
+  const a = map[view];
+  if (!a) return null;
+  return (
+    <Button onClick={a.onClick}><Plus className="mr-1 h-4 w-4" /> {a.label}</Button>
+  );
+}
+
+/* ===================== Add property dialog ===================== */
+function AddPropertyDialog({
+  open, onOpenChange, onCreated,
+}: { open: boolean; onOpenChange: (b: boolean) => void; onCreated: () => void }) {
+  const [address, setAddress] = useState("");
+  const [postcode, setPostcode] = useState("");
+  const [propertyType, setPropertyType] = useState<"btl" | "hmo" | "flip" | "commercial" | "mixed" | "dev_site" | "other">("btl");
+  const [status, setStatus] = useState<"sourcing" | "under_offer" | "owned" | "refurb" | "let" | "sold">("sourcing");
+  const [purchasePrice, setPurchasePrice] = useState("");
+  const [currentValue, setCurrentValue] = useState("");
+  const [beds, setBeds] = useState("");
+  const [notes, setNotes] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  const save = async () => {
+    if (!address.trim()) { toast.error("Address is required"); return; }
+    setSaving(true);
+    const { error } = await supabase.from("crm_properties").insert({
+      address: address.trim(),
+      postcode: postcode.trim() || null,
+      property_type: propertyType,
+      status,
+      purchase_price: purchasePrice ? Number(purchasePrice) : null,
+      current_value: currentValue ? Number(currentValue) : null,
+      beds: beds ? Number(beds) : null,
+      notes: notes || null,
+    });
+    setSaving(false);
+    if (error) { toast.error(error.message); return; }
+    toast.success("Property added");
+    setAddress(""); setPostcode(""); setPurchasePrice(""); setCurrentValue(""); setBeds(""); setNotes("");
+    setPropertyType("btl"); setStatus("sourcing");
+    onCreated();
+  };
+
+  return (
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent className="overflow-y-auto">
+        <SheetHeader><SheetTitle>Add property</SheetTitle></SheetHeader>
+        <div className="mt-4 space-y-3">
+          <Input placeholder="Address" value={address} onChange={(e) => setAddress(e.target.value)} />
+          <Input placeholder="Postcode" value={postcode} onChange={(e) => setPostcode(e.target.value)} />
+          <div className="grid grid-cols-2 gap-2">
+            <Select value={propertyType} onValueChange={(v) => setPropertyType(v as typeof propertyType)}>
+              <SelectTrigger><SelectValue placeholder="Type" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="btl">Buy to let</SelectItem>
+                <SelectItem value="hmo">HMO</SelectItem>
+                <SelectItem value="flip">Flip</SelectItem>
+                <SelectItem value="commercial">Commercial</SelectItem>
+                <SelectItem value="mixed">Mixed use</SelectItem>
+                <SelectItem value="dev_site">Dev site</SelectItem>
+                <SelectItem value="other">Other</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={status} onValueChange={(v) => setStatus(v as typeof status)}>
+              <SelectTrigger><SelectValue placeholder="Status" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="sourcing">Sourcing</SelectItem>
+                <SelectItem value="under_offer">Under offer</SelectItem>
+                <SelectItem value="owned">Owned</SelectItem>
+                <SelectItem value="refurb">In refurb</SelectItem>
+                <SelectItem value="let">Let</SelectItem>
+                <SelectItem value="sold">Sold</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="grid grid-cols-3 gap-2">
+            <Input type="number" placeholder="Purchase £" value={purchasePrice} onChange={(e) => setPurchasePrice(e.target.value)} />
+            <Input type="number" placeholder="Value £" value={currentValue} onChange={(e) => setCurrentValue(e.target.value)} />
+            <Input type="number" placeholder="Beds" value={beds} onChange={(e) => setBeds(e.target.value)} />
+          </div>
+          <Textarea placeholder="Notes" value={notes} onChange={(e) => setNotes(e.target.value)} />
+          <Button onClick={save} disabled={saving} className="w-full">{saving ? "Saving…" : "Create property"}</Button>
+        </div>
+      </SheetContent>
+    </Sheet>
   );
 }
 
