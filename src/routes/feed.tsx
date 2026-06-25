@@ -25,12 +25,18 @@ import {
   Inbox,
   Settings,
   LayoutGrid,
-  Check,
   ChevronLeft,
   ChevronRight,
   ImageOff,
+  Phone,
+  CalendarDays,
 } from "lucide-react";
 import { Map as MapIcon } from "lucide-react";
+
+// CTA destinations for "Speak to the team". Update these to point at your
+// real booking URL / email when ready.
+const TEAM_EMAIL = "team@renoject.co.uk";
+const BOOKING_URL = "https://calendly.com/renoject/deal-call";
 
 export const Route = createFileRoute("/feed")({
   head: () => ({
@@ -388,7 +394,7 @@ function FeedPage() {
         <PostSheet
           post={posts.find((p) => p.id === openPostId)!}
           userId={userId}
-          onVote={castVote}
+          onInterest={expressInterest}
           onClose={() => {
             setOpenPostId(null);
             loadFeed();
@@ -500,15 +506,10 @@ function PostCard({
           )}
         </div>
 
-        {!hidden.has("purchasePrice") && (inputs.purchasePrice ?? 0) > 0 && (
-          <PollBlock
-            price={inputs.purchasePrice ?? 0}
-            yes={post.poll_yes}
-            no={post.poll_no}
-            myVote={post.my_vote}
-            onVote={(v) => onVote(post.id, v)}
-          />
-        )}
+        <SpeakToTeamBlock
+          post={post}
+          onInterest={() => onInterest(post.id)}
+        />
 
         <div className="mt-5 flex flex-wrap items-center gap-2 border-t border-border pt-4">
           <ReactBtn
@@ -537,15 +538,6 @@ function PostCard({
             {post.comment_count} comment{post.comment_count === 1 ? "" : "s"}
           </button>
           <div className="ml-auto flex items-center gap-2">
-            <Button
-              variant={post.interested ? "secondary" : "default"}
-              size="sm"
-              onClick={() => onInterest(post.id)}
-              disabled={post.interested}
-            >
-              <Mail className="h-3.5 w-3.5" />
-              {post.interested ? "Interest sent" : "I'm interested"}
-            </Button>
             <Button variant="ghost" size="icon" onClick={() => onSave(post.id)} title="Save">
               <Bookmark className={`h-4 w-4 ${post.saved ? "fill-current text-primary" : ""}`} />
             </Button>
@@ -681,199 +673,57 @@ function DealMediaGallery({
   );
 }
 
-function PollBlock({
-  price, yes, no, myVote, onVote,
-}: {
-  price: number;
-  yes: number;
-  no: number;
-  myVote: "yes" | "no" | null;
-  onVote: (v: "yes" | "no") => void;
-}) {
-  const total = yes + no;
-  const yesPct = total ? Math.round((yes / total) * 100) : 0;
-  const noPct = total ? 100 - yesPct : 0;
-  return (
-    <div className="mt-4 rounded-lg border border-border bg-muted/30 p-3">
-      <div className="flex items-center justify-between gap-2">
-        <div className="text-sm font-medium">
-          Would you buy at {fmtGBP(price)}?
-        </div>
-        {myVote ? (
-          <span className="inline-flex items-center gap-1 rounded-full bg-primary/15 px-2 py-0.5 text-[11px] font-medium text-primary">
-            <Check className="h-3 w-3" />
-            You voted {myVote === "yes" ? "Yes" : "No"}
-          </span>
-        ) : (
-          <span className="text-[11px] text-muted-foreground">Cast your vote</span>
-        )}
-      </div>
-      <div className="mt-3 grid grid-cols-2 gap-2">
-        <PollOption
-          label="Yes, I'd buy"
-          count={yes}
-          pct={yesPct}
-          total={total}
-          selected={myVote === "yes"}
-          tone="yes"
-          onClick={() => onVote("yes")}
-        />
-        <PollOption
-          label="No, too high"
-          count={no}
-          pct={noPct}
-          total={total}
-          selected={myVote === "no"}
-          tone="no"
-          onClick={() => onVote("no")}
-        />
-      </div>
-      <div className="mt-2 flex items-center justify-between text-[11px] text-muted-foreground">
-        <span>
-          <span className="font-medium text-foreground tabular-nums">{yes}</span> yes ·{" "}
-          <span className="font-medium text-foreground tabular-nums">{no}</span> no ·{" "}
-          {total} total vote{total === 1 ? "" : "s"}
-        </span>
-        {myVote && <span>Tap your choice again to clear it</span>}
-      </div>
-    </div>
-  );
-}
-
-function PollOption({
-  label, count, pct, total, selected, tone, onClick,
-}: {
-  label: string;
-  count: number;
-  pct: number;
-  total: number;
-  selected: boolean;
-  tone: "yes" | "no";
-  onClick: () => void;
-}) {
-  const fill = tone === "yes" ? "bg-primary/20" : "bg-muted-foreground/25";
-  return (
-    <button
-      onClick={onClick}
-      aria-pressed={selected}
-      className={`relative overflow-hidden rounded-md border px-3 py-2 text-left text-sm transition-colors ${
-        selected
-          ? "border-primary ring-2 ring-primary/40 bg-primary/10 text-foreground"
-          : "border-border hover:bg-accent"
-      }`}
-    >
-      {total > 0 && (
-        <span
-          className={`absolute inset-y-0 left-0 ${fill}`}
-          style={{ width: `${pct}%` }}
-          aria-hidden
-        />
-      )}
-      <span className="relative flex items-center justify-between gap-2">
-        <span className="flex items-center gap-1.5 font-medium">
-          {selected && <Check className="h-3.5 w-3.5 text-primary" />}
-          {label}
-        </span>
-        <span className="text-xs tabular-nums">
-          <span className="font-semibold text-foreground">{count}</span>
-          <span className="text-muted-foreground"> · {pct}%</span>
-        </span>
-      </span>
-    </button>
-  );
-}
-
-function PollBreakdown({
+function SpeakToTeamBlock({
   post,
-  onVote,
+  onInterest,
 }: {
   post: FeedPost;
-  onVote: (v: "yes" | "no") => void;
+  onInterest: () => void;
 }) {
+  const name = post.property?.name ?? "this deal";
   const price = post.property?.inputs?.purchasePrice ?? 0;
-  const yes = post.poll_yes;
-  const no = post.poll_no;
-  const total = yes + no;
-  const yesPct = total ? Math.round((yes / total) * 100) : 0;
-  const noPct = total ? 100 - yesPct : 0;
-  const myVote = post.my_vote;
-
+  const subject = encodeURIComponent(`Call about deal: ${name}`);
+  const body = encodeURIComponent(
+    `Hi Renoject team,\n\nI'd like to set up a call about "${name}"${price ? ` (PP ${fmtGBP(price)})` : ""}.\n\nBest times to chat:\n\nThanks!`,
+  );
+  const mailto = `mailto:${TEAM_EMAIL}?subject=${subject}&body=${body}`;
   return (
-    <div className="rounded-lg border border-border bg-muted/30 p-4">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            Buyer poll
-          </div>
-          <div className="mt-1 text-base font-semibold">
-            Would you buy at {fmtGBP(price)}?
-          </div>
+    <div className="mt-4 rounded-lg border border-border bg-gradient-to-br from-primary/10 via-card to-card p-4">
+      <div className="flex items-start gap-3">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/15 text-primary">
+          <Phone className="h-5 w-5" />
         </div>
-        {myVote ? (
-          <span className="inline-flex items-center gap-1 rounded-full bg-primary/15 px-2.5 py-1 text-xs font-medium text-primary">
-            <Check className="h-3.5 w-3.5" />
-            Your vote: {myVote === "yes" ? "Yes" : "No"}
-          </span>
-        ) : (
-          <span className="rounded-full bg-muted px-2.5 py-1 text-xs text-muted-foreground">
-            Not voted yet
-          </span>
-        )}
-      </div>
-
-      <div className="mt-4 grid grid-cols-3 gap-2 text-center">
-        <div className="rounded-md bg-background px-3 py-2">
-          <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Yes</div>
-          <div className="text-lg font-semibold tabular-nums">{yes}</div>
-          <div className="text-[11px] text-muted-foreground">{yesPct}%</div>
-        </div>
-        <div className="rounded-md bg-background px-3 py-2">
-          <div className="text-[10px] uppercase tracking-wider text-muted-foreground">No</div>
-          <div className="text-lg font-semibold tabular-nums">{no}</div>
-          <div className="text-[11px] text-muted-foreground">{noPct}%</div>
-        </div>
-        <div className="rounded-md bg-background px-3 py-2">
-          <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Total</div>
-          <div className="text-lg font-semibold tabular-nums">{total}</div>
-          <div className="text-[11px] text-muted-foreground">vote{total === 1 ? "" : "s"}</div>
+        <div className="flex-1">
+          <div className="text-sm font-semibold">Like this deal? Speak to the team.</div>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            Register interest or book a call to discuss numbers, viewings and next steps.
+          </p>
         </div>
       </div>
-
-      {total > 0 && (
-        <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-muted">
-          <div
-            className="h-full bg-primary"
-            style={{ width: `${yesPct}%` }}
-            aria-label={`Yes ${yesPct}%`}
-          />
-        </div>
-      )}
-
-      <div className="mt-4 grid grid-cols-2 gap-2">
-        <PollOption
-          label="Yes, I'd buy"
-          count={yes}
-          pct={yesPct}
-          total={total}
-          selected={myVote === "yes"}
-          tone="yes"
-          onClick={() => onVote("yes")}
-        />
-        <PollOption
-          label="No, too high"
-          count={no}
-          pct={noPct}
-          total={total}
-          selected={myVote === "no"}
-          tone="no"
-          onClick={() => onVote("no")}
-        />
+      <div className="mt-3 flex flex-wrap gap-2">
+        <Button
+          size="sm"
+          variant={post.interested ? "secondary" : "default"}
+          onClick={onInterest}
+          disabled={post.interested}
+          className="gap-1.5"
+        >
+          <Mail className="h-3.5 w-3.5" />
+          {post.interested ? "Interest sent" : "I'm interested"}
+        </Button>
+        <Button asChild size="sm" variant="outline" className="gap-1.5">
+          <a href={BOOKING_URL} target="_blank" rel="noopener noreferrer">
+            <CalendarDays className="h-3.5 w-3.5" />
+            Book a call
+          </a>
+        </Button>
+        <Button asChild size="sm" variant="ghost" className="gap-1.5">
+          <a href={mailto}>
+            <Send className="h-3.5 w-3.5" />
+            Email the team
+          </a>
+        </Button>
       </div>
-      {myVote && (
-        <p className="mt-2 text-[11px] text-muted-foreground">
-          Tap your current choice again to clear it.
-        </p>
-      )}
     </div>
   );
 }
@@ -897,11 +747,11 @@ function ReactBtn({
 // ---------------- Post detail sheet (with comments) ----------------
 
 function PostSheet({
-  post, userId, onVote, onClose,
+  post, userId, onInterest, onClose,
 }: {
   post: FeedPost;
   userId: string;
-  onVote: (postId: string, vote: "yes" | "no") => void;
+  onInterest: (postId: string) => void;
   onClose: () => void;
 }) {
   const postId = post.id;
@@ -969,7 +819,7 @@ function PostSheet({
               dealType={post.deal_type}
             />
           </div>
-          <PollBreakdown post={post} onVote={(v) => onVote(post.id, v)} />
+          <SpeakToTeamBlock post={post} onInterest={() => onInterest(post.id)} />
           <div className="pt-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
             Comments
           </div>
