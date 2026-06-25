@@ -178,13 +178,23 @@ function FeedPage() {
       pollMap.set(v.post_id, arr);
     }
 
+    const mediaByProp: Record<string, MediaItem[]> = {};
     const coverMap: Record<string, string> = {};
+    const mediaRows =
+      ((mediaRes.data as { property_id: string; storage_path: string; kind: string; is_hero: boolean }[]) ?? []);
     await Promise.all(
-      ((mediaRes.data as { property_id: string; storage_path: string }[]) ?? []).map(async (m) => {
+      mediaRows.map(async (m) => {
         const { data: s } = await supabase.storage
           .from("property-media")
           .createSignedUrl(m.storage_path, 60 * 60);
-        if (s?.signedUrl) coverMap[m.property_id] = s.signedUrl;
+        if (!s?.signedUrl) return;
+        const kind: "image" | "video" = m.kind === "video" ? "video" : "image";
+        const arr = mediaByProp[m.property_id] ?? [];
+        arr.push({ kind, url: s.signedUrl });
+        mediaByProp[m.property_id] = arr;
+        if (kind === "image" && (m.is_hero || !coverMap[m.property_id])) {
+          coverMap[m.property_id] = s.signedUrl;
+        }
       }),
     );
 
