@@ -34,6 +34,7 @@ import {
   User,
   MessageSquare,
   Briefcase,
+  HardHat,
 } from "lucide-react";
 
 function NotFoundComponent() {
