@@ -6,8 +6,9 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { Plus, MapPin, Home } from "lucide-react";
+import { Plus, MapPin, Home, MessageCircle } from "lucide-react";
 import {
   type Property, type PropertyStatus,
   PROPERTY_STATUSES, PROPERTY_STATUS_LABEL, PROPERTY_STATUS_COLOR, fmtGBP,
@@ -19,6 +20,7 @@ export function SalesBoard({ onOpenProperty }: { onOpenProperty: (id: string) =>
   const [items, setItems] = useState<Property[]>([]);
   const [loading, setLoading] = useState(true);
   const [newOpen, setNewOpen] = useState(false);
+  const [soldDialog, setSoldDialog] = useState<{ property: Property; message: string } | null>(null);
 
   const load = async () => {
     setLoading(true);
@@ -49,6 +51,18 @@ export function SalesBoard({ onOpenProperty }: { onOpenProperty: (id: string) =>
     const { error } = await supabase.from("crm_properties").update({ status }).eq("id", id);
     if (error) return toast.error(error.message);
     setItems((xs) => xs.map((x) => (x.id === id ? { ...x, status } : x)));
+    if (status === "sold") {
+      const property = items.find((x) => x.id === id);
+      if (property) {
+        const key = "renoject_sold_deal_counter";
+        const next = Number(localStorage.getItem(key) ?? "445") + 1;
+        localStorage.setItem(key, String(next));
+        setSoldDialog({
+          property,
+          message: `🎉 Deal No. ${next} SOLD — ${property.address}${property.current_value ? ` at ${fmtGBP(property.current_value)}` : ""}. Congrats team!`,
+        });
+      }
+    }
   };
 
   const totalGDV = items.reduce((a, b) => a + (b.current_value ?? 0), 0);
@@ -106,6 +120,35 @@ export function SalesBoard({ onOpenProperty }: { onOpenProperty: (id: string) =>
           </div>
         ))}
       </div>
+
+      <Dialog open={!!soldDialog} onOpenChange={(o) => !o && setSoldDialog(null)}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Send SOLD to WhatsApp</DialogTitle></DialogHeader>
+          {soldDialog && (
+            <div className="space-y-3">
+              <p className="text-xs text-muted-foreground">
+                Edit the message, then tap to open WhatsApp. You'll pick the group or contact to send it to.
+              </p>
+              <Textarea
+                rows={5}
+                value={soldDialog.message}
+                onChange={(e) => setSoldDialog({ ...soldDialog, message: e.target.value })}
+              />
+              <div className="flex justify-end gap-2">
+                <Button variant="ghost" onClick={() => setSoldDialog(null)}>Skip</Button>
+                <Button
+                  onClick={() => {
+                    window.open(`https://wa.me/?text=${encodeURIComponent(soldDialog.message)}`, "_blank", "noopener,noreferrer");
+                    setSoldDialog(null);
+                  }}
+                >
+                  <MessageCircle className="mr-1 h-4 w-4" /> Open WhatsApp
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
