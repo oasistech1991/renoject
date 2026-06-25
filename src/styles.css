@@ -120,24 +120,24 @@
 
 .dark {
   /* Renoject — dark mode (canonical) */
-  --background: #0a0a0a;
-  --foreground: #ffffff;
-  --card: #141414;
-  --card-foreground: #ffffff;
-  --popover: #141414;
-  --popover-foreground: #ffffff;
+  --background: #1a1a1d;
+  --foreground: #f5f5f4;
+  --card: #232327;
+  --card-foreground: #f5f5f4;
+  --popover: #232327;
+  --popover-foreground: #f5f5f4;
   --primary: #f7791e;
   --primary-foreground: #ffffff;
-  --secondary: #1f1f1f;
-  --secondary-foreground: #ffffff;
-  --muted: #1f1f1f;
-  --muted-foreground: #a3a3a3;
-  --accent: #2a1a0d;
+  --secondary: #2c2c31;
+  --secondary-foreground: #f5f5f4;
+  --muted: #2c2c31;
+  --muted-foreground: #b5b5b3;
+  --accent: #3a2418;
   --accent-foreground: #f7791e;
   --destructive: oklch(0.65 0.19 22);
   --destructive-foreground: oklch(0.985 0 0);
-  --border: #262626;
-  --input: #262626;
+  --border: #34343a;
+  --input: #34343a;
   --ring: #f7791e;
   --brand: #f7791e;
   --brand-foreground: #ffffff;
