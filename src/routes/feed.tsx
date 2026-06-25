@@ -25,12 +25,18 @@ import {
   Inbox,
   Settings,
   LayoutGrid,
-  Check,
   ChevronLeft,
   ChevronRight,
   ImageOff,
+  Phone,
+  CalendarDays,
 } from "lucide-react";
 import { Map as MapIcon } from "lucide-react";
+
+// CTA destinations for "Speak to the team". Update these to point at your
+// real booking URL / email when ready.
+const TEAM_EMAIL = "team@renoject.co.uk";
+const BOOKING_URL = "https://calendly.com/renoject/deal-call";
 
 export const Route = createFileRoute("/feed")({
   head: () => ({
