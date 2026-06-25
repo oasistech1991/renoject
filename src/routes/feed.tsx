@@ -747,11 +747,11 @@ function ReactBtn({
 // ---------------- Post detail sheet (with comments) ----------------
 
 function PostSheet({
-  post, userId, onVote, onClose,
+  post, userId, onInterest, onClose,
 }: {
   post: FeedPost;
   userId: string;
-  onVote: (postId: string, vote: "yes" | "no") => void;
+  onInterest: (postId: string) => void;
   onClose: () => void;
 }) {
   const postId = post.id;
