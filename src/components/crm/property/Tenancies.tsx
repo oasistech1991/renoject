@@ -19,18 +19,22 @@ export function TenanciesView({ onOpenProperty }: { onOpenProperty: (id: string)
   const [props, setProps] = useState<Record<string, Property>>({});
   const [q, setQ] = useState("");
 
+  const load = async () => {
+    const [t, u, p] = await Promise.all([
+      supabase.from("crm_tenants").select("*").order("tenancy_end", { ascending: true, nullsFirst: false }),
+      supabase.from("crm_units").select("*"),
+      supabase.from("crm_properties").select("*"),
+    ]);
+    setTenants((t.data as Tenant[]) ?? []);
+    const um: Record<string, Unit> = {}; (u.data ?? []).forEach((x: any) => { um[x.id] = x; });
+    const pm: Record<string, Property> = {}; (p.data ?? []).forEach((x: any) => { pm[x.id] = x; });
+    setUnits(um); setProps(pm);
+  };
+  useEffect(() => { load(); }, []);
   useEffect(() => {
-    (async () => {
-      const [t, u, p] = await Promise.all([
-        supabase.from("crm_tenants").select("*").order("tenancy_end", { ascending: true, nullsFirst: false }),
-        supabase.from("crm_units").select("*"),
-        supabase.from("crm_properties").select("*"),
-      ]);
-      setTenants((t.data as Tenant[]) ?? []);
-      const um: Record<string, Unit> = {}; (u.data ?? []).forEach((x: any) => { um[x.id] = x; });
-      const pm: Record<string, Property> = {}; (p.data ?? []).forEach((x: any) => { pm[x.id] = x; });
-      setUnits(um); setProps(pm);
-    })();
+    const onChanged = () => load();
+    window.addEventListener("crm:data-changed", onChanged);
+    return () => window.removeEventListener("crm:data-changed", onChanged);
   }, []);
 
   const filtered = tenants.filter((t) => {
