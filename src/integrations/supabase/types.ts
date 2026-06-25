@@ -118,6 +118,50 @@ export type Database = {
           },
         ]
       }
+      crm_compliance_items: {
+        Row: {
+          created_at: string
+          document_url: string | null
+          expires_on: string | null
+          id: string
+          issued_on: string | null
+          notes: string | null
+          property_id: string
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          document_url?: string | null
+          expires_on?: string | null
+          id?: string
+          issued_on?: string | null
+          notes?: string | null
+          property_id: string
+          type: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          document_url?: string | null
+          expires_on?: string | null
+          id?: string
+          issued_on?: string | null
+          notes?: string | null
+          property_id?: string
+          type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_compliance_items_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "crm_properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       crm_contact_meta: {
         Row: {
           client_id: string
@@ -244,6 +288,101 @@ export type Database = {
             columns: ["feed_post_id"]
             isOneToOne: false
             referencedRelation: "feed_posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      crm_documents: {
+        Row: {
+          file_url: string
+          id: string
+          kind: string
+          name: string
+          property_id: string
+          uploaded_at: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          file_url: string
+          id?: string
+          kind?: string
+          name: string
+          property_id: string
+          uploaded_at?: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          file_url?: string
+          id?: string
+          kind?: string
+          name?: string
+          property_id?: string
+          uploaded_at?: string
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_documents_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "crm_properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      crm_expenses: {
+        Row: {
+          amount: number
+          category: string
+          created_at: string
+          date: string
+          id: string
+          notes: string | null
+          property_id: string
+          receipt_url: string | null
+          supplier_id: string | null
+          updated_at: string
+          vat_amount: number
+        }
+        Insert: {
+          amount?: number
+          category?: string
+          created_at?: string
+          date?: string
+          id?: string
+          notes?: string | null
+          property_id: string
+          receipt_url?: string | null
+          supplier_id?: string | null
+          updated_at?: string
+          vat_amount?: number
+        }
+        Update: {
+          amount?: number
+          category?: string
+          created_at?: string
+          date?: string
+          id?: string
+          notes?: string | null
+          property_id?: string
+          receipt_url?: string | null
+          supplier_id?: string | null
+          updated_at?: string
+          vat_amount?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_expenses_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "crm_properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_expenses_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "tradesmen"
             referencedColumns: ["id"]
           },
         ]
@@ -514,6 +653,53 @@ export type Database = {
             columns: ["source_post_id"]
             isOneToOne: false
             referencedRelation: "feed_posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      crm_rent_payments: {
+        Row: {
+          created_at: string
+          due_amount: number
+          due_date: string
+          id: string
+          method: string | null
+          notes: string | null
+          paid_amount: number
+          paid_on: string | null
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          due_amount?: number
+          due_date: string
+          id?: string
+          method?: string | null
+          notes?: string | null
+          paid_amount?: number
+          paid_on?: string | null
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          due_amount?: number
+          due_date?: string
+          id?: string
+          method?: string | null
+          notes?: string | null
+          paid_amount?: number
+          paid_on?: string | null
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_rent_payments_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "crm_tenants"
             referencedColumns: ["id"]
           },
         ]
