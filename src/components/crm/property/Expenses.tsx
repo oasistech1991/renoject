@@ -28,6 +28,17 @@ export function ExpensesView() {
   };
   useEffect(() => { load(); }, []);
 
+  useEffect(() => {
+    const onAdd = (e: Event) => { if ((e as CustomEvent).detail === "expenses") setOpen(true); };
+    const onChanged = () => load();
+    window.addEventListener("crm:open-add", onAdd);
+    window.addEventListener("crm:data-changed", onChanged);
+    return () => {
+      window.removeEventListener("crm:open-add", onAdd);
+      window.removeEventListener("crm:data-changed", onChanged);
+    };
+  }, []);
+
   const filtered = items.filter((i) => {
     if (propFilter !== "all" && i.property_id !== propFilter) return false;
     if (!q) return true;
