@@ -160,6 +160,47 @@ export type Database = {
         }
         Relationships: []
       }
+      crm_contractor_meta: {
+        Row: {
+          default_rate: number | null
+          last_used_at: string | null
+          notes: string | null
+          preferred: boolean | null
+          rating: number | null
+          total_spend: number | null
+          tradesman_id: string
+          updated_at: string
+        }
+        Insert: {
+          default_rate?: number | null
+          last_used_at?: string | null
+          notes?: string | null
+          preferred?: boolean | null
+          rating?: number | null
+          total_spend?: number | null
+          tradesman_id: string
+          updated_at?: string
+        }
+        Update: {
+          default_rate?: number | null
+          last_used_at?: string | null
+          notes?: string | null
+          preferred?: boolean | null
+          rating?: number | null
+          total_spend?: number | null
+          tradesman_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_contractor_meta_tradesman_id_fkey"
+            columns: ["tradesman_id"]
+            isOneToOne: true
+            referencedRelation: "tradesmen"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       crm_deal_clients: {
         Row: {
           amount: number | null
@@ -201,6 +242,276 @@ export type Database = {
           {
             foreignKeyName: "crm_deal_clients_feed_post_id_fkey"
             columns: ["feed_post_id"]
+            isOneToOne: false
+            referencedRelation: "feed_posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      crm_leads: {
+        Row: {
+          area_pref: string | null
+          budget_max: number | null
+          budget_min: number | null
+          converted_client_id: string | null
+          created_at: string
+          email: string | null
+          id: string
+          interested_in: string | null
+          last_contacted_at: string | null
+          name: string
+          next_action_at: string | null
+          notes: string | null
+          owner_id: string | null
+          phone: string | null
+          source: Database["public"]["Enums"]["crm_lead_source"] | null
+          status: Database["public"]["Enums"]["crm_lead_status"] | null
+          updated_at: string
+        }
+        Insert: {
+          area_pref?: string | null
+          budget_max?: number | null
+          budget_min?: number | null
+          converted_client_id?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          interested_in?: string | null
+          last_contacted_at?: string | null
+          name: string
+          next_action_at?: string | null
+          notes?: string | null
+          owner_id?: string | null
+          phone?: string | null
+          source?: Database["public"]["Enums"]["crm_lead_source"] | null
+          status?: Database["public"]["Enums"]["crm_lead_status"] | null
+          updated_at?: string
+        }
+        Update: {
+          area_pref?: string | null
+          budget_max?: number | null
+          budget_min?: number | null
+          converted_client_id?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          interested_in?: string | null
+          last_contacted_at?: string | null
+          name?: string
+          next_action_at?: string | null
+          notes?: string | null
+          owner_id?: string | null
+          phone?: string | null
+          source?: Database["public"]["Enums"]["crm_lead_source"] | null
+          status?: Database["public"]["Enums"]["crm_lead_status"] | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      crm_project_tasks: {
+        Row: {
+          assignee_id: string | null
+          contractor_id: string | null
+          cost: number | null
+          created_at: string
+          depends_on: string | null
+          duration_days: number | null
+          id: string
+          project_id: string
+          start_date: string | null
+          status: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          assignee_id?: string | null
+          contractor_id?: string | null
+          cost?: number | null
+          created_at?: string
+          depends_on?: string | null
+          duration_days?: number | null
+          id?: string
+          project_id: string
+          start_date?: string | null
+          status?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          assignee_id?: string | null
+          contractor_id?: string | null
+          cost?: number | null
+          created_at?: string
+          depends_on?: string | null
+          duration_days?: number | null
+          id?: string
+          project_id?: string
+          start_date?: string | null
+          status?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_project_tasks_contractor_id_fkey"
+            columns: ["contractor_id"]
+            isOneToOne: false
+            referencedRelation: "tradesmen"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_project_tasks_depends_on_fkey"
+            columns: ["depends_on"]
+            isOneToOne: false
+            referencedRelation: "crm_project_tasks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_project_tasks_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "crm_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      crm_projects: {
+        Row: {
+          actual_end: string | null
+          budget: number | null
+          created_at: string
+          id: string
+          name: string
+          notes: string | null
+          pm_user_id: string | null
+          property_id: string
+          risk: Database["public"]["Enums"]["crm_risk"] | null
+          spent: number | null
+          stage: Database["public"]["Enums"]["crm_project_stage"] | null
+          start_date: string | null
+          target_end: string | null
+          type: Database["public"]["Enums"]["crm_project_type"] | null
+          updated_at: string
+        }
+        Insert: {
+          actual_end?: string | null
+          budget?: number | null
+          created_at?: string
+          id?: string
+          name: string
+          notes?: string | null
+          pm_user_id?: string | null
+          property_id: string
+          risk?: Database["public"]["Enums"]["crm_risk"] | null
+          spent?: number | null
+          stage?: Database["public"]["Enums"]["crm_project_stage"] | null
+          start_date?: string | null
+          target_end?: string | null
+          type?: Database["public"]["Enums"]["crm_project_type"] | null
+          updated_at?: string
+        }
+        Update: {
+          actual_end?: string | null
+          budget?: number | null
+          created_at?: string
+          id?: string
+          name?: string
+          notes?: string | null
+          pm_user_id?: string | null
+          property_id?: string
+          risk?: Database["public"]["Enums"]["crm_risk"] | null
+          spent?: number | null
+          stage?: Database["public"]["Enums"]["crm_project_stage"] | null
+          start_date?: string | null
+          target_end?: string | null
+          type?: Database["public"]["Enums"]["crm_project_type"] | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_projects_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "crm_properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      crm_properties: {
+        Row: {
+          address: string
+          baths: number | null
+          beds: number | null
+          created_at: string
+          current_value: number | null
+          equity: number | null
+          hero_image_url: string | null
+          id: string
+          lat: number | null
+          lng: number | null
+          notes: string | null
+          owner_entity: string | null
+          postcode: string | null
+          property_type: Database["public"]["Enums"]["crm_property_type"] | null
+          purchase_price: number | null
+          source_post_id: string | null
+          sqft: number | null
+          status: Database["public"]["Enums"]["crm_property_status"] | null
+          tenure: string | null
+          updated_at: string
+        }
+        Insert: {
+          address: string
+          baths?: number | null
+          beds?: number | null
+          created_at?: string
+          current_value?: number | null
+          equity?: number | null
+          hero_image_url?: string | null
+          id?: string
+          lat?: number | null
+          lng?: number | null
+          notes?: string | null
+          owner_entity?: string | null
+          postcode?: string | null
+          property_type?:
+            | Database["public"]["Enums"]["crm_property_type"]
+            | null
+          purchase_price?: number | null
+          source_post_id?: string | null
+          sqft?: number | null
+          status?: Database["public"]["Enums"]["crm_property_status"] | null
+          tenure?: string | null
+          updated_at?: string
+        }
+        Update: {
+          address?: string
+          baths?: number | null
+          beds?: number | null
+          created_at?: string
+          current_value?: number | null
+          equity?: number | null
+          hero_image_url?: string | null
+          id?: string
+          lat?: number | null
+          lng?: number | null
+          notes?: string | null
+          owner_entity?: string | null
+          postcode?: string | null
+          property_type?:
+            | Database["public"]["Enums"]["crm_property_type"]
+            | null
+          purchase_price?: number | null
+          source_post_id?: string | null
+          sqft?: number | null
+          status?: Database["public"]["Enums"]["crm_property_status"] | null
+          tenure?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_properties_source_post_id_fkey"
+            columns: ["source_post_id"]
             isOneToOne: false
             referencedRelation: "feed_posts"
             referencedColumns: ["id"]
@@ -259,6 +570,109 @@ export type Database = {
             columns: ["feed_post_id"]
             isOneToOne: false
             referencedRelation: "feed_posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      crm_tenants: {
+        Row: {
+          arrears_amount: number | null
+          created_at: string
+          deposit: number | null
+          email: string | null
+          full_name: string
+          id: string
+          notes: string | null
+          phone: string | null
+          rent_pcm: number | null
+          status: Database["public"]["Enums"]["crm_tenant_status"] | null
+          tenancy_end: string | null
+          tenancy_start: string | null
+          unit_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          arrears_amount?: number | null
+          created_at?: string
+          deposit?: number | null
+          email?: string | null
+          full_name: string
+          id?: string
+          notes?: string | null
+          phone?: string | null
+          rent_pcm?: number | null
+          status?: Database["public"]["Enums"]["crm_tenant_status"] | null
+          tenancy_end?: string | null
+          tenancy_start?: string | null
+          unit_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          arrears_amount?: number | null
+          created_at?: string
+          deposit?: number | null
+          email?: string | null
+          full_name?: string
+          id?: string
+          notes?: string | null
+          phone?: string | null
+          rent_pcm?: number | null
+          status?: Database["public"]["Enums"]["crm_tenant_status"] | null
+          tenancy_end?: string | null
+          tenancy_start?: string | null
+          unit_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_tenants_unit_id_fkey"
+            columns: ["unit_id"]
+            isOneToOne: false
+            referencedRelation: "crm_units"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      crm_units: {
+        Row: {
+          beds: number | null
+          created_at: string
+          id: string
+          label: string
+          marketed_at: string | null
+          property_id: string
+          rent_pcm: number | null
+          status: Database["public"]["Enums"]["crm_unit_status"] | null
+          updated_at: string
+        }
+        Insert: {
+          beds?: number | null
+          created_at?: string
+          id?: string
+          label: string
+          marketed_at?: string | null
+          property_id: string
+          rent_pcm?: number | null
+          status?: Database["public"]["Enums"]["crm_unit_status"] | null
+          updated_at?: string
+        }
+        Update: {
+          beds?: number | null
+          created_at?: string
+          id?: string
+          label?: string
+          marketed_at?: string | null
+          property_id?: string
+          rent_pcm?: number | null
+          status?: Database["public"]["Enums"]["crm_unit_status"] | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_units_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "crm_properties"
             referencedColumns: ["id"]
           },
         ]
@@ -1254,6 +1668,50 @@ export type Database = {
         | "save"
         | "stage_change"
         | "task_done"
+      crm_lead_source:
+        | "referral"
+        | "feed"
+        | "portal"
+        | "event"
+        | "cold"
+        | "website"
+        | "other"
+      crm_lead_status:
+        | "new"
+        | "contacted"
+        | "qualified"
+        | "unqualified"
+        | "converted"
+      crm_project_stage:
+        | "planning"
+        | "permits"
+        | "demo"
+        | "first_fix"
+        | "second_fix"
+        | "snagging"
+        | "complete"
+        | "refinanced"
+      crm_project_type:
+        | "light_refurb"
+        | "heavy_refurb"
+        | "conversion"
+        | "new_build"
+      crm_property_status:
+        | "sourcing"
+        | "under_offer"
+        | "owned"
+        | "refurb"
+        | "let"
+        | "sold"
+      crm_property_type:
+        | "btl"
+        | "hmo"
+        | "flip"
+        | "commercial"
+        | "mixed"
+        | "dev_site"
+        | "other"
+      crm_risk: "low" | "med" | "high"
       crm_stage:
         | "new"
         | "qualified"
@@ -1262,6 +1720,15 @@ export type Database = {
         | "won"
         | "lost"
       crm_task_status: "open" | "done" | "snoozed"
+      crm_tenant_status: "current" | "past" | "arrears" | "notice"
+      crm_unit_status:
+        | "vacant"
+        | "marketing"
+        | "offer"
+        | "referencing"
+        | "let"
+        | "notice"
+        | "refurb"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1402,6 +1869,56 @@ export const Constants = {
         "stage_change",
         "task_done",
       ],
+      crm_lead_source: [
+        "referral",
+        "feed",
+        "portal",
+        "event",
+        "cold",
+        "website",
+        "other",
+      ],
+      crm_lead_status: [
+        "new",
+        "contacted",
+        "qualified",
+        "unqualified",
+        "converted",
+      ],
+      crm_project_stage: [
+        "planning",
+        "permits",
+        "demo",
+        "first_fix",
+        "second_fix",
+        "snagging",
+        "complete",
+        "refinanced",
+      ],
+      crm_project_type: [
+        "light_refurb",
+        "heavy_refurb",
+        "conversion",
+        "new_build",
+      ],
+      crm_property_status: [
+        "sourcing",
+        "under_offer",
+        "owned",
+        "refurb",
+        "let",
+        "sold",
+      ],
+      crm_property_type: [
+        "btl",
+        "hmo",
+        "flip",
+        "commercial",
+        "mixed",
+        "dev_site",
+        "other",
+      ],
+      crm_risk: ["low", "med", "high"],
       crm_stage: [
         "new",
         "qualified",
@@ -1411,6 +1928,16 @@ export const Constants = {
         "lost",
       ],
       crm_task_status: ["open", "done", "snoozed"],
+      crm_tenant_status: ["current", "past", "arrears", "notice"],
+      crm_unit_status: [
+        "vacant",
+        "marketing",
+        "offer",
+        "referencing",
+        "let",
+        "notice",
+        "refurb",
+      ],
     },
   },
 } as const
