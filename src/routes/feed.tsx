@@ -995,6 +995,7 @@ function EditPostDialog({ post, onClose, onSaved }: { post: FeedPost; onClose: (
   const [displayMode, setDisplayMode] = useState<"teaser" | "full">(post.display_mode);
   const [hidden, setHidden] = useState<Set<HidableFieldKey>>(new Set(post.hidden_fields));
   const [dealType, setDealType] = useState<string>(post.deal_type ?? "other");
+  const [isUpcoming, setIsUpcoming] = useState<boolean>(!!post.is_upcoming);
   const [saving, setSaving] = useState(false);
 
   const save = async () => {
@@ -1006,6 +1007,7 @@ function EditPostDialog({ post, onClose, onSaved }: { post: FeedPost; onClose: (
         display_mode: displayMode,
         hidden_fields: Array.from(hidden),
         deal_type: dealType,
+        is_upcoming: isUpcoming,
       } as any)
       .eq("id", post.id);
     setSaving(false);
@@ -1048,6 +1050,18 @@ function EditPostDialog({ post, onClose, onSaved }: { post: FeedPost; onClose: (
             </button>
           ))}
         </div>
+
+        <label className="mt-4 flex items-center gap-2 rounded-md border border-amber-500/40 bg-amber-500/5 p-3 text-xs">
+          <input
+            type="checkbox"
+            checked={isUpcoming}
+            onChange={(e) => setIsUpcoming(e.target.checked)}
+            className="h-3.5 w-3.5 accent-amber-500"
+          />
+          <span>
+            <span className="font-semibold text-amber-500">Mark as upcoming</span> — shows in the "Coming soon" strip so clients can thumbs-up before it goes live.
+          </span>
+        </label>
 
         <label className="mt-4 block text-xs font-medium">Deal type</label>
         <div className="mt-1 flex flex-wrap gap-1.5">
