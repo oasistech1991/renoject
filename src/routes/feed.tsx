@@ -541,6 +541,77 @@ function Stat({ label, value }: { label: string; value: string }) {
   );
 }
 
+function PollBlock({
+  price, yes, no, myVote, onVote,
+}: {
+  price: number;
+  yes: number;
+  no: number;
+  myVote: "yes" | "no" | null;
+  onVote: (v: "yes" | "no") => void;
+}) {
+  const total = yes + no;
+  const yesPct = total ? Math.round((yes / total) * 100) : 0;
+  const noPct = total ? 100 - yesPct : 0;
+  return (
+    <div className="mt-4 rounded-lg border border-border bg-muted/30 p-3">
+      <div className="text-sm font-medium">
+        Would you buy at {fmtGBP(price)}?
+      </div>
+      <div className="mt-2 grid grid-cols-2 gap-2">
+        <button
+          onClick={() => onVote("yes")}
+          className={`relative overflow-hidden rounded-md border px-3 py-2 text-left text-sm transition-colors ${
+            myVote === "yes"
+              ? "border-primary bg-primary/10 text-foreground"
+              : "border-border hover:bg-accent"
+          }`}
+        >
+          {total > 0 && (
+            <span
+              className="absolute inset-y-0 left-0 bg-primary/15"
+              style={{ width: `${yesPct}%` }}
+              aria-hidden
+            />
+          )}
+          <span className="relative flex items-center justify-between gap-2">
+            <span className="font-medium">Yes, I'd buy</span>
+            <span className="text-xs text-muted-foreground tabular-nums">
+              {yes} · {yesPct}%
+            </span>
+          </span>
+        </button>
+        <button
+          onClick={() => onVote("no")}
+          className={`relative overflow-hidden rounded-md border px-3 py-2 text-left text-sm transition-colors ${
+            myVote === "no"
+              ? "border-primary bg-primary/10 text-foreground"
+              : "border-border hover:bg-accent"
+          }`}
+        >
+          {total > 0 && (
+            <span
+              className="absolute inset-y-0 left-0 bg-muted-foreground/20"
+              style={{ width: `${noPct}%` }}
+              aria-hidden
+            />
+          )}
+          <span className="relative flex items-center justify-between gap-2">
+            <span className="font-medium">No, too high</span>
+            <span className="text-xs text-muted-foreground tabular-nums">
+              {no} · {noPct}%
+            </span>
+          </span>
+        </button>
+      </div>
+      <div className="mt-2 text-[11px] text-muted-foreground">
+        {total} vote{total === 1 ? "" : "s"}
+        {myVote && " · click your choice again to remove your vote"}
+      </div>
+    </div>
+  );
+}
+
 function ReactBtn({
   icon, count, active, onClick,
 }: { icon: React.ReactNode; count: number; active: boolean; onClick: () => void }) {
