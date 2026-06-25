@@ -61,21 +61,7 @@ function TermsPage() {
         information and keep it up to date.
       </p>
 
-      <h2 className="mt-6 text-lg font-semibold">6. Payments and subscriptions</h2>
-      <p>
-        Our order process is conducted by our online reseller Paddle.com.
-        Paddle.com is the Merchant of Record for all our orders. Paddle
-        provides all customer service inquiries and handles returns. Payment,
-        billing, tax and refund mechanics are governed by the{" "}
-        <a className="underline" href="https://www.paddle.com/legal/checkout-buyer-terms" target="_blank" rel="noreferrer">Paddle Buyer Terms</a>.
-      </p>
-      <p>
-        Subscriptions renew automatically each billing period until canceled.
-        You can cancel at any time from your Account page; access continues
-        until the end of the current billing period.
-      </p>
-
-      <h2 className="mt-6 text-lg font-semibold">7. Service level</h2>
+      <h2 className="mt-6 text-lg font-semibold">6. Service level</h2>
       <p>
         We provide the Service "as is" and do not guarantee that it will be
         uninterrupted, error-free, or that any specific result will be
@@ -84,7 +70,7 @@ function TermsPage() {
         particular purpose.
       </p>
 
-      <h2 className="mt-6 text-lg font-semibold">8. Liability</h2>
+      <h2 className="mt-6 text-lg font-semibold">7. Liability</h2>
       <p>
         To the fullest extent permitted by law, our aggregate liability for
         any claims arising from your use of the Service is limited to the
@@ -95,7 +81,7 @@ function TermsPage() {
         excluded.
       </p>
 
-      <h2 className="mt-6 text-lg font-semibold">9. Suspension &amp; termination</h2>
+      <h2 className="mt-6 text-lg font-semibold">8. Suspension &amp; termination</h2>
       <p>
         We may suspend or terminate access for material breach of these
         terms, non-payment, suspected fraud or security risk, or repeated
@@ -103,13 +89,13 @@ function TermsPage() {
         saved within 30 days; after that we may delete it.
       </p>
 
-      <h2 className="mt-6 text-lg font-semibold">10. Governing law</h2>
+      <h2 className="mt-6 text-lg font-semibold">9. Governing law</h2>
       <p>
         These terms are governed by the laws of England &amp; Wales, and the
         courts of England &amp; Wales have exclusive jurisdiction.
       </p>
 
-      <h2 className="mt-6 text-lg font-semibold">11. Changes</h2>
+      <h2 className="mt-6 text-lg font-semibold">10. Changes</h2>
       <p>
         We may update these terms from time to time. Material changes will be
         notified by email or in-app banner.

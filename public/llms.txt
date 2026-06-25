@@ -2,7 +2,7 @@
 
 > UK property investment toolkit — BTL & BRRR calculators, HMO compliance, market search, renovation cost estimates, and a trusted tradesmen directory.
 
-Hartstone Holdings is a subscription web app (£1/month) for UK property investors, landlords, and developers. It combines deal-analysis calculators, live market search, HMO licensing checks, refurbishment costing, long-term cashflow forecasting, and a vetted contractor directory in one place.
+Hartstone Holdings is a free web app for UK property investors, landlords, and developers. It combines deal-analysis calculators, live market search, HMO licensing checks, refurbishment costing, long-term cashflow forecasting, and a vetted contractor directory in one place.
 
 ## Tools
 
@@ -15,12 +15,7 @@ Hartstone Holdings is a subscription web app (£1/month) for UK property investo
 - [Tradesmen Directory](/tradesmen): Trusted UK contractor network with reviews and trade-specific analysis.
 - [Tokenize](/tokenize): Fractionalise property equity for shared ownership and investor pools.
 
-## Pricing & Account
-
-- [Pricing](/pricing): Full access to every tool for £1/month.
-
 ## Optional
 
 - [Terms of Service](/terms)
 - [Privacy Policy](/privacy)
-- [Refund Policy](/refund-policy)
