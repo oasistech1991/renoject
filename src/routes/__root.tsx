@@ -30,6 +30,7 @@ import {
   Wrench,
   Coins,
   UserCircle,
+  Users,
 } from "lucide-react";
 
 function NotFoundComponent() {
@@ -329,6 +330,7 @@ const TOOL_ITEMS: Array<{ to: string; label: string; icon: typeof Home }> = [
   { to: "/properties", label: "View Deals", icon: Building2 },
   { to: "/portfolio-timeline", label: "Portfolio Timeline", icon: LineChart },
   { to: "/forecast", label: "Forecast", icon: LineChart },
+  { to: "/feed", label: "Client Feed", icon: Users },
   { to: "/hmo-compliance", label: "HMO Compliance", icon: ShieldCheck },
   { to: "/tradesmen", label: "Tradesmen", icon: Wrench },
   { to: "/tokenize", label: "Tokenize", icon: Coins },

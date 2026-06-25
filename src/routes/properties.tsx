@@ -131,6 +131,7 @@ function PropertiesPage() {
   const [heroUrls, setHeroUrls] = useState<Record<string, string>>({});
   const [analyses, setAnalyses] = useState<HmoAnalysisRow[]>([]);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+  const [feedPostIds, setFeedPostIds] = useState<Set<string>>(new Set());
 
   const load = async () => {
     setLoading(true);
@@ -160,6 +161,11 @@ function PropertiesPage() {
       })
     );
     setHeroUrls(map);
+    // Load which properties are published to the client feed
+    const { data: feedRows } = await supabase
+      .from("feed_posts")
+      .select("property_id");
+    setFeedPostIds(new Set(((feedRows as { property_id: string }[]) ?? []).map((r) => r.property_id)));
     // Load HMO analyses (both attached and unattached)
     const { data: a } = await supabase
       .from("hmo_analyses")
@@ -274,6 +280,32 @@ function PropertiesPage() {
     if (error) {
       alert(error.message);
       setRows((p) => p.map((r) => (r.id === id ? { ...r, in_portfolio: !next } : r)));
+    }
+  };
+
+  const toggleFeed = async (propertyId: string, next: boolean) => {
+    const prev = new Set(feedPostIds);
+    const updated = new Set(feedPostIds);
+    if (next) updated.add(propertyId); else updated.delete(propertyId);
+    setFeedPostIds(updated);
+    const { data: sess } = await supabase.auth.getSession();
+    const userId = sess?.session?.user?.id;
+    if (!userId) {
+      alert("Sign in to publish to the client feed.");
+      setFeedPostIds(prev);
+      return;
+    }
+    if (next) {
+      const { error } = await supabase
+        .from("feed_posts")
+        .upsert(
+          { property_id: propertyId, author_id: userId, is_published: true } as any,
+          { onConflict: "property_id" },
+        );
+      if (error) { alert(error.message); setFeedPostIds(prev); }
+    } else {
+      const { error } = await supabase.from("feed_posts").delete().eq("property_id", propertyId);
+      if (error) { alert(error.message); setFeedPostIds(prev); }
     }
   };
 
@@ -670,6 +702,15 @@ function PropertiesPage() {
                       className="h-4 w-4 accent-primary"
                     />
                     <span>{r.in_portfolio ? "In portfolio forecast" : "Add to portfolio forecast"}</span>
+                  </label>
+                  <label className="mt-2 flex cursor-pointer items-center gap-2 rounded-md border border-border bg-background/40 px-3 py-2 text-xs font-medium select-none">
+                    <input
+                      type="checkbox"
+                      checked={feedPostIds.has(r.id)}
+                      onChange={(e) => toggleFeed(r.id, e.target.checked)}
+                      className="h-4 w-4 accent-primary"
+                    />
+                    <span>{feedPostIds.has(r.id) ? "Published to client feed" : "Add to client feed"}</span>
                   </label>
                 </div>
               );
