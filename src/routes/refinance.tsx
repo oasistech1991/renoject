@@ -194,6 +194,7 @@ function RefinancePage() {
   const [method, setMethod] = useState<CalcMethod>("brrr");
   const [btlInputs, setBtlInputs] = useState<BTLInputs>(btlDefaults);
   const [propertyName, setPropertyName] = useState("");
+  const [propertyAddress, setPropertyAddress] = useState("");
   const [propertyId, setPropertyId] = useState<string | null>(null);
   const [source, setSource] = useState<PropertySource | "">("");
   const [saving, setSaving] = useState(false);
@@ -276,6 +277,7 @@ function RefinancePage() {
     setBtlInputs(zeroBtl);
     setMethod("brrr");
     setPropertyName("");
+    setPropertyAddress("");
     setPropertyId(null);
     setSource("");
     setSavedAt(null);
@@ -320,6 +322,7 @@ function RefinancePage() {
       setMethod(savedMethod);
       setBtlInputs({ ...btlDefaults, ...((__btl ?? {}) as Partial<BTLInputs>) });
       setPropertyName(data.name);
+      setPropertyAddress(typeof rawInputs.address === "string" ? rawInputs.address : "");
       setPropertyId(data.id);
       setSource(((data as any).source as PropertySource) ?? "");
       setSavedAt(new Date(data.updated_at));
@@ -385,6 +388,8 @@ function RefinancePage() {
     setSaving(true);
     const inputsPayload: any = { ...inputs };
     if (method === "btl") inputsPayload.__btl = btlInputs;
+    if (propertyAddress.trim()) inputsPayload.address = propertyAddress.trim();
+    else delete inputsPayload.address;
     const payload = {
       name: propertyName.trim(),
       inputs: inputsPayload,
