@@ -179,7 +179,7 @@ export const runBackgroundCheck = createServerFn({ method: "POST" })
 
     const fcKey = process.env.FIRECRAWL_API_KEY;
     if (!fcKey) throw new Error("Web scraping is not configured (FIRECRAWL_API_KEY missing)");
-    const { default: Firecrawl } = await import("@mendable/firecrawl-js");
+    const { default: Firecrawl } = await import(/* @vite-ignore */ "@mendable/firecrawl-js");
     const fc = new Firecrawl({ apiKey: fcKey });
 
     const queryName = (cand.company ?? cand.name ?? "").trim();
