@@ -3,6 +3,12 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import {
   type Project, type ProjectStage, type Property,
@@ -12,6 +18,7 @@ import {
 export function ProjectsBoard({ onOpenProperty }: { onOpenProperty: (id: string) => void }) {
   const [projects, setProjects] = useState<Project[]>([]);
   const [props, setProps] = useState<Record<string, Property>>({});
+  const [completion, setCompletion] = useState<{ project: Project; property?: Property } | null>(null);
 
   const load = async () => {
     const [pj, pr] = await Promise.all([
@@ -40,6 +47,10 @@ export function ProjectsBoard({ onOpenProperty }: { onOpenProperty: (id: string)
     const { error } = await supabase.from("crm_projects").update({ stage }).eq("id", id);
     if (error) return toast.error(error.message);
     setProjects((xs) => xs.map((x) => (x.id === id ? { ...x, stage } : x)));
+    if (stage === "complete") {
+      const project = projects.find((p) => p.id === id);
+      if (project) setCompletion({ project: { ...project, stage }, property: props[project.property_id] });
+    }
   };
 
   const totalBudget = projects.reduce((a, b) => a + (b.budget ?? 0), 0);
@@ -91,6 +102,141 @@ export function ProjectsBoard({ onOpenProperty }: { onOpenProperty: (id: string)
           </div>
         ))}
       </div>
+      <CompletionDialog
+        open={!!completion}
+        onClose={() => setCompletion(null)}
+        project={completion?.project ?? null}
+        property={completion?.property ?? null}
+        onDone={() => { setCompletion(null); window.dispatchEvent(new Event("crm:data-changed")); }}
+      />
     </div>
+  );
+}
+
+function CompletionDialog({
+  open, onClose, project, property, onDone,
+}: {
+  open: boolean;
+  onClose: () => void;
+  project: Project | null;
+  property: Property | null;
+  onDone: () => void;
+}) {
+  const [tab, setTab] = useState<"lettings" | "flip">("lettings");
+  const [unitLabel, setUnitLabel] = useState("Whole house");
+  const [beds, setBeds] = useState<string>("");
+  const [rent, setRent] = useState<string>("");
+  const [tenantName, setTenantName] = useState("");
+  const [tenantEmail, setTenantEmail] = useState("");
+  const [tenancyStart, setTenancyStart] = useState("");
+  const [deposit, setDeposit] = useState("");
+  const [lettingNotes, setLettingNotes] = useState("");
+  const [salePrice, setSalePrice] = useState("");
+  const [saleDate, setSaleDate] = useState("");
+  const [saleNotes, setSaleNotes] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (open && property) {
+      setBeds(property.beds ? String(property.beds) : "");
+      setSalePrice(property.current_value ? String(property.current_value) : "");
+    }
+  }, [open, property]);
+
+  const sendToLettings = async () => {
+    if (!project || !property) return;
+    setSaving(true);
+    const rentNum = rent ? Number(rent) : null;
+    const { data: unit, error: unitErr } = await supabase.from("crm_units").insert({
+      property_id: property.id,
+      label: unitLabel || "Whole house",
+      beds: beds ? Number(beds) : null,
+      rent_pcm: rentNum,
+      status: tenantName ? "let" : "marketing",
+      marketed_at: new Date().toISOString(),
+    }).select().single();
+    if (unitErr) { setSaving(false); return toast.error(unitErr.message); }
+
+    if (tenantName) {
+      const { error: tErr } = await supabase.from("crm_tenants").insert({
+        unit_id: unit.id,
+        full_name: tenantName,
+        email: tenantEmail || null,
+        tenancy_start: tenancyStart || null,
+        rent_pcm: rentNum,
+        deposit: deposit ? Number(deposit) : null,
+        status: "current",
+        arrears_amount: 0,
+        notes: lettingNotes || null,
+      });
+      if (tErr) { setSaving(false); return toast.error(tErr.message); }
+    }
+
+    await supabase.from("crm_properties").update({ status: tenantName ? "let" : "owned" }).eq("id", property.id);
+    setSaving(false);
+    toast.success(tenantName ? "Moved to Lettings — tenancy created" : "Unit created in Lettings (marketing)");
+    onDone();
+  };
+
+  const markSold = async () => {
+    if (!property) return;
+    setSaving(true);
+    const { error } = await supabase.from("crm_properties").update({
+      status: "sold",
+      current_value: salePrice ? Number(salePrice) : property.current_value,
+      notes: [property.notes, saleNotes && `Sold ${saleDate || ""}: ${saleNotes}`].filter(Boolean).join("\n"),
+    }).eq("id", property.id);
+    setSaving(false);
+    if (error) return toast.error(error.message);
+    toast.success("Marked as sold");
+    onDone();
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle>Project complete — what next?</DialogTitle>
+          <DialogDescription>
+            {property?.address ?? "Property"} — review and confirm before moving.
+          </DialogDescription>
+        </DialogHeader>
+        <Tabs value={tab} onValueChange={(v) => setTab(v as "lettings" | "flip")}>
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="lettings">Send to Lettings</TabsTrigger>
+            <TabsTrigger value="flip">Flip / Sold</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="lettings" className="space-y-3 pt-3">
+            <div className="grid grid-cols-2 gap-3">
+              <div><Label>Unit label</Label><Input value={unitLabel} onChange={(e) => setUnitLabel(e.target.value)} /></div>
+              <div><Label>Beds</Label><Input type="number" value={beds} onChange={(e) => setBeds(e.target.value)} /></div>
+              <div><Label>Rent (pcm)</Label><Input type="number" value={rent} onChange={(e) => setRent(e.target.value)} /></div>
+              <div><Label>Tenancy start</Label><Input type="date" value={tenancyStart} onChange={(e) => setTenancyStart(e.target.value)} /></div>
+              <div className="col-span-2"><Label>Tenant name (optional)</Label><Input value={tenantName} onChange={(e) => setTenantName(e.target.value)} placeholder="Leave blank if still marketing" /></div>
+              <div><Label>Tenant email</Label><Input type="email" value={tenantEmail} onChange={(e) => setTenantEmail(e.target.value)} /></div>
+              <div><Label>Deposit</Label><Input type="number" value={deposit} onChange={(e) => setDeposit(e.target.value)} /></div>
+              <div className="col-span-2"><Label>Notes</Label><Textarea value={lettingNotes} onChange={(e) => setLettingNotes(e.target.value)} rows={2} /></div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={onClose}>Cancel</Button>
+              <Button onClick={sendToLettings} disabled={saving}>{saving ? "Saving…" : "Confirm & send to Lettings"}</Button>
+            </DialogFooter>
+          </TabsContent>
+
+          <TabsContent value="flip" className="space-y-3 pt-3">
+            <div className="grid grid-cols-2 gap-3">
+              <div><Label>Sale price</Label><Input type="number" value={salePrice} onChange={(e) => setSalePrice(e.target.value)} /></div>
+              <div><Label>Sale date</Label><Input type="date" value={saleDate} onChange={(e) => setSaleDate(e.target.value)} /></div>
+              <div className="col-span-2"><Label>Notes</Label><Textarea value={saleNotes} onChange={(e) => setSaleNotes(e.target.value)} rows={3} placeholder="Buyer, agent, completion notes…" /></div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={onClose}>Cancel</Button>
+              <Button onClick={markSold} disabled={saving}>{saving ? "Saving…" : "Confirm & mark sold"}</Button>
+            </DialogFooter>
+          </TabsContent>
+        </Tabs>
+      </DialogContent>
+    </Dialog>
   );
 }
