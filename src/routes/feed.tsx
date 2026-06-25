@@ -30,6 +30,7 @@ import {
   ImageOff,
   Phone,
   CalendarDays,
+  MessageSquare,
 } from "lucide-react";
 import { Map as MapIcon } from "lucide-react";
 
@@ -720,6 +721,12 @@ function SpeakToTeamBlock({
             <Send className="h-3.5 w-3.5" />
             Email the team
           </a>
+        </Button>
+        <Button asChild size="sm" variant="ghost" className="gap-1.5">
+          <Link to="/messages" search={{ deal: post.property_id }}>
+            <MessageSquare className="h-3.5 w-3.5" />
+            Message the team
+          </Link>
         </Button>
       </div>
     </div>

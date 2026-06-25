@@ -32,6 +32,7 @@ import {
   UserCircle,
   Users,
   User,
+  MessageSquare,
 } from "lucide-react";
 
 function NotFoundComponent() {
@@ -332,6 +333,7 @@ const TOOL_ITEMS: Array<{ to: string; label: string; icon: typeof Home }> = [
   { to: "/portfolio-timeline", label: "Portfolio Timeline", icon: LineChart },
   { to: "/forecast", label: "Forecast", icon: LineChart },
   { to: "/feed", label: "Client Feed", icon: Users },
+  { to: "/messages", label: "Messages", icon: MessageSquare },
   { to: "/hmo-compliance", label: "HMO Compliance", icon: ShieldCheck },
   { to: "/tradesmen", label: "Tradesmen", icon: Wrench },
   { to: "/tokenize", label: "Tokenize", icon: Coins },
