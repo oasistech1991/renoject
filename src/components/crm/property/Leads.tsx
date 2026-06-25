@@ -25,6 +25,17 @@ export function LeadsInbox() {
   };
   useEffect(() => { load(); }, []);
 
+  useEffect(() => {
+    const onAdd = (e: Event) => { if ((e as CustomEvent).detail === "leads") setOpen(true); };
+    const onChanged = () => load();
+    window.addEventListener("crm:open-add", onAdd);
+    window.addEventListener("crm:data-changed", onChanged);
+    return () => {
+      window.removeEventListener("crm:open-add", onAdd);
+      window.removeEventListener("crm:data-changed", onChanged);
+    };
+  }, []);
+
   const setStatus = async (id: string, status: LeadStatus) => {
     const { error } = await supabase.from("crm_leads").update({ status }).eq("id", id);
     if (error) return toast.error(error.message);

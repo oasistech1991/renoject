@@ -129,6 +129,12 @@ function CrmPage() {
   const [activeContact, setActiveContact] = useState<Contact | null>(null);
   const [newTaskOpen, setNewTaskOpen] = useState(false);
   const [addPropertyOpen, setAddPropertyOpen] = useState(false);
+  const [addSupplierOpen, setAddSupplierOpen] = useState(false);
+  const [addProjectOpen, setAddProjectOpen] = useState(false);
+  const [addUnitOpen, setAddUnitOpen] = useState(false);
+  const [addTenancyOpen, setAddTenancyOpen] = useState(false);
+  const [logPaymentOpen, setLogPaymentOpen] = useState(false);
+  const [addInvestorOpen, setAddInvestorOpen] = useState(false);
   const [activePropertyId, setActivePropertyId] = useState<string | null>(null);
   const [view, setView] = useState<string>("home");
 
@@ -203,6 +209,12 @@ function CrmPage() {
             view={view}
             onAddProperty={() => setAddPropertyOpen(true)}
             onNewTask={() => setNewTaskOpen(true)}
+            onAddSupplier={() => setAddSupplierOpen(true)}
+            onAddProject={() => setAddProjectOpen(true)}
+            onAddUnit={() => setAddUnitOpen(true)}
+            onAddTenancy={() => setAddTenancyOpen(true)}
+            onLogPayment={() => setLogPaymentOpen(true)}
+            onAddInvestor={() => setAddInvestorOpen(true)}
           />
         </div>
 
@@ -260,32 +272,46 @@ function CrmPage() {
         onOpenChange={setAddPropertyOpen}
         onCreated={() => { setAddPropertyOpen(false); }}
       />
+
+      <AddSupplierDialog open={addSupplierOpen} onOpenChange={setAddSupplierOpen} />
+      <AddProjectDialog open={addProjectOpen} onOpenChange={setAddProjectOpen} />
+      <AddUnitDialog open={addUnitOpen} onOpenChange={setAddUnitOpen} />
+      <AddTenancyDialog open={addTenancyOpen} onOpenChange={setAddTenancyOpen} />
+      <LogRentPaymentDialog open={logPaymentOpen} onOpenChange={setLogPaymentOpen} />
+      <AddInvestorDialog open={addInvestorOpen} onOpenChange={setAddInvestorOpen} />
     </div>
   );
 }
 
 /* ===================== Contextual primary action ===================== */
 function PrimaryAction({
-  view, onAddProperty, onNewTask,
-}: { view: string; onAddProperty: () => void; onNewTask: () => void }) {
-  const dispatch = (key: string) =>
-    window.dispatchEvent(new CustomEvent("crm:primary-action", { detail: { view: key } }));
+  view, onAddProperty, onNewTask, onAddSupplier, onAddProject, onAddUnit,
+  onAddTenancy, onLogPayment, onAddInvestor,
+}: {
+  view: string;
+  onAddProperty: () => void; onNewTask: () => void;
+  onAddSupplier: () => void; onAddProject: () => void; onAddUnit: () => void;
+  onAddTenancy: () => void; onLogPayment: () => void; onAddInvestor: () => void;
+}) {
+  // For module-owned dialogs, dispatch an event the module listens to.
+  const openInModule = (key: string) =>
+    window.dispatchEvent(new CustomEvent("crm:open-add", { detail: key }));
 
   const map: Record<string, { label: string; onClick: () => void } | null> = {
     home: { label: "Add property", onClick: onAddProperty },
     properties: { label: "Add property", onClick: onAddProperty },
-    tenancies: { label: "New tenancy", onClick: () => { dispatch("tenancies"); toast.message("Open a property to add a tenancy"); } },
-    rent: { label: "Log payment", onClick: () => { dispatch("rent"); toast.message("Click a cell in the rent grid to log a payment"); } },
-    expenses: { label: "Add expense", onClick: () => dispatch("expenses") },
+    tenancies: { label: "New tenancy", onClick: onAddTenancy },
+    rent: { label: "Log payment", onClick: onLogPayment },
+    expenses: { label: "Add expense", onClick: () => openInModule("expenses") },
     tasks: { label: "New task", onClick: onNewTask },
-    compliance: { label: "Add certificate", onClick: () => dispatch("compliance") },
-    documents: { label: "Upload document", onClick: () => dispatch("documents") },
-    suppliers: { label: "Add supplier", onClick: () => dispatch("suppliers") },
-    sales: { label: "Add deal", onClick: () => dispatch("sales") },
-    projects: { label: "Add project", onClick: () => dispatch("projects") },
-    lettings_legacy: { label: "Add unit", onClick: () => dispatch("lettings_legacy") },
-    leads: { label: "Add lead", onClick: () => dispatch("leads") },
-    investors: { label: "Add investor", onClick: () => dispatch("investors") },
+    compliance: { label: "Add certificate", onClick: () => openInModule("compliance") },
+    documents: { label: "Upload document", onClick: () => openInModule("documents") },
+    suppliers: { label: "Add supplier", onClick: onAddSupplier },
+    sales: { label: "Add deal", onClick: () => openInModule("sales") },
+    projects: { label: "Add project", onClick: onAddProject },
+    lettings_legacy: { label: "Add unit", onClick: onAddUnit },
+    leads: { label: "Add lead", onClick: () => openInModule("leads") },
+    investors: { label: "Add investor", onClick: onAddInvestor },
     reports: null,
   };
   const a = map[view];
@@ -328,6 +354,7 @@ function AddPropertyDialog({
     setAddress(""); setPostcode(""); setPurchasePrice(""); setCurrentValue(""); setBeds(""); setNotes("");
     setPropertyType("btl"); setStatus("sourcing");
     onCreated();
+    notifyChanged();
   };
 
   return (
@@ -1166,4 +1193,398 @@ function ActivityIcon({ type }: { type: Activity["type"] }) {
     case "task_done": return <CheckCircle2 className={cls} />;
     default: return <StickyNote className={cls} />;
   }
+}
+
+/* ===================== Shared helpers for header dialogs ===================== */
+function notifyChanged() {
+  window.dispatchEvent(new Event("crm:data-changed"));
+}
+
+function useCrmProperties(open: boolean) {
+  const [props, setProps] = useState<{ id: string; address: string }[]>([]);
+  useEffect(() => {
+    if (!open) return;
+    supabase.from("crm_properties").select("id,address").order("address")
+      .then(({ data }) => setProps((data as any) ?? []));
+  }, [open]);
+  return props;
+}
+
+/* ===================== Add supplier ===================== */
+function AddSupplierDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (b: boolean) => void }) {
+  const [name, setName] = useState("");
+  const [trade, setTrade] = useState("");
+  const [phone, setPhone] = useState("");
+  const [email, setEmail] = useState("");
+  const [area, setArea] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  const save = async () => {
+    if (!name.trim()) return toast.error("Name required");
+    setSaving(true);
+    const { data: { user } } = await supabase.auth.getUser();
+    const { error } = await supabase.from("tradesmen").insert({
+      name: name.trim(),
+      specialities: trade ? trade.split(",").map((s) => s.trim()).filter(Boolean) : [],
+      phone: phone || null, email: email || null,
+      area_covered: area || null, created_by: user?.id ?? null,
+    });
+    setSaving(false);
+    if (error) return toast.error(error.message);
+    toast.success("Supplier added");
+    setName(""); setTrade(""); setPhone(""); setEmail(""); setArea("");
+    onOpenChange(false); notifyChanged();
+  };
+
+  return (
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent className="overflow-y-auto">
+        <SheetHeader><SheetTitle>Add supplier</SheetTitle></SheetHeader>
+        <div className="mt-4 space-y-3">
+          <Input placeholder="Name" value={name} onChange={(e) => setName(e.target.value)} />
+          <Input placeholder="Trades (comma separated, e.g. plumber, gas)" value={trade} onChange={(e) => setTrade(e.target.value)} />
+          <Input placeholder="Phone" value={phone} onChange={(e) => setPhone(e.target.value)} />
+          <Input placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} />
+          <Input placeholder="Area covered" value={area} onChange={(e) => setArea(e.target.value)} />
+          <Button onClick={save} disabled={saving} className="w-full">{saving ? "Saving…" : "Create supplier"}</Button>
+        </div>
+      </SheetContent>
+    </Sheet>
+  );
+}
+
+/* ===================== Add project ===================== */
+function AddProjectDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (b: boolean) => void }) {
+  const props = useCrmProperties(open);
+  const [propertyId, setPropertyId] = useState("");
+  const [name, setName] = useState("");
+  const [type, setType] = useState<"light_refurb" | "heavy_refurb" | "conversion" | "new_build">("light_refurb");
+  const [stage, setStage] = useState<"planning" | "permits" | "demo" | "first_fix" | "second_fix" | "snagging" | "complete" | "refinanced">("planning");
+  const [budget, setBudget] = useState("");
+  const [targetEnd, setTargetEnd] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  const save = async () => {
+    if (!propertyId) return toast.error("Pick a property");
+    if (!name.trim()) return toast.error("Project name required");
+    setSaving(true);
+    const { error } = await supabase.from("crm_projects").insert({
+      property_id: propertyId, name: name.trim(), type, stage,
+      budget: budget ? Number(budget) : 0, target_end: targetEnd || null,
+    });
+    setSaving(false);
+    if (error) return toast.error(error.message);
+    toast.success("Project added");
+    setPropertyId(""); setName(""); setBudget(""); setTargetEnd("");
+    onOpenChange(false); notifyChanged();
+  };
+
+  return (
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent className="overflow-y-auto">
+        <SheetHeader><SheetTitle>Add project</SheetTitle></SheetHeader>
+        <div className="mt-4 space-y-3">
+          <Select value={propertyId} onValueChange={setPropertyId}>
+            <SelectTrigger><SelectValue placeholder="Property" /></SelectTrigger>
+            <SelectContent>{props.map((p) => <SelectItem key={p.id} value={p.id}>{p.address}</SelectItem>)}</SelectContent>
+          </Select>
+          <Input placeholder="Project name" value={name} onChange={(e) => setName(e.target.value)} />
+          <div className="grid grid-cols-2 gap-2">
+            <Select value={type} onValueChange={(v) => setType(v as typeof type)}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="light_refurb">Light refurb</SelectItem>
+                <SelectItem value="heavy_refurb">Heavy refurb</SelectItem>
+                <SelectItem value="conversion">Conversion</SelectItem>
+                <SelectItem value="new_build">New build</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={stage} onValueChange={(v) => setStage(v as typeof stage)}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="planning">Planning</SelectItem>
+                <SelectItem value="permits">Permits</SelectItem>
+                <SelectItem value="demo">Demo</SelectItem>
+                <SelectItem value="first_fix">First fix</SelectItem>
+                <SelectItem value="second_fix">Second fix</SelectItem>
+                <SelectItem value="snagging">Snagging</SelectItem>
+                <SelectItem value="complete">Complete</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <Input type="number" placeholder="Budget £" value={budget} onChange={(e) => setBudget(e.target.value)} />
+            <Input type="date" value={targetEnd} onChange={(e) => setTargetEnd(e.target.value)} />
+          </div>
+          <Button onClick={save} disabled={saving} className="w-full">{saving ? "Saving…" : "Create project"}</Button>
+        </div>
+      </SheetContent>
+    </Sheet>
+  );
+}
+
+/* ===================== Add unit ===================== */
+function AddUnitDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (b: boolean) => void }) {
+  const props = useCrmProperties(open);
+  const [propertyId, setPropertyId] = useState("");
+  const [label, setLabel] = useState("");
+  const [beds, setBeds] = useState("");
+  const [rent, setRent] = useState("");
+  const [status, setStatus] = useState<"vacant" | "marketing" | "offer" | "referencing" | "let" | "notice" | "refurb">("vacant");
+  const [saving, setSaving] = useState(false);
+
+  const save = async () => {
+    if (!propertyId) return toast.error("Pick a property");
+    if (!label.trim()) return toast.error("Unit label required");
+    setSaving(true);
+    const { error } = await supabase.from("crm_units").insert({
+      property_id: propertyId, label: label.trim(),
+      beds: beds ? Number(beds) : null,
+      rent_pcm: rent ? Number(rent) : null,
+      status,
+    });
+    setSaving(false);
+    if (error) return toast.error(error.message);
+    toast.success("Unit added");
+    setPropertyId(""); setLabel(""); setBeds(""); setRent("");
+    onOpenChange(false); notifyChanged();
+  };
+
+  return (
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent className="overflow-y-auto">
+        <SheetHeader><SheetTitle>Add unit</SheetTitle></SheetHeader>
+        <div className="mt-4 space-y-3">
+          <Select value={propertyId} onValueChange={setPropertyId}>
+            <SelectTrigger><SelectValue placeholder="Property" /></SelectTrigger>
+            <SelectContent>{props.map((p) => <SelectItem key={p.id} value={p.id}>{p.address}</SelectItem>)}</SelectContent>
+          </Select>
+          <Input placeholder="Label (e.g. Flat 1, Room A)" value={label} onChange={(e) => setLabel(e.target.value)} />
+          <div className="grid grid-cols-3 gap-2">
+            <Input type="number" placeholder="Beds" value={beds} onChange={(e) => setBeds(e.target.value)} />
+            <Input type="number" placeholder="Rent pcm" value={rent} onChange={(e) => setRent(e.target.value)} />
+            <Select value={status} onValueChange={(v) => setStatus(v as typeof status)}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="vacant">Vacant</SelectItem>
+                <SelectItem value="marketing">Marketing</SelectItem>
+                <SelectItem value="offer">Offer</SelectItem>
+                <SelectItem value="referencing">Referencing</SelectItem>
+                <SelectItem value="let">Let</SelectItem>
+                <SelectItem value="notice">Notice</SelectItem>
+                <SelectItem value="refurb">Refurb</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <Button onClick={save} disabled={saving} className="w-full">{saving ? "Saving…" : "Create unit"}</Button>
+        </div>
+      </SheetContent>
+    </Sheet>
+  );
+}
+
+/* ===================== Add tenancy ===================== */
+function AddTenancyDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (b: boolean) => void }) {
+  const [units, setUnits] = useState<{ id: string; label: string; property_id: string }[]>([]);
+  const [props, setProps] = useState<Record<string, string>>({});
+  useEffect(() => {
+    if (!open) return;
+    (async () => {
+      const [u, p] = await Promise.all([
+        supabase.from("crm_units").select("id,label,property_id"),
+        supabase.from("crm_properties").select("id,address"),
+      ]);
+      setUnits(((u.data as any) ?? []));
+      const pm: Record<string, string> = {};
+      (p.data ?? []).forEach((x: any) => { pm[x.id] = x.address; });
+      setProps(pm);
+    })();
+  }, [open]);
+
+  const [unitId, setUnitId] = useState("");
+  const [fullName, setFullName] = useState("");
+  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
+  const [rentPcm, setRentPcm] = useState("");
+  const [deposit, setDeposit] = useState("");
+  const [start, setStart] = useState("");
+  const [end, setEnd] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  const save = async () => {
+    if (!fullName.trim()) return toast.error("Tenant name required");
+    setSaving(true);
+    const { error } = await supabase.from("crm_tenants").insert({
+      unit_id: unitId || null,
+      full_name: fullName.trim(),
+      email: email || null, phone: phone || null,
+      rent_pcm: rentPcm ? Number(rentPcm) : null,
+      deposit: deposit ? Number(deposit) : null,
+      tenancy_start: start || null,
+      tenancy_end: end || null,
+      status: "current",
+    });
+    setSaving(false);
+    if (error) return toast.error(error.message);
+    toast.success("Tenancy added");
+    setUnitId(""); setFullName(""); setEmail(""); setPhone(""); setRentPcm(""); setDeposit(""); setStart(""); setEnd("");
+    onOpenChange(false); notifyChanged();
+  };
+
+  return (
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent className="overflow-y-auto">
+        <SheetHeader><SheetTitle>New tenancy</SheetTitle></SheetHeader>
+        <div className="mt-4 space-y-3">
+          <Select value={unitId} onValueChange={setUnitId}>
+            <SelectTrigger><SelectValue placeholder="Unit (optional)" /></SelectTrigger>
+            <SelectContent>
+              {units.map((u) => (
+                <SelectItem key={u.id} value={u.id}>{props[u.property_id] ?? "—"} · {u.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Input placeholder="Tenant full name" value={fullName} onChange={(e) => setFullName(e.target.value)} />
+          <div className="grid grid-cols-2 gap-2">
+            <Input placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} />
+            <Input placeholder="Phone" value={phone} onChange={(e) => setPhone(e.target.value)} />
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <Input type="number" placeholder="Rent pcm" value={rentPcm} onChange={(e) => setRentPcm(e.target.value)} />
+            <Input type="number" placeholder="Deposit" value={deposit} onChange={(e) => setDeposit(e.target.value)} />
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <Input type="date" value={start} onChange={(e) => setStart(e.target.value)} />
+            <Input type="date" value={end} onChange={(e) => setEnd(e.target.value)} />
+          </div>
+          <Button onClick={save} disabled={saving} className="w-full">{saving ? "Saving…" : "Create tenancy"}</Button>
+        </div>
+      </SheetContent>
+    </Sheet>
+  );
+}
+
+/* ===================== Log rent payment ===================== */
+function LogRentPaymentDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (b: boolean) => void }) {
+  const [tenants, setTenants] = useState<{ id: string; full_name: string; rent_pcm: number | null }[]>([]);
+  useEffect(() => {
+    if (!open) return;
+    supabase.from("crm_tenants").select("id,full_name,rent_pcm").order("full_name")
+      .then(({ data }) => setTenants((data as any) ?? []));
+  }, [open]);
+
+  const [tenantId, setTenantId] = useState("");
+  const [dueDate, setDueDate] = useState(new Date().toISOString().slice(0, 10));
+  const [dueAmount, setDueAmount] = useState("");
+  const [paidAmount, setPaidAmount] = useState("");
+  const [paidOn, setPaidOn] = useState(new Date().toISOString().slice(0, 10));
+  const [method, setMethod] = useState("bank");
+  const [saving, setSaving] = useState(false);
+
+  const save = async () => {
+    if (!tenantId) return toast.error("Pick a tenant");
+    setSaving(true);
+    const { error } = await supabase.from("crm_rent_payments").insert({
+      tenant_id: tenantId,
+      due_date: dueDate,
+      due_amount: Number(dueAmount || 0),
+      paid_amount: Number(paidAmount || 0),
+      paid_on: paidOn || null,
+      method,
+    });
+    setSaving(false);
+    if (error) return toast.error(error.message);
+    toast.success("Payment logged");
+    setTenantId(""); setDueAmount(""); setPaidAmount("");
+    onOpenChange(false); notifyChanged();
+  };
+
+  return (
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent className="overflow-y-auto">
+        <SheetHeader><SheetTitle>Log rent payment</SheetTitle></SheetHeader>
+        <div className="mt-4 space-y-3">
+          <Select value={tenantId} onValueChange={(v) => {
+            setTenantId(v);
+            const t = tenants.find((x) => x.id === v);
+            if (t?.rent_pcm && !dueAmount) { setDueAmount(String(t.rent_pcm)); setPaidAmount(String(t.rent_pcm)); }
+          }}>
+            <SelectTrigger><SelectValue placeholder="Tenant" /></SelectTrigger>
+            <SelectContent>{tenants.map((t) => <SelectItem key={t.id} value={t.id}>{t.full_name}</SelectItem>)}</SelectContent>
+          </Select>
+          <div className="grid grid-cols-2 gap-2">
+            <Input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
+            <Input type="date" value={paidOn} onChange={(e) => setPaidOn(e.target.value)} />
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <Input type="number" placeholder="Due £" value={dueAmount} onChange={(e) => setDueAmount(e.target.value)} />
+            <Input type="number" placeholder="Paid £" value={paidAmount} onChange={(e) => setPaidAmount(e.target.value)} />
+          </div>
+          <Select value={method} onValueChange={setMethod}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="bank">Bank transfer</SelectItem>
+              <SelectItem value="standing_order">Standing order</SelectItem>
+              <SelectItem value="cash">Cash</SelectItem>
+              <SelectItem value="card">Card</SelectItem>
+              <SelectItem value="manual">Manual</SelectItem>
+            </SelectContent>
+          </Select>
+          <Button onClick={save} disabled={saving} className="w-full">{saving ? "Saving…" : "Log payment"}</Button>
+        </div>
+      </SheetContent>
+    </Sheet>
+  );
+}
+
+/* ===================== Add investor ===================== */
+function AddInvestorDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (b: boolean) => void }) {
+  const [name, setName] = useState("");
+  const [headline, setHeadline] = useState("");
+  const [location, setLocation] = useState("");
+  const [capital, setCapital] = useState("");
+  const [stage, setStage] = useState<Stage>("new");
+  const [saving, setSaving] = useState(false);
+
+  const save = async () => {
+    if (!name.trim()) return toast.error("Name required");
+    setSaving(true);
+    // Investor profile without a real auth user lives off a synthetic user_id.
+    const fakeId = crypto.randomUUID();
+    const { error: pErr } = await supabase.from("client_profiles").insert({
+      user_id: fakeId,
+      display_name: name.trim(),
+      headline: headline || null,
+      location: location || null,
+      available_capital: capital ? Number(capital) : null,
+    });
+    if (pErr) { setSaving(false); return toast.error(pErr.message); }
+    const { error: mErr } = await supabase.from("crm_contact_meta").insert({
+      client_id: fakeId, stage,
+    });
+    setSaving(false);
+    if (mErr) return toast.error(mErr.message);
+    toast.success("Investor added");
+    setName(""); setHeadline(""); setLocation(""); setCapital(""); setStage("new");
+    onOpenChange(false); notifyChanged();
+  };
+
+  return (
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent className="overflow-y-auto">
+        <SheetHeader><SheetTitle>Add investor</SheetTitle></SheetHeader>
+        <div className="mt-4 space-y-3">
+          <Input placeholder="Display name" value={name} onChange={(e) => setName(e.target.value)} />
+          <Input placeholder="Headline / role" value={headline} onChange={(e) => setHeadline(e.target.value)} />
+          <Input placeholder="Location" value={location} onChange={(e) => setLocation(e.target.value)} />
+          <Input type="number" placeholder="Available capital £" value={capital} onChange={(e) => setCapital(e.target.value)} />
+          <Select value={stage} onValueChange={(v) => setStage(v as Stage)}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>{STAGES.map((s) => <SelectItem key={s} value={s}>{STAGE_LABEL[s]}</SelectItem>)}</SelectContent>
+          </Select>
+          <Button onClick={save} disabled={saving} className="w-full">{saving ? "Saving…" : "Create investor"}</Button>
+        </div>
+      </SheetContent>
+    </Sheet>
+  );
 }

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -12,10 +12,16 @@ export function PropertiesTable({ onOpenProperty }: { onOpenProperty: (id: strin
   const [items, setItems] = useState<Property[]>([]);
   const [q, setQ] = useState("");
 
-  useEffect(() => {
+  const load = useCallback(() => {
     supabase.from("crm_properties").select("*").order("created_at", { ascending: false })
       .then(({ data }) => setItems((data as Property[]) ?? []));
   }, []);
+  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    const onChanged = () => load();
+    window.addEventListener("crm:data-changed", onChanged);
+    return () => window.removeEventListener("crm:data-changed", onChanged);
+  }, [load]);
 
   const filtered = items.filter((p) =>
     !q || p.address.toLowerCase().includes(q.toLowerCase()) || (p.postcode ?? "").toLowerCase().includes(q.toLowerCase())

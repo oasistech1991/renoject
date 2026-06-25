@@ -31,6 +31,12 @@ export function RentLedger() {
   };
   useEffect(() => { load(); }, []);
 
+  useEffect(() => {
+    const onChanged = () => load();
+    window.addEventListener("crm:data-changed", onChanged);
+    return () => window.removeEventListener("crm:data-changed", onChanged);
+  }, []);
+
   const months = useMemo(() => {
     const arr: string[] = [];
     const d = new Date(); d.setDate(1);

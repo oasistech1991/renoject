@@ -13,19 +13,23 @@ export function HomeBoard({ onJump }: { onJump: (key: string) => void }) {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [comp, setComp] = useState<ComplianceItem[]>([]);
 
+  const load = async () => {
+    const [u, t, k, c] = await Promise.all([
+      supabase.from("crm_units").select("*"),
+      supabase.from("crm_tenants").select("*"),
+      supabase.from("crm_tasks").select("id,title,due_at,status").eq("status", "open"),
+      supabase.from("crm_compliance_items").select("*"),
+    ]);
+    setUnits((u.data as Unit[]) ?? []);
+    setTenants((t.data as Tenant[]) ?? []);
+    setTasks((k.data as Task[]) ?? []);
+    setComp((c.data as ComplianceItem[]) ?? []);
+  };
+  useEffect(() => { load(); }, []);
   useEffect(() => {
-    (async () => {
-      const [u, t, k, c] = await Promise.all([
-        supabase.from("crm_units").select("*"),
-        supabase.from("crm_tenants").select("*"),
-        supabase.from("crm_tasks").select("id,title,due_at,status").eq("status", "open"),
-        supabase.from("crm_compliance_items").select("*"),
-      ]);
-      setUnits((u.data as Unit[]) ?? []);
-      setTenants((t.data as Tenant[]) ?? []);
-      setTasks((k.data as Task[]) ?? []);
-      setComp((c.data as ComplianceItem[]) ?? []);
-    })();
+    const onChanged = () => load();
+    window.addEventListener("crm:data-changed", onChanged);
+    return () => window.removeEventListener("crm:data-changed", onChanged);
   }, []);
 
   const occRate = units.length ? Math.round((units.filter((x) => x.status === "let").length / units.length) * 100) : 0;

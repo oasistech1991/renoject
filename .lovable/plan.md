@@ -1,87 +1,38 @@
-# Landlord Vision–inspired CRM redesign
+## Problem
 
-Landlord Vision is built around a landlord's *operational* day: a left sidebar of modules, a dense dashboard of "what needs my attention", and deep per-property records that tie tenancies, rent, expenses, inspections, certificates, and documents together. Today our `/crm` is a flat horizontal tab bar over investor-led modules. This plan re-skins and re-organises it around that landlord-operations model while keeping our existing investor + sales flows.
+The contextual "Add X" buttons I added to the CRM header only work for **Add property** and **New task**. The rest (Add expense, Add certificate, Upload document, Add supplier, Add deal, Add project, Add unit, Add lead, Add investor, plus the "New tenancy" / "Log payment" hints) just toast or fire an event with no listener — so nothing happens.
 
-## New shell
+## Fix
 
-Replace the top tab bar in `src/routes/crm.tsx` with a Landlord Vision–style two-pane layout:
+Make every header CTA open a working create dialog at the `/crm` page level, so the button is the real entry point for that page's primary action.
 
-```text
-┌───────────────────────────────────────────────────────────┐
-│ Topbar: search · quick add · alerts · profile             │
-├──────────┬────────────────────────────────────────────────┤
-│ Sidebar  │  Module workspace                              │
-│  Home    │  ┌──────────────────────────────────────────┐  │
-│  Props   │  │ Module header + filters + primary CTA    │  │
-│  Tenan.  │  ├──────────────────────────────────────────┤  │
-│  Rent    │  │ Content (table / kanban / detail)        │  │
-│  Expns.  │  │                                          │  │
-│  Tasks   │  │                                          │  │
-│  Compl.  │  └──────────────────────────────────────────┘  │
-│  Docs    │                                                │
-│  Suppl.  │                                                │
-│  Sales   │                                                │
-│  Invest. │                                                │
-│  Reports │                                                │
-└──────────┴────────────────────────────────────────────────┘
-```
+### New dialogs (each a small `Sheet` with the minimum required fields, inserts into the existing table, then refreshes)
 
-Collapsible sidebar (icon-only on tablet/mobile), groups: **Operations** (Home, Properties, Tenancies, Rent, Expenses, Tasks, Compliance, Documents, Suppliers), **Growth** (Sales pipeline, Leads, Investors), **Insights** (Reports).
+| View | Button | Inserts into | Key fields |
+|---|---|---|---|
+| Expenses | Add expense | `crm_expenses` | property, date, category, amount, VAT, notes |
+| Compliance | Add certificate | `crm_compliance_items` | property, type, issued, expires, notes |
+| Documents | Upload document | `crm_documents` (+ Storage upload to `property-media/crm/{property_id}/`) | property, name, kind, file |
+| Suppliers | Add supplier | `tradesmen` (+ `crm_contractor_meta`) | name, trade, phone, email |
+| Sales | Add deal | `crm_deal_clients` | linked feed post, client, stage, amount, probability |
+| Projects | Add project | `crm_projects` | property, name, type, stage, budget, target end |
+| Lettings board | Add unit | `crm_units` | property, label, beds, rent pcm, status |
+| Leads | Add lead | `crm_leads` | name, email, phone, source, status, budget |
+| Investors | Add investor | `client_profiles` (+ `crm_contact_meta`) | name, email, available capital, stage |
+| Tenancies | New tenancy | `crm_tenants` | unit, full name, rent pcm, start/end, status |
+| Rent | Log payment | `crm_rent_payments` | tenant, due date, due amount, paid amount, paid on |
 
-## Module changes
+All dialogs follow the same shape as the existing `AddPropertyDialog` and `NewTaskDialog`: open state held in `crm.tsx`, save via `supabase.from(...).insert(...)`, toast + close + refresh on success.
 
-1. **Home (new)** — "What needs your attention" dashboard:
-   - KPI strip: Occupancy %, Monthly rent, Arrears £, Cash collected this month, Upcoming certificate expiries.
-   - Tiles: Overdue tasks, Rent due in next 7 days, Tenancies ending in 60 days, Compliance items expiring in 60 days, Recent activity.
-   - Driven entirely from existing tables (`crm_units`, `crm_tenants`, `crm_tasks`, `crm_activities`, plus new compliance fields below).
+### Wiring
 
-2. **Properties** — keep `PropertiesTable` but reframe as the operational record. The `PropertyDetailSheet` becomes a fuller right-pane "property file" with tabs: Overview, Tenancies, Rent ledger, Expenses, Compliance, Documents, Project (existing), Notes.
+- Replace the `dispatch(...) + toast.message(...)` placeholders in `PrimaryAction` with real `onClick` handlers that set the matching dialog's `open` state.
+- Properties lists (suppliers, leads, etc.) auto-refresh after insert by reusing each module's existing fetch — for modules that load on mount only, I'll bump a `refreshTick` state passed in as a prop they re-read on, or have the dialog dispatch a `crm:refresh` event each module listens to. I'll use the event approach so I don't have to touch every module's props.
 
-3. **Tenancies (new view over existing data)** — list view of `crm_tenants` joined to units/properties, showing start, end, rent, status, arrears, days-to-renewal. No new table needed.
+### Out of scope
 
-4. **Rent (new)** — month grid: rows = tenancies, columns = last 6 months, cells coloured paid / partial / overdue. Backed by a new `crm_rent_payments` table (tenant_id, due_date, due_amount, paid_amount, paid_on, method, notes) so arrears stop being a single field on `crm_tenants`.
+- No schema changes — every table already exists.
+- No redesign of existing module pages; only the header CTA gets wired.
+- Reports stays with no CTA.
 
-5. **Expenses (new)** — table of property-level expenses (date, category, supplier, amount, VAT, taxable, notes, receipt URL). New `crm_expenses` table.
-
-6. **Tasks** — keep `crm_tasks` but switch UI to Landlord Vision's segmented Today / Overdue / Upcoming / Done view.
-
-7. **Compliance (new)** — per-property record of certificates: Gas, EICR, EPC, PAT, Fire alarm, HMO licence, Deposit protection. New `crm_compliance_items` table with property_id, type, issued_on, expires_on, document_url, status. Home dashboard reads "expiring in 60 days" from here.
-
-8. **Documents (new)** — file list per property (tenancy agreements, certificates, statements). New `crm_documents` table (property_id, name, kind, file_url, uploaded_at, uploaded_by). Files go in the existing `property-media` bucket under a `crm/{property_id}/` prefix.
-
-9. **Suppliers** — rename **Contractors** to Suppliers (Landlord Vision terminology), same data (`crm_contractor_meta` + `tradesmen`), add columns for trade, preferred, last used.
-
-10. **Sales / Leads / Investors** — keep as today, moved under the Growth group.
-
-11. **Reports** — extend with: rent collected vs due (12-month line), arrears ageing buckets, expense by category, compliance expiry timeline.
-
-## Database changes (one migration)
-
-- `crm_rent_payments` (tenant_id → crm_tenants, due_date, due_amount, paid_amount, paid_on, method, notes)
-- `crm_expenses` (property_id → crm_properties, supplier_id nullable → tradesmen, date, category, amount, vat_amount, notes, receipt_url)
-- `crm_compliance_items` (property_id, type enum, issued_on, expires_on, document_url, status)
-- `crm_documents` (property_id, name, kind, file_url, uploaded_by, uploaded_at)
-
-All four: admin-only RLS (matches every other `crm_*` table), explicit GRANTs to `authenticated` + `service_role`, `updated_at` trigger where mutable.
-
-## Visual treatment
-
-Keep the current warm-charcoal theme and orange (#F7791E) accent — apply Landlord Vision's *structural* cues, not their colours:
-- Dense, table-first content with sticky headers.
-- Status pills (Let, Vacant, Notice, Arrears, Compliant, Expiring, Expired) using existing semantic tokens.
-- Property file as a wide right-side sheet with tabbed sections instead of separate routes.
-- Quick-add menu in the topbar (Property, Tenancy, Rent payment, Expense, Task, Document).
-
-## Files touched
-
-- `src/routes/crm.tsx` — replace tab layout with sidebar shell.
-- New `src/components/crm/Shell.tsx`, `Sidebar.tsx`, `Topbar.tsx`, `QuickAdd.tsx`.
-- New modules: `Home.tsx`, `Tenancies.tsx`, `Rent.tsx`, `Expenses.tsx`, `Compliance.tsx`, `Documents.tsx`.
-- Update: `Properties.tsx`, `PropertyDetail.tsx` (new tabs), `Contractors.tsx` → `Suppliers.tsx`, `Reports.tsx`, `types.ts`.
-- One Supabase migration for the four new tables.
-
-## Out of scope (ask before building)
-
-- Bank-feed reconciliation, Open Banking, accountant export, MTD/HMRC filing, automated rent reminders, tenant portal, online rent collection. Each is a sizeable module on its own.
-
-Confirm and I'll build it. If you'd rather I match Landlord Vision's exact blue/white visual style too, say so and I'll add a theme pass.
+Confirm and I'll build it.

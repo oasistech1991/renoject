@@ -14,19 +14,23 @@ export function LettingsBoard() {
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [props, setProps] = useState<Record<string, Property>>({});
 
+  const load = async () => {
+    const [u, t, p] = await Promise.all([
+      supabase.from("crm_units").select("*"),
+      supabase.from("crm_tenants").select("*"),
+      supabase.from("crm_properties").select("*"),
+    ]);
+    setUnits((u.data as Unit[]) ?? []);
+    setTenants((t.data as Tenant[]) ?? []);
+    const map: Record<string, Property> = {};
+    (p.data ?? []).forEach((x: any) => { map[x.id] = x; });
+    setProps(map);
+  };
+  useEffect(() => { load(); }, []);
   useEffect(() => {
-    (async () => {
-      const [u, t, p] = await Promise.all([
-        supabase.from("crm_units").select("*"),
-        supabase.from("crm_tenants").select("*"),
-        supabase.from("crm_properties").select("*"),
-      ]);
-      setUnits((u.data as Unit[]) ?? []);
-      setTenants((t.data as Tenant[]) ?? []);
-      const map: Record<string, Property> = {};
-      (p.data ?? []).forEach((x: any) => { map[x.id] = x; });
-      setProps(map);
-    })();
+    const onChanged = () => load();
+    window.addEventListener("crm:data-changed", onChanged);
+    return () => window.removeEventListener("crm:data-changed", onChanged);
   }, []);
 
   const grouped = useMemo(() => {
