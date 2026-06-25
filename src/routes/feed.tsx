@@ -442,6 +442,7 @@ function PostCard({
   onShare: (id: string) => void;
   onVote: (id: string, vote: "yes" | "no") => void;
   onOpen: () => void;
+  expanded?: boolean;
 }) {
   const prop = post.property;
   const inputs = prop?.inputs ?? {};
