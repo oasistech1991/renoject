@@ -366,18 +366,27 @@ function FeedPage() {
             </div>
           )}
           {visiblePosts.map((p) => (
-            <PostCard
-              key={p.id}
-              post={p}
-              profile={profiles[p.author_id]}
-              userId={userId}
-              onReact={toggleReact}
-              onSave={toggleSave}
-              onInterest={expressInterest}
-              onShare={share}
-              onVote={castVote}
-              onOpen={() => setOpenPostId(p.id)}
-            />
+            <div key={p.id} className="space-y-0">
+              <PostCard
+                post={p}
+                profile={profiles[p.author_id]}
+                userId={userId}
+                onReact={toggleReact}
+                onSave={toggleSave}
+                onInterest={expressInterest}
+                onShare={share}
+                onVote={castVote}
+                onOpen={() => setOpenPostId(openPostId === p.id ? null : p.id)}
+                expanded={openPostId === p.id}
+              />
+              {openPostId === p.id && (
+                <CommentsPanel
+                  post={p}
+                  userId={userId}
+                  onChanged={loadFeed}
+                />
+              )}
+            </div>
           ))}
         </div>
       )}
@@ -388,18 +397,6 @@ function FeedPage() {
 
       {!loading && tab === "inbox" && isAdmin && (
         <InboxView posts={posts} profiles={profiles} />
-      )}
-
-      {openPostId && (
-        <PostSheet
-          post={posts.find((p) => p.id === openPostId)!}
-          userId={userId}
-          onInterest={expressInterest}
-          onClose={() => {
-            setOpenPostId(null);
-            loadFeed();
-          }}
-        />
       )}
     </div>
   );
