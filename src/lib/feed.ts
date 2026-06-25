@@ -16,6 +16,22 @@ export const HIDABLE_FIELDS = [
 
 export type HidableFieldKey = (typeof HIDABLE_FIELDS)[number]["key"];
 
+export const DEAL_TYPES = [
+  { key: "btl", label: "Buy to Let", color: "var(--deal-btl)" },
+  { key: "turnkey", label: "Turn Key", color: "var(--deal-turnkey)" },
+  { key: "offmarket", label: "Off-Market", color: "var(--deal-offmarket)" },
+  { key: "mixeduse", label: "Mixed Use", color: "var(--deal-mixeduse)" },
+  { key: "hmo", label: "HMO", color: "var(--deal-hmo)" },
+  { key: "brr", label: "BRR / Flip", color: "var(--deal-brr)" },
+  { key: "other", label: "Other", color: "var(--deal-other)" },
+] as const;
+
+export type DealTypeKey = (typeof DEAL_TYPES)[number]["key"];
+
+export function dealTypeMeta(key: string | null | undefined) {
+  return DEAL_TYPES.find((d) => d.key === key) ?? DEAL_TYPES[DEAL_TYPES.length - 1];
+}
+
 export type FeedPostRow = {
   id: string;
   property_id: string;
@@ -24,6 +40,7 @@ export type FeedPostRow = {
   cover_url: string | null;
   display_mode: "teaser" | "full";
   hidden_fields: HidableFieldKey[];
+  deal_type: string | null;
   is_published: boolean;
   created_at: string;
   updated_at: string;

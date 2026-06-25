@@ -197,6 +197,7 @@ export type Database = {
           caption: string | null
           cover_url: string | null
           created_at: string
+          deal_type: string | null
           display_mode: string
           hidden_fields: Json
           id: string
@@ -209,6 +210,7 @@ export type Database = {
           caption?: string | null
           cover_url?: string | null
           created_at?: string
+          deal_type?: string | null
           display_mode?: string
           hidden_fields?: Json
           id?: string
@@ -221,6 +223,7 @@ export type Database = {
           caption?: string | null
           cover_url?: string | null
           created_at?: string
+          deal_type?: string | null
           display_mode?: string
           hidden_fields?: Json
           id?: string

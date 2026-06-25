@@ -6,6 +6,8 @@ import { fmtGBP, fmtPct } from "@/lib/btl";
 import {
   REACTION_EMOJI,
   HIDABLE_FIELDS,
+  DEAL_TYPES,
+  dealTypeMeta,
   type ReactionKind,
   type FeedPostRow,
   type HidableFieldKey,
@@ -24,6 +26,9 @@ import {
   Settings,
   LayoutGrid,
   Check,
+  ChevronLeft,
+  ChevronRight,
+  ImageOff,
 } from "lucide-react";
 
 export const Route = createFileRoute("/feed")({
@@ -61,9 +66,12 @@ type Interest = { post_id: string; user_id: string; status: string; note: string
 
 type PollVote = { post_id: string; user_id: string; vote: "yes" | "no" };
 
+type MediaItem = { kind: "image" | "video"; url: string };
+
 type FeedPost = FeedPostRow & {
   property: Property | null;
   cover_resolved: string | null;
+  media: MediaItem[];
   reactions: Reaction[];
   comment_count: number;
   interested: boolean;
@@ -134,10 +142,10 @@ function FeedPage() {
         : Promise.resolve({ data: [] as any[] }),
       propIds.length
         ? supabase.from("property_media")
-            .select("property_id,storage_path")
+            .select("property_id,storage_path,kind,is_hero,sort_order")
             .in("property_id", propIds)
-            .eq("is_hero", true)
-            .eq("kind", "image")
+            .order("is_hero", { ascending: false })
+            .order("sort_order", { ascending: true })
         : Promise.resolve({ data: [] as any[] }),
       authorIds.length
         ? supabase.from("client_profiles").select("user_id,display_name,avatar_url").in("user_id", authorIds)
@@ -170,13 +178,23 @@ function FeedPage() {
       pollMap.set(v.post_id, arr);
     }
 
+    const mediaByProp: Record<string, MediaItem[]> = {};
     const coverMap: Record<string, string> = {};
+    const mediaRows =
+      ((mediaRes.data as { property_id: string; storage_path: string; kind: string; is_hero: boolean }[]) ?? []);
     await Promise.all(
-      ((mediaRes.data as { property_id: string; storage_path: string }[]) ?? []).map(async (m) => {
+      mediaRows.map(async (m) => {
         const { data: s } = await supabase.storage
           .from("property-media")
           .createSignedUrl(m.storage_path, 60 * 60);
-        if (s?.signedUrl) coverMap[m.property_id] = s.signedUrl;
+        if (!s?.signedUrl) return;
+        const kind: "image" | "video" = m.kind === "video" ? "video" : "image";
+        const arr = mediaByProp[m.property_id] ?? [];
+        arr.push({ kind, url: s.signedUrl });
+        mediaByProp[m.property_id] = arr;
+        if (kind === "image" && (m.is_hero || !coverMap[m.property_id])) {
+          coverMap[m.property_id] = s.signedUrl;
+        }
       }),
     );
 
@@ -192,6 +210,7 @@ function FeedPage() {
         hidden_fields: (p.hidden_fields ?? []) as HidableFieldKey[],
         property: propMap.get(p.property_id) ?? null,
         cover_resolved: p.cover_url ?? coverMap[p.property_id] ?? null,
+        media: mediaByProp[p.property_id] ?? [],
         reactions: reacts,
         comment_count: commentCountMap.get(p.id) ?? 0,
         interested: interestedSet.has(p.id),
@@ -427,18 +446,17 @@ function PostCard({
 
   const authorName = profile?.display_name ?? "Renoject";
   const date = new Date(post.created_at).toLocaleDateString();
+  const dealMeta = dealTypeMeta(post.deal_type);
 
   return (
     <article className="overflow-hidden rounded-xl border border-border bg-card">
-      {post.cover_resolved && (
-        <button onClick={onOpen} className="block w-full">
-          <img
-            src={post.cover_resolved}
-            alt={prop?.name ?? "Deal"}
-            className="aspect-[16/9] w-full object-cover"
-          />
-        </button>
-      )}
+      <DealMediaGallery
+        media={post.media}
+        fallback={post.cover_resolved}
+        alt={prop?.name ?? "Deal"}
+        dealType={post.deal_type}
+        onImageClick={onOpen}
+      />
       <div className="p-5">
         <div className="flex items-center gap-3">
           <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/20 text-sm font-semibold text-primary">
@@ -456,19 +474,20 @@ function PostCard({
 
         {post.caption && <p className="mt-2 whitespace-pre-wrap text-sm">{post.caption}</p>}
 
-        <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <Stat label="GDV" value={fmtGBP(inputs.gdv ?? 0)} />
+        <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
           {!hidden.has("purchasePrice") && (
-            <Stat label="Purchase" value={fmtGBP(inputs.purchasePrice ?? 0)} />
+            <Stat label="PP" value={fmtGBP(inputs.purchasePrice ?? 0)} />
           )}
+          {!hidden.has("refurbCost") && (
+            <Stat label="Refurb" value={fmtGBP(inputs.refurbCost ?? 0)} />
+          )}
+          <Stat label="End value" value={fmtGBP(inputs.gdv ?? 0)} />
+          <Stat label="Rent" value={fmtGBP(inputs.monthlyRent ?? 0)} />
+          <Stat label="Net cashflow" value={fmtGBP(metrics.monthlyCashflowIO ?? 0)} />
+          <Stat label="ROI" value={fmtPct(metrics.roiOnCashLeftIn ?? 0)} />
           <Stat label="Cash left in" value={fmtGBP(Math.max(0, metrics.cashLeftIn ?? 0))} />
-          <Stat label="Monthly CF" value={fmtGBP(metrics.monthlyCashflowIO ?? 0)} />
           {post.display_mode === "full" && (
             <>
-              <Stat label="ROI" value={fmtPct(metrics.roiOnCashLeftIn ?? 0)} />
-              {!hidden.has("refurbCost") && (
-                <Stat label="Refurb" value={fmtGBP(inputs.refurbCost ?? 0)} />
-              )}
               <Stat label="New loan" value={fmtGBP(metrics.newLoan ?? 0)} />
               <Stat label="Profit on paper" value={fmtGBP(metrics.profitOnPaper ?? 0)} />
             </>
@@ -539,6 +558,119 @@ function Stat({ label, value }: { label: string; value: string }) {
     <div className="rounded-md bg-muted/40 px-3 py-2">
       <div className="text-[10px] uppercase tracking-wider text-muted-foreground">{label}</div>
       <div className="text-sm font-semibold tabular-nums">{value}</div>
+    </div>
+  );
+}
+
+function DealTypeBadge({ dealType, className = "" }: { dealType: string | null; className?: string }) {
+  const meta = dealTypeMeta(dealType);
+  return (
+    <span
+      className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold text-white shadow-sm backdrop-blur-sm ${className}`}
+      style={{ backgroundColor: meta.color }}
+    >
+      <span className="h-1.5 w-1.5 rounded-full bg-white/90" />
+      {meta.label}
+    </span>
+  );
+}
+
+function DealMediaGallery({
+  media,
+  fallback,
+  alt,
+  dealType,
+  onImageClick,
+}: {
+  media: MediaItem[];
+  fallback: string | null;
+  alt: string;
+  dealType: string | null;
+  onImageClick?: () => void;
+}) {
+  const items: MediaItem[] = media.length
+    ? media
+    : fallback
+      ? [{ kind: "image", url: fallback }]
+      : [];
+  const [idx, setIdx] = useState(0);
+  const total = items.length;
+  const safeIdx = Math.min(idx, Math.max(0, total - 1));
+  const current = items[safeIdx];
+
+  const go = (delta: number) => {
+    if (!total) return;
+    setIdx((i) => (i + delta + total) % total);
+  };
+
+  return (
+    <div className="group relative aspect-[16/9] w-full overflow-hidden bg-muted">
+      {current ? (
+        current.kind === "video" ? (
+          <video
+            key={current.url}
+            src={current.url}
+            controls
+            preload="metadata"
+            playsInline
+            className="h-full w-full object-cover"
+          />
+        ) : (
+          <button
+            type="button"
+            onClick={onImageClick}
+            className="block h-full w-full"
+            aria-label={`Open ${alt}`}
+          >
+            <img src={current.url} alt={alt} className="h-full w-full object-cover" />
+          </button>
+        )
+      ) : (
+        <div className="flex h-full w-full items-center justify-center text-muted-foreground">
+          <ImageOff className="h-8 w-8 opacity-50" />
+        </div>
+      )}
+
+      <div className="pointer-events-none absolute left-3 top-3">
+        <DealTypeBadge dealType={dealType} />
+      </div>
+
+      {total > 1 && (
+        <>
+          <div className="pointer-events-none absolute right-3 top-3 rounded-full bg-black/55 px-2 py-0.5 text-[11px] font-medium text-white">
+            {safeIdx + 1} / {total}
+          </div>
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); go(-1); }}
+            className="absolute left-2 top-1/2 hidden -translate-y-1/2 rounded-full bg-black/50 p-1.5 text-white opacity-0 transition-opacity group-hover:opacity-100 sm:block"
+            aria-label="Previous"
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </button>
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); go(1); }}
+            className="absolute right-2 top-1/2 hidden -translate-y-1/2 rounded-full bg-black/50 p-1.5 text-white opacity-0 transition-opacity group-hover:opacity-100 sm:block"
+            aria-label="Next"
+          >
+            <ChevronRight className="h-4 w-4" />
+          </button>
+          <div className="absolute inset-x-0 bottom-2 flex justify-center gap-1.5">
+            {items.map((_, i) => (
+              <button
+                key={i}
+                type="button"
+                onClick={(e) => { e.stopPropagation(); setIdx(i); }}
+                className={`h-1.5 rounded-full transition-all ${
+                  i === safeIdx ? "w-5 bg-white" : "w-1.5 bg-white/60 hover:bg-white/80"
+                }`}
+                aria-label={`Go to slide ${i + 1}`}
+              />
+            ))}
+          </div>
+        </>
+      )}
     </div>
   );
 }
@@ -816,10 +948,21 @@ function PostSheet({
         onClick={(e) => e.stopPropagation()}
       >
         <header className="flex items-center justify-between border-b border-border p-4">
-          <h3 className="text-sm font-semibold">{post.property?.name ?? "Deal"}</h3>
+          <div className="flex items-center gap-2">
+            <h3 className="text-sm font-semibold">{post.property?.name ?? "Deal"}</h3>
+            <DealTypeBadge dealType={post.deal_type} />
+          </div>
           <button onClick={onClose} className="text-sm text-muted-foreground hover:text-foreground">Close</button>
         </header>
         <div className="flex-1 space-y-3 overflow-y-auto p-4">
+          <div className="-mx-4 -mt-4">
+            <DealMediaGallery
+              media={post.media}
+              fallback={post.cover_resolved}
+              alt={post.property?.name ?? "Deal"}
+              dealType={post.deal_type}
+            />
+          </div>
           <PollBreakdown post={post} onVote={(v) => onVote(post.id, v)} />
           <div className="pt-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
             Comments
@@ -920,6 +1063,7 @@ function EditPostDialog({ post, onClose, onSaved }: { post: FeedPost; onClose: (
   const [caption, setCaption] = useState(post.caption ?? "");
   const [displayMode, setDisplayMode] = useState<"teaser" | "full">(post.display_mode);
   const [hidden, setHidden] = useState<Set<HidableFieldKey>>(new Set(post.hidden_fields));
+  const [dealType, setDealType] = useState<string>(post.deal_type ?? "other");
   const [saving, setSaving] = useState(false);
 
   const save = async () => {
@@ -930,6 +1074,7 @@ function EditPostDialog({ post, onClose, onSaved }: { post: FeedPost; onClose: (
         caption: caption || null,
         display_mode: displayMode,
         hidden_fields: Array.from(hidden),
+        deal_type: dealType,
       } as any)
       .eq("id", post.id);
     setSaving(false);
@@ -971,6 +1116,29 @@ function EditPostDialog({ post, onClose, onSaved }: { post: FeedPost; onClose: (
               {m}
             </button>
           ))}
+        </div>
+
+        <label className="mt-4 block text-xs font-medium">Deal type</label>
+        <div className="mt-1 flex flex-wrap gap-1.5">
+          {DEAL_TYPES.map((d) => {
+            const active = dealType === d.key;
+            return (
+              <button
+                key={d.key}
+                onClick={() => setDealType(d.key)}
+                className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors ${
+                  active ? "border-transparent text-white" : "border-border text-foreground hover:bg-accent"
+                }`}
+                style={active ? { backgroundColor: d.color } : undefined}
+              >
+                <span
+                  className="h-1.5 w-1.5 rounded-full"
+                  style={{ backgroundColor: active ? "rgba(255,255,255,0.9)" : d.color }}
+                />
+                {d.label}
+              </button>
+            );
+          })}
         </div>
 
         <div className="mt-4">
