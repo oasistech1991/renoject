@@ -58,6 +58,8 @@ type Reaction = { post_id: string; user_id: string; kind: ReactionKind };
 
 type Interest = { post_id: string; user_id: string; status: string; note: string | null; created_at: string };
 
+type PollVote = { post_id: string; user_id: string; vote: "yes" | "no" };
+
 type FeedPost = FeedPostRow & {
   property: Property | null;
   cover_resolved: string | null;
@@ -66,6 +68,9 @@ type FeedPost = FeedPostRow & {
   interested: boolean;
   saved: boolean;
   my_reaction: ReactionKind | null;
+  poll_yes: number;
+  poll_no: number;
+  my_vote: "yes" | "no" | null;
 };
 
 type Tab = "feed" | "saved" | "manage" | "inbox";
@@ -110,7 +115,7 @@ function FeedPage() {
     const propIds = (postRows ?? []).map((p) => p.property_id);
     const postIds = (postRows ?? []).map((p) => p.id);
     const authorIds = Array.from(new Set((postRows ?? []).map((p) => p.author_id)));
-    const [propsRes, reactsRes, commentsRes, intRes, savesRes, mediaRes, profsRes] = await Promise.all([
+    const [propsRes, reactsRes, commentsRes, intRes, savesRes, mediaRes, profsRes, pollsRes] = await Promise.all([
       propIds.length
         ? supabase.from("properties").select("id,name,inputs,metrics,source").in("id", propIds)
         : Promise.resolve({ data: [] as any[] }),
@@ -136,6 +141,9 @@ function FeedPage() {
       authorIds.length
         ? supabase.from("client_profiles").select("user_id,display_name,avatar_url").in("user_id", authorIds)
         : Promise.resolve({ data: [] as any[] }),
+      postIds.length
+        ? supabase.from("feed_poll_votes").select("post_id,user_id,vote").in("post_id", postIds)
+        : Promise.resolve({ data: [] as any[] }),
     ]);
 
     const propMap = new Map<string, Property>(
@@ -154,6 +162,13 @@ function FeedPage() {
     const interestedSet = new Set(((intRes.data as { post_id: string }[]) ?? []).map((r) => r.post_id));
     const savedSet = new Set(((savesRes.data as { post_id: string }[]) ?? []).map((r) => r.post_id));
 
+    const pollMap = new Map<string, PollVote[]>();
+    for (const v of (pollsRes.data as PollVote[]) ?? []) {
+      const arr = pollMap.get(v.post_id) ?? [];
+      arr.push(v);
+      pollMap.set(v.post_id, arr);
+    }
+
     const coverMap: Record<string, string> = {};
     await Promise.all(
       ((mediaRes.data as { property_id: string; storage_path: string }[]) ?? []).map(async (m) => {
@@ -170,6 +185,7 @@ function FeedPage() {
 
     const enriched: FeedPost[] = ((postRows ?? []) as any[]).map((p) => {
       const reacts = reactMap.get(p.id) ?? [];
+      const votes = pollMap.get(p.id) ?? [];
       return {
         ...p,
         hidden_fields: (p.hidden_fields ?? []) as HidableFieldKey[],
@@ -180,6 +196,9 @@ function FeedPage() {
         interested: interestedSet.has(p.id),
         saved: savedSet.has(p.id),
         my_reaction: (reacts.find((r) => r.user_id === userId)?.kind ?? null) as ReactionKind | null,
+        poll_yes: votes.filter((v) => v.vote === "yes").length,
+        poll_no: votes.filter((v) => v.vote === "no").length,
+        my_vote: (votes.find((v) => v.user_id === userId)?.vote ?? null) as "yes" | "no" | null,
       };
     });
     setPosts(enriched);
@@ -233,6 +252,20 @@ function FeedPage() {
       toast.success("Interest sent. The deal owner has been notified.");
       loadFeed();
     }
+  };
+
+  const castVote = async (postId: string, vote: "yes" | "no") => {
+    if (!userId) return;
+    const post = posts.find((p) => p.id === postId);
+    if (!post) return;
+    if (post.my_vote === vote) {
+      await supabase.from("feed_poll_votes").delete().eq("post_id", postId).eq("user_id", userId);
+    } else {
+      await supabase
+        .from("feed_poll_votes")
+        .upsert({ post_id: postId, user_id: userId, vote }, { onConflict: "post_id,user_id" });
+    }
+    loadFeed();
   };
 
   const share = async (postId: string) => {
