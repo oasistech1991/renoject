@@ -39,7 +39,10 @@ export function ProjectsBoard({ onOpenProperty }: { onOpenProperty: (id: string)
 
   const grouped = useMemo(() => {
     const m = Object.fromEntries(PROJECT_STAGES.map((s) => [s, [] as Project[]])) as Record<ProjectStage, Project[]>;
-    projects.forEach((p) => m[p.stage].push(p));
+    projects.forEach((p) => {
+      if (!m[p.stage]) m[p.stage] = [];
+      m[p.stage].push(p);
+    });
     return m;
   }, [projects]);
 
