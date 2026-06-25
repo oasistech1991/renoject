@@ -131,6 +131,7 @@ function PropertiesPage() {
   const [heroUrls, setHeroUrls] = useState<Record<string, string>>({});
   const [analyses, setAnalyses] = useState<HmoAnalysisRow[]>([]);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+  const [feedPostIds, setFeedPostIds] = useState<Set<string>>(new Set());
 
   const load = async () => {
     setLoading(true);
@@ -160,6 +161,11 @@ function PropertiesPage() {
       })
     );
     setHeroUrls(map);
+    // Load which properties are published to the client feed
+    const { data: feedRows } = await supabase
+      .from("feed_posts")
+      .select("property_id");
+    setFeedPostIds(new Set(((feedRows as { property_id: string }[]) ?? []).map((r) => r.property_id)));
     // Load HMO analyses (both attached and unattached)
     const { data: a } = await supabase
       .from("hmo_analyses")
