@@ -15,7 +15,10 @@ import {
   StickyNote, CalendarClock, MessageSquare, ThumbsUp, Vote, Bookmark,
   ArrowRightCircle, CheckCircle2, Plus, TrendingUp, AlertCircle,
 } from "lucide-react";
-import { Home, Hammer, Building2, KeyRound, Wrench, BarChart3, Inbox } from "lucide-react";
+import {
+  Home as HomeIcon, Hammer, Building2, KeyRound, Wrench, BarChart3, Inbox,
+  Receipt, ShieldCheck, FileText, BadgePoundSterling, Users2,
+} from "lucide-react";
 import { SalesBoard } from "@/components/crm/property/Sales";
 import { PropertiesTable } from "@/components/crm/property/Properties";
 import { PropertyDetailSheet } from "@/components/crm/property/PropertyDetail";
@@ -24,6 +27,12 @@ import { LettingsBoard } from "@/components/crm/property/Lettings";
 import { ContractorsRoster } from "@/components/crm/property/Contractors";
 import { LeadsInbox } from "@/components/crm/property/Leads";
 import { Reports as PropertyReports } from "@/components/crm/property/Reports";
+import { HomeBoard } from "@/components/crm/property/Home";
+import { TenanciesView } from "@/components/crm/property/Tenancies";
+import { RentLedger } from "@/components/crm/property/Rent";
+import { ExpensesView } from "@/components/crm/property/Expenses";
+import { ComplianceView } from "@/components/crm/property/Compliance";
+import { DocumentsView } from "@/components/crm/property/Documents";
 
 export const Route = createFileRoute("/crm")({ component: CrmPage });
 
@@ -120,6 +129,7 @@ function CrmPage() {
   const [activeContact, setActiveContact] = useState<Contact | null>(null);
   const [newTaskOpen, setNewTaskOpen] = useState(false);
   const [activePropertyId, setActivePropertyId] = useState<string | null>(null);
+  const [view, setView] = useState<string>("home");
 
   useEffect(() => {
     (async () => {
@@ -179,48 +189,42 @@ function CrmPage() {
   }
 
   return (
-    <div className="mx-auto max-w-7xl p-4 lg:p-8">
-      <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">Team CRM</h1>
-          <p className="text-sm text-muted-foreground">Pipeline, contacts, activity and tasks across all investors.</p>
+    <div className="mx-auto flex max-w-[1600px] gap-6 p-4 lg:p-6">
+      <CrmSidebar view={view} onChange={setView} />
+
+      <div className="min-w-0 flex-1">
+        <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <h1 className="text-2xl font-bold text-foreground">{VIEW_TITLE[view] ?? "CRM"}</h1>
+            <p className="text-sm text-muted-foreground">{VIEW_DESC[view] ?? ""}</p>
+          </div>
+          <Button onClick={() => setNewTaskOpen(true)}><Plus className="mr-1 h-4 w-4" /> New task</Button>
         </div>
-        <Button onClick={() => setNewTaskOpen(true)}><Plus className="mr-1 h-4 w-4" /> New task</Button>
-      </div>
 
-      <Tabs defaultValue="dashboard">
-        <TabsList className="mb-4 flex w-full flex-wrap">
-          <TabsTrigger value="dashboard"><LineChart className="mr-1 h-4 w-4" />Dashboard</TabsTrigger>
-          <TabsTrigger value="sales"><Home className="mr-1 h-4 w-4" />Sales</TabsTrigger>
-          <TabsTrigger value="properties"><Building2 className="mr-1 h-4 w-4" />Properties</TabsTrigger>
-          <TabsTrigger value="projects"><Hammer className="mr-1 h-4 w-4" />Projects</TabsTrigger>
-          <TabsTrigger value="lettings"><KeyRound className="mr-1 h-4 w-4" />Lettings</TabsTrigger>
-          <TabsTrigger value="investors"><Users className="mr-1 h-4 w-4" />Investors</TabsTrigger>
-          <TabsTrigger value="contractors"><Wrench className="mr-1 h-4 w-4" />Contractors</TabsTrigger>
-          <TabsTrigger value="leads"><Inbox className="mr-1 h-4 w-4" />Leads</TabsTrigger>
-          <TabsTrigger value="tasks"><ListChecks className="mr-1 h-4 w-4" />Tasks</TabsTrigger>
-          <TabsTrigger value="reports"><BarChart3 className="mr-1 h-4 w-4" />Reports</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="dashboard">
-          <Dashboard contacts={contacts} deals={deals} tasks={tasks} posts={posts} onOpenContact={setActiveContact} />
-        </TabsContent>
-        <TabsContent value="sales"><SalesBoard onOpenProperty={setActivePropertyId} /></TabsContent>
-        <TabsContent value="properties"><PropertiesTable onOpenProperty={setActivePropertyId} /></TabsContent>
-        <TabsContent value="projects"><ProjectsBoard onOpenProperty={setActivePropertyId} /></TabsContent>
-        <TabsContent value="lettings"><LettingsBoard /></TabsContent>
-        <TabsContent value="investors" className="space-y-6">
-          <PipelineBoard contacts={contacts} onOpenContact={setActiveContact} onChanged={refresh} />
-          <DealPipeline deals={deals} contacts={contacts} posts={posts} onChanged={refresh} onOpenContact={setActiveContact} />
-          <ContactsTable contacts={contacts} tasks={tasks} onOpenContact={setActiveContact} />
-        </TabsContent>
-        <TabsContent value="contractors"><ContractorsRoster /></TabsContent>
-        <TabsContent value="leads"><LeadsInbox /></TabsContent>
-        <TabsContent value="tasks">
+        {view === "home" && <HomeBoard onJump={setView} />}
+        {view === "properties" && <PropertiesTable onOpenProperty={setActivePropertyId} />}
+        {view === "tenancies" && <TenanciesView onOpenProperty={setActivePropertyId} />}
+        {view === "rent" && <RentLedger />}
+        {view === "expenses" && <ExpensesView />}
+        {view === "tasks" && (
           <TasksView tasks={tasks} contacts={contacts} meId={userId} onChanged={refresh} onOpenContact={setActiveContact} />
-        </TabsContent>
-        <TabsContent value="reports"><PropertyReports /></TabsContent>
-      </Tabs>
+        )}
+        {view === "compliance" && <ComplianceView />}
+        {view === "documents" && <DocumentsView />}
+        {view === "suppliers" && <ContractorsRoster />}
+        {view === "sales" && <SalesBoard onOpenProperty={setActivePropertyId} />}
+        {view === "projects" && <ProjectsBoard onOpenProperty={setActivePropertyId} />}
+        {view === "leads" && <LeadsInbox />}
+        {view === "investors" && (
+          <div className="space-y-6">
+            <Dashboard contacts={contacts} deals={deals} tasks={tasks} posts={posts} onOpenContact={setActiveContact} />
+            <PipelineBoard contacts={contacts} onOpenContact={setActiveContact} onChanged={refresh} />
+            <DealPipeline deals={deals} contacts={contacts} posts={posts} onChanged={refresh} onOpenContact={setActiveContact} />
+            <ContactsTable contacts={contacts} tasks={tasks} onOpenContact={setActiveContact} />
+          </div>
+        )}
+        {view === "reports" && <PropertyReports />}
+      </div>
 
       <ContactSheet
         contact={activeContact}
@@ -245,6 +249,88 @@ function CrmPage() {
         onCreated={refresh}
       />
     </div>
+  );
+}
+
+/* ===================== Sidebar ===================== */
+const NAV_GROUPS: { label: string; items: { key: string; label: string; icon: any }[] }[] = [
+  { label: "Operations", items: [
+    { key: "home", label: "Home", icon: HomeIcon },
+    { key: "properties", label: "Properties", icon: Building2 },
+    { key: "tenancies", label: "Tenancies", icon: Users2 },
+    { key: "rent", label: "Rent", icon: BadgePoundSterling },
+    { key: "expenses", label: "Expenses", icon: Receipt },
+    { key: "tasks", label: "Tasks", icon: ListChecks },
+    { key: "compliance", label: "Compliance", icon: ShieldCheck },
+    { key: "documents", label: "Documents", icon: FileText },
+    { key: "suppliers", label: "Suppliers", icon: Wrench },
+  ]},
+  { label: "Growth", items: [
+    { key: "sales", label: "Sales pipeline", icon: HomeIcon },
+    { key: "projects", label: "Projects", icon: Hammer },
+    { key: "lettings_legacy", label: "Lettings board", icon: KeyRound },
+    { key: "leads", label: "Leads", icon: Inbox },
+    { key: "investors", label: "Investors", icon: Users },
+  ]},
+  { label: "Insights", items: [
+    { key: "reports", label: "Reports", icon: BarChart3 },
+  ]},
+];
+
+const VIEW_TITLE: Record<string, string> = {
+  home: "Home", properties: "Properties", tenancies: "Tenancies", rent: "Rent ledger",
+  expenses: "Expenses", tasks: "Tasks", compliance: "Compliance", documents: "Documents",
+  suppliers: "Suppliers", sales: "Sales pipeline", projects: "Projects",
+  lettings_legacy: "Lettings board", leads: "Leads", investors: "Investors", reports: "Reports",
+};
+const VIEW_DESC: Record<string, string> = {
+  home: "What needs your attention today.",
+  properties: "Operational record of every property you own or are sourcing.",
+  tenancies: "Active and recent tenancies across the portfolio.",
+  rent: "Six-month rent collection grid. Click a cell to log a payment.",
+  expenses: "Track running costs by property and category.",
+  tasks: "Today, this week, and overdue work.",
+  compliance: "Gas, EICR, EPC and other certificates with expiry tracking.",
+  documents: "Tenancy agreements, certificates and statements per property.",
+  suppliers: "Contractor roster, ratings and preferred status.",
+  sales: "Sourcing → under offer → owned kanban.",
+  projects: "Refurb project board with budget burn.",
+  lettings_legacy: "Units board by status.",
+  leads: "Top-of-funnel leads to convert into investors.",
+  investors: "Investor pipeline, deals and contact list.",
+  reports: "Portfolio KPIs and performance.",
+};
+
+function CrmSidebar({ view, onChange }: { view: string; onChange: (v: string) => void }) {
+  // Use SalesBoard's icon look swap: pick distinct icons for sales
+  return (
+    <aside className="sticky top-4 hidden h-[calc(100vh-2rem)] w-56 shrink-0 overflow-y-auto rounded-lg border border-border bg-card/40 p-3 md:block">
+      {NAV_GROUPS.map((g) => (
+        <div key={g.label} className="mb-4">
+          <div className="mb-1 px-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{g.label}</div>
+          <div className="space-y-0.5">
+            {g.items.map((it) => {
+              const Icon = it.icon;
+              const active = view === it.key;
+              return (
+                <button key={it.key} onClick={() => onChange(it.key)}
+                  className={`flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm transition ${
+                    active ? "bg-primary/15 text-foreground" : "text-muted-foreground hover:bg-muted/40 hover:text-foreground"
+                  }`}>
+                  <Icon className="h-4 w-4" />
+                  <span className="truncate">{it.label}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      ))}
+      <div className="border-t border-border pt-3">
+        <Link to="/feed" className="flex items-center gap-2 rounded-md px-2 py-1.5 text-xs text-muted-foreground hover:text-foreground">
+          ← Back to feed
+        </Link>
+      </div>
+    </aside>
   );
 }
 
