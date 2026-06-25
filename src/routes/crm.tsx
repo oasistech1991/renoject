@@ -15,6 +15,15 @@ import {
   StickyNote, CalendarClock, MessageSquare, ThumbsUp, Vote, Bookmark,
   ArrowRightCircle, CheckCircle2, Plus, TrendingUp, AlertCircle,
 } from "lucide-react";
+import { Home, Hammer, Building2, KeyRound, Wrench, BarChart3, Inbox } from "lucide-react";
+import { SalesBoard } from "@/components/crm/property/Sales";
+import { PropertiesTable } from "@/components/crm/property/Properties";
+import { PropertyDetailSheet } from "@/components/crm/property/PropertyDetail";
+import { ProjectsBoard } from "@/components/crm/property/Projects";
+import { LettingsBoard } from "@/components/crm/property/Lettings";
+import { ContractorsRoster } from "@/components/crm/property/Contractors";
+import { LeadsInbox } from "@/components/crm/property/Leads";
+import { Reports as PropertyReports } from "@/components/crm/property/Reports";
 
 export const Route = createFileRoute("/crm")({ component: CrmPage });
 
@@ -110,6 +119,7 @@ function CrmPage() {
   const [posts, setPosts] = useState<Record<string, FeedPost>>({});
   const [activeContact, setActiveContact] = useState<Contact | null>(null);
   const [newTaskOpen, setNewTaskOpen] = useState(false);
+  const [activePropertyId, setActivePropertyId] = useState<string | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -181,27 +191,35 @@ function CrmPage() {
       <Tabs defaultValue="dashboard">
         <TabsList className="mb-4 flex w-full flex-wrap">
           <TabsTrigger value="dashboard"><LineChart className="mr-1 h-4 w-4" />Dashboard</TabsTrigger>
-          <TabsTrigger value="pipeline"><TrendingUp className="mr-1 h-4 w-4" />Pipeline</TabsTrigger>
-          <TabsTrigger value="deals"><Users className="mr-1 h-4 w-4" />Deal pipeline</TabsTrigger>
-          <TabsTrigger value="contacts"><Users className="mr-1 h-4 w-4" />Contacts</TabsTrigger>
+          <TabsTrigger value="sales"><Home className="mr-1 h-4 w-4" />Sales</TabsTrigger>
+          <TabsTrigger value="properties"><Building2 className="mr-1 h-4 w-4" />Properties</TabsTrigger>
+          <TabsTrigger value="projects"><Hammer className="mr-1 h-4 w-4" />Projects</TabsTrigger>
+          <TabsTrigger value="lettings"><KeyRound className="mr-1 h-4 w-4" />Lettings</TabsTrigger>
+          <TabsTrigger value="investors"><Users className="mr-1 h-4 w-4" />Investors</TabsTrigger>
+          <TabsTrigger value="contractors"><Wrench className="mr-1 h-4 w-4" />Contractors</TabsTrigger>
+          <TabsTrigger value="leads"><Inbox className="mr-1 h-4 w-4" />Leads</TabsTrigger>
           <TabsTrigger value="tasks"><ListChecks className="mr-1 h-4 w-4" />Tasks</TabsTrigger>
+          <TabsTrigger value="reports"><BarChart3 className="mr-1 h-4 w-4" />Reports</TabsTrigger>
         </TabsList>
 
         <TabsContent value="dashboard">
           <Dashboard contacts={contacts} deals={deals} tasks={tasks} posts={posts} onOpenContact={setActiveContact} />
         </TabsContent>
-        <TabsContent value="pipeline">
+        <TabsContent value="sales"><SalesBoard onOpenProperty={setActivePropertyId} /></TabsContent>
+        <TabsContent value="properties"><PropertiesTable onOpenProperty={setActivePropertyId} /></TabsContent>
+        <TabsContent value="projects"><ProjectsBoard onOpenProperty={setActivePropertyId} /></TabsContent>
+        <TabsContent value="lettings"><LettingsBoard /></TabsContent>
+        <TabsContent value="investors" className="space-y-6">
           <PipelineBoard contacts={contacts} onOpenContact={setActiveContact} onChanged={refresh} />
-        </TabsContent>
-        <TabsContent value="deals">
           <DealPipeline deals={deals} contacts={contacts} posts={posts} onChanged={refresh} onOpenContact={setActiveContact} />
-        </TabsContent>
-        <TabsContent value="contacts">
           <ContactsTable contacts={contacts} tasks={tasks} onOpenContact={setActiveContact} />
         </TabsContent>
+        <TabsContent value="contractors"><ContractorsRoster /></TabsContent>
+        <TabsContent value="leads"><LeadsInbox /></TabsContent>
         <TabsContent value="tasks">
           <TasksView tasks={tasks} contacts={contacts} meId={userId} onChanged={refresh} onOpenContact={setActiveContact} />
         </TabsContent>
+        <TabsContent value="reports"><PropertyReports /></TabsContent>
       </Tabs>
 
       <ContactSheet
@@ -212,6 +230,11 @@ function CrmPage() {
         meId={userId}
         onClose={() => setActiveContact(null)}
         onChanged={async () => { await refresh(); }}
+      />
+
+      <PropertyDetailSheet
+        propertyId={activePropertyId}
+        onClose={() => setActivePropertyId(null)}
       />
 
       <NewTaskDialog
