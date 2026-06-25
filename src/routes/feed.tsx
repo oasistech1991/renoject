@@ -506,15 +506,10 @@ function PostCard({
           )}
         </div>
 
-        {!hidden.has("purchasePrice") && (inputs.purchasePrice ?? 0) > 0 && (
-          <PollBlock
-            price={inputs.purchasePrice ?? 0}
-            yes={post.poll_yes}
-            no={post.poll_no}
-            myVote={post.my_vote}
-            onVote={(v) => onVote(post.id, v)}
-          />
-        )}
+        <SpeakToTeamBlock
+          post={post}
+          onInterest={() => onInterest(post.id)}
+        />
 
         <div className="mt-5 flex flex-wrap items-center gap-2 border-t border-border pt-4">
           <ReactBtn
@@ -543,15 +538,6 @@ function PostCard({
             {post.comment_count} comment{post.comment_count === 1 ? "" : "s"}
           </button>
           <div className="ml-auto flex items-center gap-2">
-            <Button
-              variant={post.interested ? "secondary" : "default"}
-              size="sm"
-              onClick={() => onInterest(post.id)}
-              disabled={post.interested}
-            >
-              <Mail className="h-3.5 w-3.5" />
-              {post.interested ? "Interest sent" : "I'm interested"}
-            </Button>
             <Button variant="ghost" size="icon" onClick={() => onSave(post.id)} title="Save">
               <Bookmark className={`h-4 w-4 ${post.saved ? "fill-current text-primary" : ""}`} />
             </Button>
