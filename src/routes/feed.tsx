@@ -1063,6 +1063,7 @@ function EditPostDialog({ post, onClose, onSaved }: { post: FeedPost; onClose: (
   const [caption, setCaption] = useState(post.caption ?? "");
   const [displayMode, setDisplayMode] = useState<"teaser" | "full">(post.display_mode);
   const [hidden, setHidden] = useState<Set<HidableFieldKey>>(new Set(post.hidden_fields));
+  const [dealType, setDealType] = useState<string>(post.deal_type ?? "other");
   const [saving, setSaving] = useState(false);
 
   const save = async () => {
@@ -1073,6 +1074,7 @@ function EditPostDialog({ post, onClose, onSaved }: { post: FeedPost; onClose: (
         caption: caption || null,
         display_mode: displayMode,
         hidden_fields: Array.from(hidden),
+        deal_type: dealType,
       } as any)
       .eq("id", post.id);
     setSaving(false);
@@ -1114,6 +1116,29 @@ function EditPostDialog({ post, onClose, onSaved }: { post: FeedPost; onClose: (
               {m}
             </button>
           ))}
+        </div>
+
+        <label className="mt-4 block text-xs font-medium">Deal type</label>
+        <div className="mt-1 flex flex-wrap gap-1.5">
+          {DEAL_TYPES.map((d) => {
+            const active = dealType === d.key;
+            return (
+              <button
+                key={d.key}
+                onClick={() => setDealType(d.key)}
+                className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors ${
+                  active ? "border-transparent text-white" : "border-border text-foreground hover:bg-accent"
+                }`}
+                style={active ? { backgroundColor: d.color } : undefined}
+              >
+                <span
+                  className="h-1.5 w-1.5 rounded-full"
+                  style={{ backgroundColor: active ? "rgba(255,255,255,0.9)" : d.color }}
+                />
+                {d.label}
+              </button>
+            );
+          })}
         </div>
 
         <div className="mt-4">
