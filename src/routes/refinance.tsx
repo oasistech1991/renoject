@@ -592,6 +592,17 @@ function RefinancePage() {
                 onChange={(e) => setPropertyName(e.target.value)}
               />
             </div>
+            <div className="flex-1">
+              <label htmlFor="propaddress" className="mb-1 block text-xs font-medium text-muted-foreground">
+                Address (for map)
+              </label>
+              <Input
+                id="propaddress"
+                placeholder="e.g. 12 High Street, Leeds, LS1 4AB"
+                value={propertyAddress}
+                onChange={(e) => setPropertyAddress(e.target.value)}
+              />
+            </div>
             <div className="sm:w-56">
               <label htmlFor="propsource" className="mb-1 block text-xs font-medium text-muted-foreground">
                 Deal source
