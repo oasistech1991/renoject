@@ -948,10 +948,21 @@ function PostSheet({
         onClick={(e) => e.stopPropagation()}
       >
         <header className="flex items-center justify-between border-b border-border p-4">
-          <h3 className="text-sm font-semibold">{post.property?.name ?? "Deal"}</h3>
+          <div className="flex items-center gap-2">
+            <h3 className="text-sm font-semibold">{post.property?.name ?? "Deal"}</h3>
+            <DealTypeBadge dealType={post.deal_type} />
+          </div>
           <button onClick={onClose} className="text-sm text-muted-foreground hover:text-foreground">Close</button>
         </header>
         <div className="flex-1 space-y-3 overflow-y-auto p-4">
+          <div className="-mx-4 -mt-4">
+            <DealMediaGallery
+              media={post.media}
+              fallback={post.cover_resolved}
+              alt={post.property?.name ?? "Deal"}
+              dealType={post.deal_type}
+            />
+          </div>
           <PollBreakdown post={post} onVote={(v) => onVote(post.id, v)} />
           <div className="pt-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
             Comments
