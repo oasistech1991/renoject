@@ -74,6 +74,195 @@ export type Database = {
         }
         Relationships: []
       }
+      crm_activities: {
+        Row: {
+          body: string | null
+          client_id: string
+          created_at: string
+          feed_post_id: string | null
+          id: string
+          occurred_at: string
+          subject: string | null
+          team_member_id: string | null
+          type: Database["public"]["Enums"]["crm_activity_type"]
+        }
+        Insert: {
+          body?: string | null
+          client_id: string
+          created_at?: string
+          feed_post_id?: string | null
+          id?: string
+          occurred_at?: string
+          subject?: string | null
+          team_member_id?: string | null
+          type: Database["public"]["Enums"]["crm_activity_type"]
+        }
+        Update: {
+          body?: string | null
+          client_id?: string
+          created_at?: string
+          feed_post_id?: string | null
+          id?: string
+          occurred_at?: string
+          subject?: string | null
+          team_member_id?: string | null
+          type?: Database["public"]["Enums"]["crm_activity_type"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_activities_feed_post_id_fkey"
+            columns: ["feed_post_id"]
+            isOneToOne: false
+            referencedRelation: "feed_posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      crm_contact_meta: {
+        Row: {
+          client_id: string
+          created_at: string
+          last_contacted_at: string | null
+          lifecycle_value: number
+          next_action_at: string | null
+          notes: string | null
+          owner_id: string | null
+          source: string | null
+          stage: Database["public"]["Enums"]["crm_stage"]
+          tags: string[]
+          updated_at: string
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          last_contacted_at?: string | null
+          lifecycle_value?: number
+          next_action_at?: string | null
+          notes?: string | null
+          owner_id?: string | null
+          source?: string | null
+          stage?: Database["public"]["Enums"]["crm_stage"]
+          tags?: string[]
+          updated_at?: string
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          last_contacted_at?: string | null
+          lifecycle_value?: number
+          next_action_at?: string | null
+          notes?: string | null
+          owner_id?: string | null
+          source?: string | null
+          stage?: Database["public"]["Enums"]["crm_stage"]
+          tags?: string[]
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      crm_deal_clients: {
+        Row: {
+          amount: number | null
+          client_id: string
+          created_at: string
+          feed_post_id: string
+          id: string
+          notes: string | null
+          owner_id: string | null
+          probability: number
+          stage: Database["public"]["Enums"]["crm_stage"]
+          updated_at: string
+        }
+        Insert: {
+          amount?: number | null
+          client_id: string
+          created_at?: string
+          feed_post_id: string
+          id?: string
+          notes?: string | null
+          owner_id?: string | null
+          probability?: number
+          stage?: Database["public"]["Enums"]["crm_stage"]
+          updated_at?: string
+        }
+        Update: {
+          amount?: number | null
+          client_id?: string
+          created_at?: string
+          feed_post_id?: string
+          id?: string
+          notes?: string | null
+          owner_id?: string | null
+          probability?: number
+          stage?: Database["public"]["Enums"]["crm_stage"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_deal_clients_feed_post_id_fkey"
+            columns: ["feed_post_id"]
+            isOneToOne: false
+            referencedRelation: "feed_posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      crm_tasks: {
+        Row: {
+          assignee_id: string | null
+          body: string | null
+          client_id: string | null
+          completed_at: string | null
+          created_at: string
+          created_by: string | null
+          due_at: string | null
+          feed_post_id: string | null
+          id: string
+          priority: number
+          status: Database["public"]["Enums"]["crm_task_status"]
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          assignee_id?: string | null
+          body?: string | null
+          client_id?: string | null
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          due_at?: string | null
+          feed_post_id?: string | null
+          id?: string
+          priority?: number
+          status?: Database["public"]["Enums"]["crm_task_status"]
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          assignee_id?: string | null
+          body?: string | null
+          client_id?: string | null
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          due_at?: string | null
+          feed_post_id?: string | null
+          id?: string
+          priority?: number
+          status?: Database["public"]["Enums"]["crm_task_status"]
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_tasks_feed_post_id_fkey"
+            columns: ["feed_post_id"]
+            isOneToOne: false
+            referencedRelation: "feed_posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       direct_messages: {
         Row: {
           body: string
@@ -1054,6 +1243,25 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "expert" | "user" | "client"
+      crm_activity_type:
+        | "note"
+        | "call"
+        | "meeting"
+        | "email"
+        | "dm"
+        | "interest"
+        | "vote"
+        | "save"
+        | "stage_change"
+        | "task_done"
+      crm_stage:
+        | "new"
+        | "qualified"
+        | "interested"
+        | "negotiating"
+        | "won"
+        | "lost"
+      crm_task_status: "open" | "done" | "snoozed"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1182,6 +1390,27 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "expert", "user", "client"],
+      crm_activity_type: [
+        "note",
+        "call",
+        "meeting",
+        "email",
+        "dm",
+        "interest",
+        "vote",
+        "save",
+        "stage_change",
+        "task_done",
+      ],
+      crm_stage: [
+        "new",
+        "qualified",
+        "interested",
+        "negotiating",
+        "won",
+        "lost",
+      ],
+      crm_task_status: ["open", "done", "snoozed"],
     },
   },
 } as const
