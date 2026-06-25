@@ -27,6 +27,17 @@ export function ComplianceView() {
   };
   useEffect(() => { load(); }, []);
 
+  useEffect(() => {
+    const onAdd = (e: Event) => { if ((e as CustomEvent).detail === "compliance") setOpen(true); };
+    const onChanged = () => load();
+    window.addEventListener("crm:open-add", onAdd);
+    window.addEventListener("crm:data-changed", onChanged);
+    return () => {
+      window.removeEventListener("crm:open-add", onAdd);
+      window.removeEventListener("crm:data-changed", onChanged);
+    };
+  }, []);
+
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between gap-3">
