@@ -179,11 +179,11 @@ function ProfilePage() {
     const { data } = await supabase.storage.from("property-media").createSignedUrl(path, 60 * 60 * 24 * 365);
     const url = data?.signedUrl ?? null;
     if (!url) return;
-    setProfile((p) => ({ ...p, [target === "avatar" ? "avatar_url" : "cover_url"]: url }));
-    await supabase.from("client_profiles").upsert({
-      user_id: userId,
-      [target === "avatar" ? "avatar_url" : "cover_url"]: url,
-    });
+    const field = target === "avatar" ? "avatar_url" : "cover_url";
+    setProfile((p) => ({ ...p, [field]: url }));
+    const payload: { user_id: string; avatar_url?: string; cover_url?: string } = { user_id: userId };
+    payload[field] = url;
+    await supabase.from("client_profiles").upsert(payload);
     toast.success(target === "avatar" ? "Profile picture updated" : "Cover photo updated");
   }
 

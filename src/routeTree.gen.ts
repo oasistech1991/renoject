@@ -16,6 +16,7 @@ import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as RefinanceRouteImport } from './routes/refinance'
 import { Route as PropertiesRouteImport } from './routes/properties'
+import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as PortfolioTimelineRouteImport } from './routes/portfolio-timeline'
 import { Route as MarketRouteImport } from './routes/market'
@@ -61,6 +62,11 @@ const RefinanceRoute = RefinanceRouteImport.update({
 const PropertiesRoute = PropertiesRouteImport.update({
   id: '/properties',
   path: '/properties',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProfileRoute = ProfileRouteImport.update({
+  id: '/profile',
+  path: '/profile',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PrivacyRoute = PrivacyRouteImport.update({
@@ -130,6 +136,7 @@ export interface FileRoutesByFullPath {
   '/market': typeof MarketRoute
   '/portfolio-timeline': typeof PortfolioTimelineRoute
   '/privacy': typeof PrivacyRoute
+  '/profile': typeof ProfileRoute
   '/properties': typeof PropertiesRoute
   '/refinance': typeof RefinanceRoute
   '/reset-password': typeof ResetPasswordRoute
@@ -150,6 +157,7 @@ export interface FileRoutesByTo {
   '/market': typeof MarketRoute
   '/portfolio-timeline': typeof PortfolioTimelineRoute
   '/privacy': typeof PrivacyRoute
+  '/profile': typeof ProfileRoute
   '/properties': typeof PropertiesRoute
   '/refinance': typeof RefinanceRoute
   '/reset-password': typeof ResetPasswordRoute
@@ -171,6 +179,7 @@ export interface FileRoutesById {
   '/market': typeof MarketRoute
   '/portfolio-timeline': typeof PortfolioTimelineRoute
   '/privacy': typeof PrivacyRoute
+  '/profile': typeof ProfileRoute
   '/properties': typeof PropertiesRoute
   '/refinance': typeof RefinanceRoute
   '/reset-password': typeof ResetPasswordRoute
@@ -193,6 +202,7 @@ export interface FileRouteTypes {
     | '/market'
     | '/portfolio-timeline'
     | '/privacy'
+    | '/profile'
     | '/properties'
     | '/refinance'
     | '/reset-password'
@@ -213,6 +223,7 @@ export interface FileRouteTypes {
     | '/market'
     | '/portfolio-timeline'
     | '/privacy'
+    | '/profile'
     | '/properties'
     | '/refinance'
     | '/reset-password'
@@ -233,6 +244,7 @@ export interface FileRouteTypes {
     | '/market'
     | '/portfolio-timeline'
     | '/privacy'
+    | '/profile'
     | '/properties'
     | '/refinance'
     | '/reset-password'
@@ -254,6 +266,7 @@ export interface RootRouteChildren {
   MarketRoute: typeof MarketRoute
   PortfolioTimelineRoute: typeof PortfolioTimelineRoute
   PrivacyRoute: typeof PrivacyRoute
+  ProfileRoute: typeof ProfileRoute
   PropertiesRoute: typeof PropertiesRoute
   RefinanceRoute: typeof RefinanceRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
@@ -312,6 +325,13 @@ declare module '@tanstack/react-router' {
       path: '/properties'
       fullPath: '/properties'
       preLoaderRoute: typeof PropertiesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/profile': {
+      id: '/profile'
+      path: '/profile'
+      fullPath: '/profile'
+      preLoaderRoute: typeof ProfileRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/privacy': {
@@ -415,6 +435,7 @@ const rootRouteChildren: RootRouteChildren = {
   MarketRoute: MarketRoute,
   PortfolioTimelineRoute: PortfolioTimelineRoute,
   PrivacyRoute: PrivacyRoute,
+  ProfileRoute: ProfileRoute,
   PropertiesRoute: PropertiesRoute,
   RefinanceRoute: RefinanceRoute,
   ResetPasswordRoute: ResetPasswordRoute,
