@@ -23,6 +23,7 @@ import {
   Inbox,
   Settings,
   LayoutGrid,
+  Check,
 } from "lucide-react";
 
 export const Route = createFileRoute("/feed")({
@@ -555,59 +556,93 @@ function PollBlock({
   const noPct = total ? 100 - yesPct : 0;
   return (
     <div className="mt-4 rounded-lg border border-border bg-muted/30 p-3">
-      <div className="text-sm font-medium">
-        Would you buy at {fmtGBP(price)}?
+      <div className="flex items-center justify-between gap-2">
+        <div className="text-sm font-medium">
+          Would you buy at {fmtGBP(price)}?
+        </div>
+        {myVote ? (
+          <span className="inline-flex items-center gap-1 rounded-full bg-primary/15 px-2 py-0.5 text-[11px] font-medium text-primary">
+            <Check className="h-3 w-3" />
+            You voted {myVote === "yes" ? "Yes" : "No"}
+          </span>
+        ) : (
+          <span className="text-[11px] text-muted-foreground">Cast your vote</span>
+        )}
       </div>
-      <div className="mt-2 grid grid-cols-2 gap-2">
-        <button
+      <div className="mt-3 grid grid-cols-2 gap-2">
+        <PollOption
+          label="Yes, I'd buy"
+          count={yes}
+          pct={yesPct}
+          total={total}
+          selected={myVote === "yes"}
+          tone="yes"
           onClick={() => onVote("yes")}
-          className={`relative overflow-hidden rounded-md border px-3 py-2 text-left text-sm transition-colors ${
-            myVote === "yes"
-              ? "border-primary bg-primary/10 text-foreground"
-              : "border-border hover:bg-accent"
-          }`}
-        >
-          {total > 0 && (
-            <span
-              className="absolute inset-y-0 left-0 bg-primary/15"
-              style={{ width: `${yesPct}%` }}
-              aria-hidden
-            />
-          )}
-          <span className="relative flex items-center justify-between gap-2">
-            <span className="font-medium">Yes, I'd buy</span>
-            <span className="text-xs text-muted-foreground tabular-nums">
-              {yes} · {yesPct}%
-            </span>
-          </span>
-        </button>
-        <button
+        />
+        <PollOption
+          label="No, too high"
+          count={no}
+          pct={noPct}
+          total={total}
+          selected={myVote === "no"}
+          tone="no"
           onClick={() => onVote("no")}
-          className={`relative overflow-hidden rounded-md border px-3 py-2 text-left text-sm transition-colors ${
-            myVote === "no"
-              ? "border-primary bg-primary/10 text-foreground"
-              : "border-border hover:bg-accent"
-          }`}
-        >
-          {total > 0 && (
-            <span
-              className="absolute inset-y-0 left-0 bg-muted-foreground/20"
-              style={{ width: `${noPct}%` }}
-              aria-hidden
-            />
-          )}
-          <span className="relative flex items-center justify-between gap-2">
-            <span className="font-medium">No, too high</span>
-            <span className="text-xs text-muted-foreground tabular-nums">
-              {no} · {noPct}%
-            </span>
-          </span>
-        </button>
+        />
       </div>
-      <div className="mt-2 text-[11px] text-muted-foreground">
-        {total} vote{total === 1 ? "" : "s"}
-        {myVote && " · click your choice again to remove your vote"}
+      <div className="mt-2 flex items-center justify-between text-[11px] text-muted-foreground">
+        <span>
+          <span className="font-medium text-foreground tabular-nums">{yes}</span> yes ·{" "}
+          <span className="font-medium text-foreground tabular-nums">{no}</span> no ·{" "}
+          {total} total vote{total === 1 ? "" : "s"}
+        </span>
+        {myVote && <span>Tap your choice again to clear it</span>}
       </div>
+    </div>
+  );
+}
+
+function PollOption({
+  label, count, pct, total, selected, tone, onClick,
+}: {
+  label: string;
+  count: number;
+  pct: number;
+  total: number;
+  selected: boolean;
+  tone: "yes" | "no";
+  onClick: () => void;
+}) {
+  const fill = tone === "yes" ? "bg-primary/20" : "bg-muted-foreground/25";
+  return (
+    <button
+      onClick={onClick}
+      aria-pressed={selected}
+      className={`relative overflow-hidden rounded-md border px-3 py-2 text-left text-sm transition-colors ${
+        selected
+          ? "border-primary ring-2 ring-primary/40 bg-primary/10 text-foreground"
+          : "border-border hover:bg-accent"
+      }`}
+    >
+      {total > 0 && (
+        <span
+          className={`absolute inset-y-0 left-0 ${fill}`}
+          style={{ width: `${pct}%` }}
+          aria-hidden
+        />
+      )}
+      <span className="relative flex items-center justify-between gap-2">
+        <span className="flex items-center gap-1.5 font-medium">
+          {selected && <Check className="h-3.5 w-3.5 text-primary" />}
+          {label}
+        </span>
+        <span className="text-xs tabular-nums">
+          <span className="font-semibold text-foreground">{count}</span>
+          <span className="text-muted-foreground"> · {pct}%</span>
+        </span>
+      </span>
+    </button>
+  );
+}
     </div>
   );
 }
