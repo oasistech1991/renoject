@@ -59,6 +59,7 @@ export type Database = {
       hmo_analyses: {
         Row: {
           created_at: string
+          created_by: string | null
           id: string
           inputs: Json
           label: string
@@ -70,6 +71,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          created_by?: string | null
           id?: string
           inputs: Json
           label: string
@@ -81,6 +83,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          created_by?: string | null
           id?: string
           inputs?: Json
           label?: string
@@ -235,6 +238,7 @@ export type Database = {
       properties: {
         Row: {
           created_at: string
+          created_by: string | null
           id: string
           in_portfolio: boolean
           inputs: Json
@@ -245,6 +249,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          created_by?: string | null
           id?: string
           in_portfolio?: boolean
           inputs: Json
@@ -255,6 +260,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          created_by?: string | null
           id?: string
           in_portfolio?: boolean
           inputs?: Json
@@ -268,6 +274,7 @@ export type Database = {
       property_media: {
         Row: {
           created_at: string
+          created_by: string | null
           filename: string | null
           id: string
           is_hero: boolean
@@ -278,6 +285,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          created_by?: string | null
           filename?: string | null
           id?: string
           is_hero?: boolean
@@ -288,6 +296,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          created_by?: string | null
           filename?: string | null
           id?: string
           is_hero?: boolean
