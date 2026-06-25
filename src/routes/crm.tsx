@@ -359,7 +359,7 @@ function AddPropertyDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="overflow-y-auto">
+      <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
         <DialogHeader><DialogTitle>Add property</DialogTitle></DialogHeader>
         <div className="mt-4 space-y-3">
           <Input placeholder="Address" value={address} onChange={(e) => setAddress(e.target.value)} />
@@ -1033,7 +1033,7 @@ function ContactSheet({ contact, deals, tasks, posts, meId, onClose, onChanged }
 
   return (
     <Dialog open={!!contact} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="w-full overflow-y-auto sm:max-w-2xl">
+      <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-3">
             <div className="h-10 w-10 rounded-full bg-primary/20 text-primary text-sm font-bold flex items-center justify-center">{initials(contact.display_name)}</div>
@@ -1238,7 +1238,7 @@ function AddSupplierDialog({ open, onOpenChange }: { open: boolean; onOpenChange
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="overflow-y-auto">
+      <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
         <DialogHeader><DialogTitle>Add supplier</DialogTitle></DialogHeader>
         <div className="mt-4 space-y-3">
           <Input placeholder="Name" value={name} onChange={(e) => setName(e.target.value)} />
@@ -1281,7 +1281,7 @@ function AddProjectDialog({ open, onOpenChange }: { open: boolean; onOpenChange:
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="overflow-y-auto">
+      <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
         <DialogHeader><DialogTitle>Add project</DialogTitle></DialogHeader>
         <div className="mt-4 space-y-3">
           <Select value={propertyId} onValueChange={setPropertyId}>
@@ -1352,7 +1352,7 @@ function AddUnitDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (b
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="overflow-y-auto">
+      <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
         <DialogHeader><DialogTitle>Add unit</DialogTitle></DialogHeader>
         <div className="mt-4 space-y-3">
           <Select value={propertyId} onValueChange={setPropertyId}>
@@ -1433,7 +1433,7 @@ function AddTenancyDialog({ open, onOpenChange }: { open: boolean; onOpenChange:
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="overflow-y-auto">
+      <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
         <DialogHeader><DialogTitle>New tenancy</DialogTitle></DialogHeader>
         <div className="mt-4 space-y-3">
           <Select value={unitId} onValueChange={setUnitId}>
@@ -1501,7 +1501,7 @@ function LogRentPaymentDialog({ open, onOpenChange }: { open: boolean; onOpenCha
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="overflow-y-auto">
+      <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
         <DialogHeader><DialogTitle>Log rent payment</DialogTitle></DialogHeader>
         <div className="mt-4 space-y-3">
           <Select value={tenantId} onValueChange={(v) => {
@@ -1571,7 +1571,7 @@ function AddInvestorDialog({ open, onOpenChange }: { open: boolean; onOpenChange
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="overflow-y-auto">
+      <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
         <DialogHeader><DialogTitle>Add investor</DialogTitle></DialogHeader>
         <div className="mt-4 space-y-3">
           <Input placeholder="Display name" value={name} onChange={(e) => setName(e.target.value)} />

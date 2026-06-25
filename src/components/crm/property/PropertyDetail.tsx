@@ -72,7 +72,7 @@ export function PropertyDetailSheet({ propertyId, onClose, onChanged }: {
 
   return (
     <Dialog open={!!propertyId} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent side="right" className="w-full overflow-y-auto sm:max-w-2xl">
+      <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
         {!p ? <div className="p-6 text-sm text-muted-foreground">Loading…</div> : (
           <>
             <DialogHeader>
