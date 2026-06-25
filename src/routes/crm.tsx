@@ -129,6 +129,12 @@ function CrmPage() {
   const [activeContact, setActiveContact] = useState<Contact | null>(null);
   const [newTaskOpen, setNewTaskOpen] = useState(false);
   const [addPropertyOpen, setAddPropertyOpen] = useState(false);
+  const [addSupplierOpen, setAddSupplierOpen] = useState(false);
+  const [addProjectOpen, setAddProjectOpen] = useState(false);
+  const [addUnitOpen, setAddUnitOpen] = useState(false);
+  const [addTenancyOpen, setAddTenancyOpen] = useState(false);
+  const [logPaymentOpen, setLogPaymentOpen] = useState(false);
+  const [addInvestorOpen, setAddInvestorOpen] = useState(false);
   const [activePropertyId, setActivePropertyId] = useState<string | null>(null);
   const [view, setView] = useState<string>("home");
 
@@ -203,6 +209,12 @@ function CrmPage() {
             view={view}
             onAddProperty={() => setAddPropertyOpen(true)}
             onNewTask={() => setNewTaskOpen(true)}
+            onAddSupplier={() => setAddSupplierOpen(true)}
+            onAddProject={() => setAddProjectOpen(true)}
+            onAddUnit={() => setAddUnitOpen(true)}
+            onAddTenancy={() => setAddTenancyOpen(true)}
+            onLogPayment={() => setLogPaymentOpen(true)}
+            onAddInvestor={() => setAddInvestorOpen(true)}
           />
         </div>
 
@@ -260,32 +272,46 @@ function CrmPage() {
         onOpenChange={setAddPropertyOpen}
         onCreated={() => { setAddPropertyOpen(false); }}
       />
+
+      <AddSupplierDialog open={addSupplierOpen} onOpenChange={setAddSupplierOpen} />
+      <AddProjectDialog open={addProjectOpen} onOpenChange={setAddProjectOpen} />
+      <AddUnitDialog open={addUnitOpen} onOpenChange={setAddUnitOpen} />
+      <AddTenancyDialog open={addTenancyOpen} onOpenChange={setAddTenancyOpen} />
+      <LogRentPaymentDialog open={logPaymentOpen} onOpenChange={setLogPaymentOpen} />
+      <AddInvestorDialog open={addInvestorOpen} onOpenChange={setAddInvestorOpen} />
     </div>
   );
 }
 
 /* ===================== Contextual primary action ===================== */
 function PrimaryAction({
-  view, onAddProperty, onNewTask,
-}: { view: string; onAddProperty: () => void; onNewTask: () => void }) {
-  const dispatch = (key: string) =>
-    window.dispatchEvent(new CustomEvent("crm:primary-action", { detail: { view: key } }));
+  view, onAddProperty, onNewTask, onAddSupplier, onAddProject, onAddUnit,
+  onAddTenancy, onLogPayment, onAddInvestor,
+}: {
+  view: string;
+  onAddProperty: () => void; onNewTask: () => void;
+  onAddSupplier: () => void; onAddProject: () => void; onAddUnit: () => void;
+  onAddTenancy: () => void; onLogPayment: () => void; onAddInvestor: () => void;
+}) {
+  // For module-owned dialogs, dispatch an event the module listens to.
+  const openInModule = (key: string) =>
+    window.dispatchEvent(new CustomEvent("crm:open-add", { detail: key }));
 
   const map: Record<string, { label: string; onClick: () => void } | null> = {
     home: { label: "Add property", onClick: onAddProperty },
     properties: { label: "Add property", onClick: onAddProperty },
-    tenancies: { label: "New tenancy", onClick: () => { dispatch("tenancies"); toast.message("Open a property to add a tenancy"); } },
-    rent: { label: "Log payment", onClick: () => { dispatch("rent"); toast.message("Click a cell in the rent grid to log a payment"); } },
-    expenses: { label: "Add expense", onClick: () => dispatch("expenses") },
+    tenancies: { label: "New tenancy", onClick: onAddTenancy },
+    rent: { label: "Log payment", onClick: onLogPayment },
+    expenses: { label: "Add expense", onClick: () => openInModule("expenses") },
     tasks: { label: "New task", onClick: onNewTask },
-    compliance: { label: "Add certificate", onClick: () => dispatch("compliance") },
-    documents: { label: "Upload document", onClick: () => dispatch("documents") },
-    suppliers: { label: "Add supplier", onClick: () => dispatch("suppliers") },
-    sales: { label: "Add deal", onClick: () => dispatch("sales") },
-    projects: { label: "Add project", onClick: () => dispatch("projects") },
-    lettings_legacy: { label: "Add unit", onClick: () => dispatch("lettings_legacy") },
-    leads: { label: "Add lead", onClick: () => dispatch("leads") },
-    investors: { label: "Add investor", onClick: () => dispatch("investors") },
+    compliance: { label: "Add certificate", onClick: () => openInModule("compliance") },
+    documents: { label: "Upload document", onClick: () => openInModule("documents") },
+    suppliers: { label: "Add supplier", onClick: onAddSupplier },
+    sales: { label: "Add deal", onClick: () => openInModule("sales") },
+    projects: { label: "Add project", onClick: onAddProject },
+    lettings_legacy: { label: "Add unit", onClick: onAddUnit },
+    leads: { label: "Add lead", onClick: () => openInModule("leads") },
+    investors: { label: "Add investor", onClick: onAddInvestor },
     reports: null,
   };
   const a = map[view];
