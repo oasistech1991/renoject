@@ -49,7 +49,6 @@ function PrivacyPage() {
       <h2 className="mt-6 text-lg font-semibold">4. Who we share data with</h2>
       <ul className="list-disc pl-5">
         <li><strong>Hosting &amp; infrastructure</strong> — cloud providers we use to run the Service.</li>
-        <li><strong>Merchant of Record</strong> — Paddle.com Market Limited, for sale of subscriptions, subscription management, payments, tax compliance and invoicing.</li>
         <li><strong>Analytics &amp; support tooling</strong> — providers that help us understand and improve usage.</li>
         <li><strong>Professional advisers</strong> — legal and accounting, where required.</li>
         <li><strong>Authorities</strong> — where required by law.</li>
