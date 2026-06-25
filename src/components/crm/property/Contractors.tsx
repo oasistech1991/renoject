@@ -19,20 +19,24 @@ export function ContractorsRoster() {
   const [meta, setMeta] = useState<Record<string, Meta>>({});
   const [q, setQ] = useState("");
 
+  const load = async () => {
+    const [t, m] = await Promise.all([
+      supabase.from("tradesmen").select("id, name, specialities, area_covered, phone, email"),
+      supabase.from("crm_contractor_meta").select("*"),
+    ]);
+    setTradesmen(((t.data as any[]) ?? []).map((x) => ({
+      id: x.id, name: x.name, specialities: x.specialities ?? [],
+      area: x.area_covered, phone: x.phone, email: x.email,
+    })));
+    const map: Record<string, Meta> = {};
+    (m.data ?? []).forEach((x: any) => { map[x.tradesman_id] = x; });
+    setMeta(map);
+  };
+  useEffect(() => { load(); }, []);
   useEffect(() => {
-    (async () => {
-      const [t, m] = await Promise.all([
-        supabase.from("tradesmen").select("id, name, specialities, area_covered, phone, email"),
-        supabase.from("crm_contractor_meta").select("*"),
-      ]);
-      setTradesmen(((t.data as any[]) ?? []).map((x) => ({
-        id: x.id, name: x.name, specialities: x.specialities ?? [],
-        area: x.area_covered, phone: x.phone, email: x.email,
-      })));
-      const map: Record<string, Meta> = {};
-      (m.data ?? []).forEach((x: any) => { map[x.tradesman_id] = x; });
-      setMeta(map);
-    })();
+    const onChanged = () => load();
+    window.addEventListener("crm:data-changed", onChanged);
+    return () => window.removeEventListener("crm:data-changed", onChanged);
   }, []);
 
   const upsertMeta = async (id: string, patch: Partial<Meta>) => {
