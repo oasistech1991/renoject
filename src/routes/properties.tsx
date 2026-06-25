@@ -703,6 +703,15 @@ function PropertiesPage() {
                     />
                     <span>{r.in_portfolio ? "In portfolio forecast" : "Add to portfolio forecast"}</span>
                   </label>
+                  <label className="mt-2 flex cursor-pointer items-center gap-2 rounded-md border border-border bg-background/40 px-3 py-2 text-xs font-medium select-none">
+                    <input
+                      type="checkbox"
+                      checked={feedPostIds.has(r.id)}
+                      onChange={(e) => toggleFeed(r.id, e.target.checked)}
+                      className="h-4 w-4 accent-primary"
+                    />
+                    <span>{feedPostIds.has(r.id) ? "Published to client feed" : "Add to client feed"}</span>
+                  </label>
                 </div>
               );
             })}
