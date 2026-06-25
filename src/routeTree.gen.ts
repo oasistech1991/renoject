@@ -24,6 +24,7 @@ import { Route as MarketRouteImport } from './routes/market'
 import { Route as HmoComplianceRouteImport } from './routes/hmo-compliance'
 import { Route as ForecastRouteImport } from './routes/forecast'
 import { Route as FeedRouteImport } from './routes/feed'
+import { Route as CrmRouteImport } from './routes/crm'
 import { Route as ConditionRouteImport } from './routes/condition'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AccountRouteImport } from './routes/account'
@@ -105,6 +106,11 @@ const FeedRoute = FeedRouteImport.update({
   path: '/feed',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CrmRoute = CrmRouteImport.update({
+  id: '/crm',
+  path: '/crm',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ConditionRoute = ConditionRouteImport.update({
   id: '/condition',
   path: '/condition',
@@ -136,6 +142,7 @@ export interface FileRoutesByFullPath {
   '/account': typeof AccountRoute
   '/auth': typeof AuthRoute
   '/condition': typeof ConditionRoute
+  '/crm': typeof CrmRoute
   '/feed': typeof FeedRoute
   '/forecast': typeof ForecastRoute
   '/hmo-compliance': typeof HmoComplianceRoute
@@ -158,6 +165,7 @@ export interface FileRoutesByTo {
   '/account': typeof AccountRoute
   '/auth': typeof AuthRoute
   '/condition': typeof ConditionRoute
+  '/crm': typeof CrmRoute
   '/feed': typeof FeedRoute
   '/forecast': typeof ForecastRoute
   '/hmo-compliance': typeof HmoComplianceRoute
@@ -181,6 +189,7 @@ export interface FileRoutesById {
   '/account': typeof AccountRoute
   '/auth': typeof AuthRoute
   '/condition': typeof ConditionRoute
+  '/crm': typeof CrmRoute
   '/feed': typeof FeedRoute
   '/forecast': typeof ForecastRoute
   '/hmo-compliance': typeof HmoComplianceRoute
@@ -205,6 +214,7 @@ export interface FileRouteTypes {
     | '/account'
     | '/auth'
     | '/condition'
+    | '/crm'
     | '/feed'
     | '/forecast'
     | '/hmo-compliance'
@@ -227,6 +237,7 @@ export interface FileRouteTypes {
     | '/account'
     | '/auth'
     | '/condition'
+    | '/crm'
     | '/feed'
     | '/forecast'
     | '/hmo-compliance'
@@ -249,6 +260,7 @@ export interface FileRouteTypes {
     | '/account'
     | '/auth'
     | '/condition'
+    | '/crm'
     | '/feed'
     | '/forecast'
     | '/hmo-compliance'
@@ -272,6 +284,7 @@ export interface RootRouteChildren {
   AccountRoute: typeof AccountRoute
   AuthRoute: typeof AuthRoute
   ConditionRoute: typeof ConditionRoute
+  CrmRoute: typeof CrmRoute
   FeedRoute: typeof FeedRoute
   ForecastRoute: typeof ForecastRoute
   HmoComplianceRoute: typeof HmoComplianceRoute
@@ -397,6 +410,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof FeedRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/crm': {
+      id: '/crm'
+      path: '/crm'
+      fullPath: '/crm'
+      preLoaderRoute: typeof CrmRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/condition': {
       id: '/condition'
       path: '/condition'
@@ -440,6 +460,7 @@ const rootRouteChildren: RootRouteChildren = {
   AccountRoute: AccountRoute,
   AuthRoute: AuthRoute,
   ConditionRoute: ConditionRoute,
+  CrmRoute: CrmRoute,
   FeedRoute: FeedRoute,
   ForecastRoute: ForecastRoute,
   HmoComplianceRoute: HmoComplianceRoute,
