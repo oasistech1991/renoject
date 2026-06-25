@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
 import {
@@ -358,9 +358,9 @@ function AddPropertyDialog({
   };
 
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="overflow-y-auto">
-        <SheetHeader><SheetTitle>Add property</SheetTitle></SheetHeader>
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+        <DialogHeader><DialogTitle>Add property</DialogTitle></DialogHeader>
         <div className="mt-4 space-y-3">
           <Input placeholder="Address" value={address} onChange={(e) => setAddress(e.target.value)} />
           <Input placeholder="Postcode" value={postcode} onChange={(e) => setPostcode(e.target.value)} />
@@ -397,8 +397,8 @@ function AddPropertyDialog({
           <Textarea placeholder="Notes" value={notes} onChange={(e) => setNotes(e.target.value)} />
           <Button onClick={save} disabled={saving} className="w-full">{saving ? "Saving…" : "Create property"}</Button>
         </div>
-      </SheetContent>
-    </Sheet>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -931,9 +931,9 @@ function NewTaskDialog({ open, onOpenChange, contacts, meId, onCreated }: {
   };
 
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent>
-        <SheetHeader><SheetTitle>New task</SheetTitle></SheetHeader>
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader><DialogTitle>New task</DialogTitle></DialogHeader>
         <div className="mt-4 space-y-3">
           <Input placeholder="Title" value={title} onChange={(e) => setTitle(e.target.value)} />
           <Select value={clientId} onValueChange={setClientId}>
@@ -954,8 +954,8 @@ function NewTaskDialog({ open, onOpenChange, contacts, meId, onCreated }: {
           <Textarea placeholder="Notes" value={body} onChange={(e) => setBody(e.target.value)} />
           <Button onClick={save} className="w-full">Create task</Button>
         </div>
-      </SheetContent>
-    </Sheet>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -1032,17 +1032,17 @@ function ContactSheet({ contact, deals, tasks, posts, meId, onClose, onChanged }
   };
 
   return (
-    <Sheet open={!!contact} onOpenChange={(o) => !o && onClose()}>
-      <SheetContent className="w-full overflow-y-auto sm:max-w-2xl">
-        <SheetHeader>
-          <SheetTitle className="flex items-center gap-3">
+    <Dialog open={!!contact} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-3">
             <div className="h-10 w-10 rounded-full bg-primary/20 text-primary text-sm font-bold flex items-center justify-center">{initials(contact.display_name)}</div>
             <div>
               <div>{contact.display_name || "Unnamed"}</div>
               <div className="text-xs font-normal text-muted-foreground">Capital: {fmtGBP(contact.available_capital)}</div>
             </div>
-          </SheetTitle>
-        </SheetHeader>
+          </DialogTitle>
+        </DialogHeader>
 
         <div className="mt-4 space-y-4">
           {/* Stage + DM */}
@@ -1173,8 +1173,8 @@ function ContactSheet({ contact, deals, tasks, posts, meId, onClose, onChanged }
             </CardContent>
           </Card>
         </div>
-      </SheetContent>
-    </Sheet>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -1237,9 +1237,9 @@ function AddSupplierDialog({ open, onOpenChange }: { open: boolean; onOpenChange
   };
 
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="overflow-y-auto">
-        <SheetHeader><SheetTitle>Add supplier</SheetTitle></SheetHeader>
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+        <DialogHeader><DialogTitle>Add supplier</DialogTitle></DialogHeader>
         <div className="mt-4 space-y-3">
           <Input placeholder="Name" value={name} onChange={(e) => setName(e.target.value)} />
           <Input placeholder="Trades (comma separated, e.g. plumber, gas)" value={trade} onChange={(e) => setTrade(e.target.value)} />
@@ -1248,8 +1248,8 @@ function AddSupplierDialog({ open, onOpenChange }: { open: boolean; onOpenChange
           <Input placeholder="Area covered" value={area} onChange={(e) => setArea(e.target.value)} />
           <Button onClick={save} disabled={saving} className="w-full">{saving ? "Saving…" : "Create supplier"}</Button>
         </div>
-      </SheetContent>
-    </Sheet>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -1280,9 +1280,9 @@ function AddProjectDialog({ open, onOpenChange }: { open: boolean; onOpenChange:
   };
 
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="overflow-y-auto">
-        <SheetHeader><SheetTitle>Add project</SheetTitle></SheetHeader>
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+        <DialogHeader><DialogTitle>Add project</DialogTitle></DialogHeader>
         <div className="mt-4 space-y-3">
           <Select value={propertyId} onValueChange={setPropertyId}>
             <SelectTrigger><SelectValue placeholder="Property" /></SelectTrigger>
@@ -1318,8 +1318,8 @@ function AddProjectDialog({ open, onOpenChange }: { open: boolean; onOpenChange:
           </div>
           <Button onClick={save} disabled={saving} className="w-full">{saving ? "Saving…" : "Create project"}</Button>
         </div>
-      </SheetContent>
-    </Sheet>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -1351,9 +1351,9 @@ function AddUnitDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (b
   };
 
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="overflow-y-auto">
-        <SheetHeader><SheetTitle>Add unit</SheetTitle></SheetHeader>
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+        <DialogHeader><DialogTitle>Add unit</DialogTitle></DialogHeader>
         <div className="mt-4 space-y-3">
           <Select value={propertyId} onValueChange={setPropertyId}>
             <SelectTrigger><SelectValue placeholder="Property" /></SelectTrigger>
@@ -1378,8 +1378,8 @@ function AddUnitDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (b
           </div>
           <Button onClick={save} disabled={saving} className="w-full">{saving ? "Saving…" : "Create unit"}</Button>
         </div>
-      </SheetContent>
-    </Sheet>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -1432,9 +1432,9 @@ function AddTenancyDialog({ open, onOpenChange }: { open: boolean; onOpenChange:
   };
 
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="overflow-y-auto">
-        <SheetHeader><SheetTitle>New tenancy</SheetTitle></SheetHeader>
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+        <DialogHeader><DialogTitle>New tenancy</DialogTitle></DialogHeader>
         <div className="mt-4 space-y-3">
           <Select value={unitId} onValueChange={setUnitId}>
             <SelectTrigger><SelectValue placeholder="Unit (optional)" /></SelectTrigger>
@@ -1459,8 +1459,8 @@ function AddTenancyDialog({ open, onOpenChange }: { open: boolean; onOpenChange:
           </div>
           <Button onClick={save} disabled={saving} className="w-full">{saving ? "Saving…" : "Create tenancy"}</Button>
         </div>
-      </SheetContent>
-    </Sheet>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -1500,9 +1500,9 @@ function LogRentPaymentDialog({ open, onOpenChange }: { open: boolean; onOpenCha
   };
 
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="overflow-y-auto">
-        <SheetHeader><SheetTitle>Log rent payment</SheetTitle></SheetHeader>
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+        <DialogHeader><DialogTitle>Log rent payment</DialogTitle></DialogHeader>
         <div className="mt-4 space-y-3">
           <Select value={tenantId} onValueChange={(v) => {
             setTenantId(v);
@@ -1532,8 +1532,8 @@ function LogRentPaymentDialog({ open, onOpenChange }: { open: boolean; onOpenCha
           </Select>
           <Button onClick={save} disabled={saving} className="w-full">{saving ? "Saving…" : "Log payment"}</Button>
         </div>
-      </SheetContent>
-    </Sheet>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -1570,9 +1570,9 @@ function AddInvestorDialog({ open, onOpenChange }: { open: boolean; onOpenChange
   };
 
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="overflow-y-auto">
-        <SheetHeader><SheetTitle>Add investor</SheetTitle></SheetHeader>
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+        <DialogHeader><DialogTitle>Add investor</DialogTitle></DialogHeader>
         <div className="mt-4 space-y-3">
           <Input placeholder="Display name" value={name} onChange={(e) => setName(e.target.value)} />
           <Input placeholder="Headline / role" value={headline} onChange={(e) => setHeadline(e.target.value)} />
@@ -1584,7 +1584,7 @@ function AddInvestorDialog({ open, onOpenChange }: { open: boolean; onOpenChange
           </Select>
           <Button onClick={save} disabled={saving} className="w-full">{saving ? "Saving…" : "Create investor"}</Button>
         </div>
-      </SheetContent>
-    </Sheet>
+      </DialogContent>
+    </Dialog>
   );
 }

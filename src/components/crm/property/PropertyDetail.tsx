@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -71,18 +71,18 @@ export function PropertyDetailSheet({ propertyId, onClose, onChanged }: {
   };
 
   return (
-    <Sheet open={!!propertyId} onOpenChange={(o) => !o && onClose()}>
-      <SheetContent side="right" className="w-full overflow-y-auto sm:max-w-2xl">
+    <Dialog open={!!propertyId} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
         {!p ? <div className="p-6 text-sm text-muted-foreground">Loading…</div> : (
           <>
-            <SheetHeader>
-              <SheetTitle className="text-left text-lg">{p.address}</SheetTitle>
+            <DialogHeader>
+              <DialogTitle className="text-left text-lg">{p.address}</DialogTitle>
               <div className="flex flex-wrap items-center gap-2 pt-1">
                 <Badge variant="outline" className={PROPERTY_STATUS_COLOR[p.status]}>{PROPERTY_STATUS_LABEL[p.status]}</Badge>
                 <span className="text-xs text-muted-foreground">{p.property_type.toUpperCase()}</span>
                 {p.postcode && <span className="text-xs text-muted-foreground">{p.postcode}</span>}
               </div>
-            </SheetHeader>
+            </DialogHeader>
 
             <div className="mt-4 grid grid-cols-3 gap-2 text-center">
               <KPI label="Purchase" value={fmtGBP(p.purchase_price)} />
@@ -164,8 +164,8 @@ export function PropertyDetailSheet({ propertyId, onClose, onChanged }: {
             </Tabs>
           </>
         )}
-      </SheetContent>
-    </Sheet>
+      </DialogContent>
+    </Dialog>
   );
 }
 
