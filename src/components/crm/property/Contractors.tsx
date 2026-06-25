@@ -9,7 +9,7 @@ import { fmtGBP } from "./types";
 import { toast } from "sonner";
 
 type Tradesman = {
-  id: string; name: string | null; trade: string | null;
+  id: string; name: string; specialities: string[];
   area: string | null; phone: string | null; email: string | null;
 };
 type Meta = { tradesman_id: string; rating: number | null; default_rate: number | null; preferred: boolean; total_spend: number };
@@ -22,10 +22,13 @@ export function ContractorsRoster() {
   useEffect(() => {
     (async () => {
       const [t, m] = await Promise.all([
-        supabase.from("tradesmen").select("id, name, trade, area, phone, email"),
+        supabase.from("tradesmen").select("id, name, specialities, area_covered, phone, email"),
         supabase.from("crm_contractor_meta").select("*"),
       ]);
-      setTradesmen((t.data as Tradesman[]) ?? []);
+      setTradesmen(((t.data as any[]) ?? []).map((x) => ({
+        id: x.id, name: x.name, specialities: x.specialities ?? [],
+        area: x.area_covered, phone: x.phone, email: x.email,
+      })));
       const map: Record<string, Meta> = {};
       (m.data ?? []).forEach((x: any) => { map[x.tradesman_id] = x; });
       setMeta(map);
@@ -33,14 +36,14 @@ export function ContractorsRoster() {
   }, []);
 
   const upsertMeta = async (id: string, patch: Partial<Meta>) => {
-    const next = { tradesman_id: id, ...meta[id], ...patch } as any;
+    const next = { ...meta[id], ...patch, tradesman_id: id } as any;
     const { error } = await supabase.from("crm_contractor_meta").upsert(next, { onConflict: "tradesman_id" });
     if (error) return toast.error(error.message);
     setMeta((m) => ({ ...m, [id]: { ...(m[id] ?? { tradesman_id: id, rating: null, default_rate: null, preferred: false, total_spend: 0 }), ...patch } }));
   };
 
   const filtered = tradesmen.filter((t) =>
-    !q || (t.name ?? "").toLowerCase().includes(q.toLowerCase()) || (t.trade ?? "").toLowerCase().includes(q.toLowerCase())
+    !q || t.name.toLowerCase().includes(q.toLowerCase()) || t.specialities.join(" ").toLowerCase().includes(q.toLowerCase())
   );
 
   return (
@@ -67,7 +70,7 @@ export function ContractorsRoster() {
                     {t.name ?? "Unnamed"}
                     {m?.preferred && <Badge variant="outline" className="ml-2 border-amber-500/30 bg-amber-500/15 text-amber-300">★ Preferred</Badge>}
                   </TableCell>
-                  <TableCell className="text-xs capitalize">{t.trade ?? "—"}</TableCell>
+                  <TableCell className="text-xs capitalize">{t.specialities.join(", ") || "—"}</TableCell>
                   <TableCell className="text-xs text-muted-foreground">{t.area ?? "—"}</TableCell>
                   <TableCell>
                     <div className="flex gap-0.5">
