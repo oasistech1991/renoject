@@ -394,7 +394,7 @@ function FeedPage() {
         <PostSheet
           post={posts.find((p) => p.id === openPostId)!}
           userId={userId}
-          onVote={castVote}
+          onInterest={expressInterest}
           onClose={() => {
             setOpenPostId(null);
             loadFeed();
