@@ -68,8 +68,8 @@ function FeedMapPage() {
         const { data: posts, error: e1 } = await supabase
           .from("feed_posts")
           .select("id, property_id, deal_type")
-          .eq("status", "published")
-          .order("published_at", { ascending: false })
+          .eq("is_published", true)
+          .order("created_at", { ascending: false })
           .limit(200);
         if (e1) throw e1;
 
