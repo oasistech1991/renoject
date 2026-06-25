@@ -350,6 +350,10 @@ function AboutTab({ profile, editing, setProfile }: { profile: Profile; editing:
           <li className="flex items-center gap-2"><Target className="h-4 w-4 text-primary" /> {profile.preferred_deal_types.length || 0} preferred deal type{profile.preferred_deal_types.length === 1 ? "" : "s"}</li>
           <li className="flex items-center gap-2"><Hash className="h-4 w-4 text-primary" /> {profile.preferred_areas.length} preferred area{profile.preferred_areas.length === 1 ? "" : "s"}</li>
           <li className="flex items-center gap-2"><Wallet className="h-4 w-4 text-primary" /> Budget: {profile.budget_min || profile.budget_max ? `${fmtGBP(profile.budget_min ?? 0)} – ${fmtGBP(profile.budget_max ?? 0)}` : "Not set"}</li>
+          <li className="flex items-center gap-2">
+            <Wallet className="h-4 w-4 text-primary" />
+            Cash ready: {profile.available_capital ? fmtGBP(profile.available_capital) : <span className="text-muted-foreground italic">Not shared</span>}
+          </li>
         </ul>
       </div>
     </div>
