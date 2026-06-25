@@ -8,7 +8,7 @@ import { dealTypeMeta } from "@/lib/feed";
 import { Button } from "@/components/ui/button";
 import { LayoutGrid, MapPin, Loader2 } from "lucide-react";
 
-export const Route = createFileRoute("/feed/map")({
+export const Route = createFileRoute("/feed_/map")({
   head: () => ({
     meta: [
       { title: "Deal map — Renoject" },
