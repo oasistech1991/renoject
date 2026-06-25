@@ -584,6 +584,72 @@ function Stat({ label, value }: { label: string; value: string }) {
   );
 }
 
+function UpcomingCard({
+  post,
+  onThumbsUp,
+  onInterest,
+}: {
+  post: FeedPost;
+  onThumbsUp: () => void;
+  onInterest: () => void;
+}) {
+  const prop = post.property;
+  const inputs = prop?.inputs ?? {};
+  const thumbs = post.reactions.filter((r) => r.kind === "like").length;
+  const liked = post.my_reaction === "like";
+  const dealMeta = dealTypeMeta(post.deal_type);
+  return (
+    <div className="relative overflow-hidden rounded-xl border border-amber-500/30 bg-gradient-to-br from-amber-500/5 via-card to-card p-4">
+      <div className="absolute right-3 top-3">
+        <span
+          className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium text-white"
+          style={{ backgroundColor: dealMeta.color }}
+        >
+          {dealMeta.label}
+        </span>
+      </div>
+      <div className="text-[10px] font-semibold uppercase tracking-wider text-amber-500">Coming soon</div>
+      <h3 className="mt-1 text-base font-semibold leading-tight">{prop?.name ?? "Pipeline deal"}</h3>
+      {post.caption && <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{post.caption}</p>}
+      <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
+        {inputs.purchasePrice ? (
+          <div className="rounded bg-muted/40 px-2 py-1.5">
+            <div className="text-[9px] uppercase text-muted-foreground">Est. PP</div>
+            <div className="font-semibold tabular-nums">{fmtGBP(inputs.purchasePrice)}</div>
+          </div>
+        ) : null}
+        {inputs.gdv ? (
+          <div className="rounded bg-muted/40 px-2 py-1.5">
+            <div className="text-[9px] uppercase text-muted-foreground">End value</div>
+            <div className="font-semibold tabular-nums">{fmtGBP(inputs.gdv)}</div>
+          </div>
+        ) : null}
+      </div>
+      <div className="mt-3 flex items-center justify-between gap-2">
+        <button
+          onClick={onThumbsUp}
+          className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors ${
+            liked
+              ? "border-transparent bg-amber-500 text-white"
+              : "border-amber-500/40 text-amber-500 hover:bg-amber-500/10"
+          }`}
+        >
+          <ThumbsUp className={`h-3.5 w-3.5 ${liked ? "fill-current" : ""}`} />
+          {liked ? "Interested" : "Show interest"}
+          {thumbs > 0 && (
+            <span className={`ml-1 rounded-full px-1.5 text-[10px] ${liked ? "bg-white/25" : "bg-amber-500/15"}`}>
+              {thumbs}
+            </span>
+          )}
+        </button>
+        <Button size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={onInterest} disabled={post.interested}>
+          {post.interested ? "On list" : "Add me to the list"}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 function DealTypeBadge({ dealType, className = "" }: { dealType: string | null; className?: string }) {
   const meta = dealTypeMeta(dealType);
   return (
