@@ -202,10 +202,8 @@ const PUBLIC_PATHS = new Set([
   "/refinance",
   "/auth",
   "/reset-password",
-  "/pricing",
   "/terms",
   "/privacy",
-  "/refund-policy",
   "/account",
 ]);
 

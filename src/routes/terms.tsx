@@ -61,21 +61,7 @@ function TermsPage() {
         information and keep it up to date.
       </p>
 
-      <h2 className="mt-6 text-lg font-semibold">6. Payments and subscriptions</h2>
-      <p>
-        Our order process is conducted by our online reseller Paddle.com.
-        Paddle.com is the Merchant of Record for all our orders. Paddle
-        provides all customer service inquiries and handles returns. Payment,
-        billing, tax and refund mechanics are governed by the{" "}
-        <a className="underline" href="https://www.paddle.com/legal/checkout-buyer-terms" target="_blank" rel="noreferrer">Paddle Buyer Terms</a>.
-      </p>
-      <p>
-        Subscriptions renew automatically each billing period until canceled.
-        You can cancel at any time from your Account page; access continues
-        until the end of the current billing period.
-      </p>
-
-      <h2 className="mt-6 text-lg font-semibold">7. Service level</h2>
+      <h2 className="mt-6 text-lg font-semibold">6. Service level</h2>
       <p>
         We provide the Service "as is" and do not guarantee that it will be
         uninterrupted, error-free, or that any specific result will be
