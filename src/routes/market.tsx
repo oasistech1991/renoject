@@ -25,12 +25,12 @@ import { toast } from "sonner";
 export const Route = createFileRoute("/market")({
   head: () => ({
     meta: [
-      { title: "Market Search — HARTSTONE HOLDINGS" },
+      { title: "Market Search — RENOJECT" },
       { name: "description", content: "Search the UK property market with investor-grade filters: yield, BMV, HMO potential, auctions and refurb signals." },
-      { property: "og:url", content: "https://hartstoneholdings.com/market" },
+      { property: "og:url", content: "https://renojectholdings.com/market" },
     ],
     links: [
-      { rel: "canonical", href: "https://hartstoneholdings.com/market" },
+      { rel: "canonical", href: "https://renojectholdings.com/market" },
     ],
   }),
   component: MarketPage,

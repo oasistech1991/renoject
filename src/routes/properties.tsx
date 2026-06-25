@@ -18,10 +18,10 @@ export const Route = createFileRoute("/properties")({
       { name: "description", content: "All your saved BRRR / refinance deals in one place." },
       { property: "og:title", content: "Saved properties" },
       { property: "og:description", content: "All your saved BRRR / refinance deals." },
-      { property: "og:url", content: "https://hartstoneholdings.com/properties" },
+      { property: "og:url", content: "https://renojectholdings.com/properties" },
     ],
     links: [
-      { rel: "canonical", href: "https://hartstoneholdings.com/properties" },
+      { rel: "canonical", href: "https://renojectholdings.com/properties" },
     ],
   }),
   component: PropertiesPage,

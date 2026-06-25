@@ -1,8 +1,8 @@
-# Hartstone Holdings
+# Renoject
 
 > UK property investment toolkit — BTL & BRRR calculators, HMO compliance, market search, renovation cost estimates, and a trusted tradesmen directory.
 
-Hartstone Holdings is a free web app for UK property investors, landlords, and developers. It combines deal-analysis calculators, live market search, HMO licensing checks, refurbishment costing, long-term cashflow forecasting, and a vetted contractor directory in one place.
+Renoject is a free web app for UK property investors, landlords, and developers. It combines deal-analysis calculators, live market search, HMO licensing checks, refurbishment costing, long-term cashflow forecasting, and a vetted contractor directory in one place.
 
 ## Tools
 
@@ -10,7 +10,7 @@ Hartstone Holdings is a free web app for UK property investors, landlords, and d
 - [Renovation Calculator](/condition): Itemised refurbishment cost estimates for UK properties.
 - [HMO Floorplan Compliance](/hmo-compliance): Check a floorplan against UK HMO licensing rules (room sizes, amenities, fire safety).
 - [Market Search](/market): Live UK property deal matching across multiple listing sources.
-- [View Deals](/properties): Curated investment opportunities sourced and analysed by Hartstone.
+- [View Deals](/properties): Curated investment opportunities sourced and analysed by Renoject.
 - [Forecast](/forecast): Long-term cashflow projections — rent growth, capital appreciation, refinance windows.
 - [Tradesmen Directory](/tradesmen): Trusted UK contractor network with reviews and trade-specific analysis.
 - [Tokenize](/tokenize): Fractionalise property equity for shared ownership and investor pools.

@@ -19,10 +19,10 @@ export const Route = createFileRoute("/forecast")({
     meta: [
       { title: "Portfolio forecast — BRRR deals" },
       { name: "description", content: "Aggregate forecast of deals you've added to your portfolio." },
-      { property: "og:url", content: "https://hartstoneholdings.com/forecast" },
+      { property: "og:url", content: "https://renojectholdings.com/forecast" },
     ],
     links: [
-      { rel: "canonical", href: "https://hartstoneholdings.com/forecast" },
+      { rel: "canonical", href: "https://renojectholdings.com/forecast" },
     ],
   }),
   component: ForecastPage,

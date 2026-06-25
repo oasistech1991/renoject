@@ -3,12 +3,12 @@ import { createFileRoute } from "@tanstack/react-router";
 export const Route = createFileRoute("/privacy")({
   head: () => ({
     meta: [
-      { title: "Privacy Notice — HARTSTONE HOLDINGS" },
-      { name: "description", content: "How Hartstone Holdings handles your personal data." },
-      { property: "og:url", content: "https://hartstoneholdings.com/privacy" },
+      { title: "Privacy Notice — RENOJECT" },
+      { name: "description", content: "How Renoject handles your personal data." },
+      { property: "og:url", content: "https://renojectholdings.com/privacy" },
     ],
     links: [
-      { rel: "canonical", href: "https://hartstoneholdings.com/privacy" },
+      { rel: "canonical", href: "https://renojectholdings.com/privacy" },
     ],
   }),
   component: PrivacyPage,
@@ -22,7 +22,7 @@ function PrivacyPage() {
 
       <h2 className="mt-6 text-lg font-semibold">1. Who we are</h2>
       <p>
-        Hartstone Holdings ("we", "us") provides the Hartstone Holdings
+        Renoject ("we", "us") provides the Renoject
         property investment tools. For data we process about you in
         connection with the Service, we act as the data controller.
       </p>
@@ -95,7 +95,7 @@ function PrivacyPage() {
       <h2 className="mt-6 text-lg font-semibold">10. Contact</h2>
       <p>
         For any privacy question or to exercise your rights, email{" "}
-        <a className="underline" href="mailto:privacy@hartstoneholdings.com">privacy@hartstoneholdings.com</a>.
+        <a className="underline" href="mailto:privacy@renojectholdings.com">privacy@renojectholdings.com</a>.
       </p>
     </article>
   );

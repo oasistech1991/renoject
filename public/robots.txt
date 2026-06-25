@@ -1,7 +1,7 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://hartstoneholdings.com/sitemap.xml
+Sitemap: https://renojectholdings.com/sitemap.xml
 
 # AI crawlers — explicitly allowed for discovery in ChatGPT, Perplexity, Claude, Gemini, etc.
 User-agent: GPTBot
