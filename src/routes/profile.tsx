@@ -36,12 +36,16 @@ type Profile = {
   preferred_deal_types: string[];
   budget_min: number | null;
   budget_max: number | null;
+  available_capital: number | null;
+  capital_notes: string | null;
+  capital_updated_at: string | null;
 };
 
 const EMPTY: Profile = {
   user_id: "", display_name: "", avatar_url: null, cover_url: null,
   headline: "", bio: "", location: "", investor_type: "",
   preferred_areas: [], preferred_deal_types: [], budget_min: null, budget_max: null,
+  available_capital: null, capital_notes: null, capital_updated_at: null,
 };
 
 type ActivityItem = {
@@ -190,6 +194,8 @@ function ProfilePage() {
   async function save() {
     if (!userId) return;
     setSaving(true);
+    const capitalChanged =
+      profile.available_capital !== null && profile.available_capital !== undefined;
     const { error } = await supabase.from("client_profiles").upsert({
       user_id: userId,
       display_name: profile.display_name,
@@ -201,6 +207,9 @@ function ProfilePage() {
       preferred_deal_types: profile.preferred_deal_types,
       budget_min: profile.budget_min,
       budget_max: profile.budget_max,
+      available_capital: profile.available_capital,
+      capital_notes: profile.capital_notes,
+      capital_updated_at: capitalChanged ? new Date().toISOString() : profile.capital_updated_at,
     });
     setSaving(false);
     if (error) toast.error(error.message);
@@ -327,6 +336,16 @@ function AboutTab({ profile, editing, setProfile }: { profile: Profile; editing:
             <Field label="Investor type">
               <Input placeholder="Individual / Limited company / Fund" value={profile.investor_type ?? ""} onChange={(e) => setProfile((p) => ({ ...p, investor_type: e.target.value }))} />
             </Field>
+            <div className="rounded-lg border border-primary/30 bg-primary/5 p-3">
+              <div className="mb-2 text-xs font-semibold uppercase tracking-wider text-primary">Cash available to deploy</div>
+              <p className="mb-2 text-xs text-muted-foreground">Helps the Renoject team match you with the right deals.</p>
+              <Field label="Amount (GBP)">
+                <Input type="number" placeholder="e.g. 75000" value={profile.available_capital ?? ""} onChange={(e) => setProfile((p) => ({ ...p, available_capital: e.target.value ? Number(e.target.value) : null }))} />
+              </Field>
+              <Field label="Notes (optional)">
+                <Textarea rows={2} placeholder="e.g. £50k cash + £25k available on personal credit line in 30 days." value={profile.capital_notes ?? ""} onChange={(e) => setProfile((p) => ({ ...p, capital_notes: e.target.value }))} />
+              </Field>
+            </div>
           </div>
         ) : (
           <div className="space-y-3 text-sm">
@@ -341,6 +360,10 @@ function AboutTab({ profile, editing, setProfile }: { profile: Profile; editing:
           <li className="flex items-center gap-2"><Target className="h-4 w-4 text-primary" /> {profile.preferred_deal_types.length || 0} preferred deal type{profile.preferred_deal_types.length === 1 ? "" : "s"}</li>
           <li className="flex items-center gap-2"><Hash className="h-4 w-4 text-primary" /> {profile.preferred_areas.length} preferred area{profile.preferred_areas.length === 1 ? "" : "s"}</li>
           <li className="flex items-center gap-2"><Wallet className="h-4 w-4 text-primary" /> Budget: {profile.budget_min || profile.budget_max ? `${fmtGBP(profile.budget_min ?? 0)} – ${fmtGBP(profile.budget_max ?? 0)}` : "Not set"}</li>
+          <li className="flex items-center gap-2">
+            <Wallet className="h-4 w-4 text-primary" />
+            Cash ready: {profile.available_capital ? fmtGBP(profile.available_capital) : <span className="text-muted-foreground italic">Not shared</span>}
+          </li>
         </ul>
       </div>
     </div>

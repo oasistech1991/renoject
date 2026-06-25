@@ -215,6 +215,7 @@ function FeedPage() {
       const votes = pollMap.get(p.id) ?? [];
       return {
         ...p,
+        is_upcoming: !!p.is_upcoming,
         hidden_fields: (p.hidden_fields ?? []) as HidableFieldKey[],
         property: propMap.get(p.property_id) ?? null,
         cover_resolved: p.cover_url ?? coverMap[p.property_id] ?? null,
@@ -327,6 +328,8 @@ function FeedPage() {
   }
 
   const visiblePosts = tab === "saved" ? posts.filter((p) => p.saved) : posts;
+  const upcomingPosts = tab === "feed" ? visiblePosts.filter((p) => p.is_upcoming) : [];
+  const livePosts = tab === "feed" ? visiblePosts.filter((p) => !p.is_upcoming) : visiblePosts;
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-8">
@@ -359,6 +362,28 @@ function FeedPage() {
 
       {!loading && (tab === "feed" || tab === "saved") && (
         <div className="mt-6 space-y-6">
+          {tab === "feed" && upcomingPosts.length > 0 && (
+            <section>
+              <div className="mb-3 flex items-center gap-2">
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-500/15 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-amber-500">
+                  <ThumbsUp className="h-3 w-3" /> Coming soon — register interest
+                </span>
+                <span className="text-xs text-muted-foreground">{upcomingPosts.length} deal{upcomingPosts.length === 1 ? "" : "s"} in the pipeline</span>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2">
+                {upcomingPosts.map((p) => (
+                  <UpcomingCard
+                    key={p.id}
+                    post={p}
+                    onThumbsUp={() => toggleReact(p.id, "like")}
+                    onInterest={() => expressInterest(p.id)}
+                  />
+                ))}
+              </div>
+              <div className="mt-6 border-t border-dashed border-border" />
+            </section>
+          )}
+
           {visiblePosts.length === 0 && (
             <div className="rounded-xl border border-dashed border-border p-10 text-center">
               <p className="text-sm text-muted-foreground">
@@ -366,7 +391,7 @@ function FeedPage() {
               </p>
             </div>
           )}
-          {visiblePosts.map((p) => (
+          {livePosts.map((p) => (
             <div key={p.id} className="space-y-0">
               <PostCard
                 post={p}
@@ -555,6 +580,72 @@ function Stat({ label, value }: { label: string; value: string }) {
     <div className="rounded-md bg-muted/40 px-3 py-2">
       <div className="text-[10px] uppercase tracking-wider text-muted-foreground">{label}</div>
       <div className="text-sm font-semibold tabular-nums">{value}</div>
+    </div>
+  );
+}
+
+function UpcomingCard({
+  post,
+  onThumbsUp,
+  onInterest,
+}: {
+  post: FeedPost;
+  onThumbsUp: () => void;
+  onInterest: () => void;
+}) {
+  const prop = post.property;
+  const inputs = prop?.inputs ?? {};
+  const thumbs = post.reactions.filter((r) => r.kind === "like").length;
+  const liked = post.my_reaction === "like";
+  const dealMeta = dealTypeMeta(post.deal_type);
+  return (
+    <div className="relative overflow-hidden rounded-xl border border-amber-500/30 bg-gradient-to-br from-amber-500/5 via-card to-card p-4">
+      <div className="absolute right-3 top-3">
+        <span
+          className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium text-white"
+          style={{ backgroundColor: dealMeta.color }}
+        >
+          {dealMeta.label}
+        </span>
+      </div>
+      <div className="text-[10px] font-semibold uppercase tracking-wider text-amber-500">Coming soon</div>
+      <h3 className="mt-1 text-base font-semibold leading-tight">{prop?.name ?? "Pipeline deal"}</h3>
+      {post.caption && <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{post.caption}</p>}
+      <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
+        {inputs.purchasePrice ? (
+          <div className="rounded bg-muted/40 px-2 py-1.5">
+            <div className="text-[9px] uppercase text-muted-foreground">Est. PP</div>
+            <div className="font-semibold tabular-nums">{fmtGBP(inputs.purchasePrice)}</div>
+          </div>
+        ) : null}
+        {inputs.gdv ? (
+          <div className="rounded bg-muted/40 px-2 py-1.5">
+            <div className="text-[9px] uppercase text-muted-foreground">End value</div>
+            <div className="font-semibold tabular-nums">{fmtGBP(inputs.gdv)}</div>
+          </div>
+        ) : null}
+      </div>
+      <div className="mt-3 flex items-center justify-between gap-2">
+        <button
+          onClick={onThumbsUp}
+          className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors ${
+            liked
+              ? "border-transparent bg-amber-500 text-white"
+              : "border-amber-500/40 text-amber-500 hover:bg-amber-500/10"
+          }`}
+        >
+          <ThumbsUp className={`h-3.5 w-3.5 ${liked ? "fill-current" : ""}`} />
+          {liked ? "Interested" : "Show interest"}
+          {thumbs > 0 && (
+            <span className={`ml-1 rounded-full px-1.5 text-[10px] ${liked ? "bg-white/25" : "bg-amber-500/15"}`}>
+              {thumbs}
+            </span>
+          )}
+        </button>
+        <Button size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={onInterest} disabled={post.interested}>
+          {post.interested ? "On list" : "Add me to the list"}
+        </Button>
+      </div>
     </div>
   );
 }
@@ -904,6 +995,7 @@ function EditPostDialog({ post, onClose, onSaved }: { post: FeedPost; onClose: (
   const [displayMode, setDisplayMode] = useState<"teaser" | "full">(post.display_mode);
   const [hidden, setHidden] = useState<Set<HidableFieldKey>>(new Set(post.hidden_fields));
   const [dealType, setDealType] = useState<string>(post.deal_type ?? "other");
+  const [isUpcoming, setIsUpcoming] = useState<boolean>(!!post.is_upcoming);
   const [saving, setSaving] = useState(false);
 
   const save = async () => {
@@ -915,6 +1007,7 @@ function EditPostDialog({ post, onClose, onSaved }: { post: FeedPost; onClose: (
         display_mode: displayMode,
         hidden_fields: Array.from(hidden),
         deal_type: dealType,
+        is_upcoming: isUpcoming,
       } as any)
       .eq("id", post.id);
     setSaving(false);
@@ -957,6 +1050,18 @@ function EditPostDialog({ post, onClose, onSaved }: { post: FeedPost; onClose: (
             </button>
           ))}
         </div>
+
+        <label className="mt-4 flex items-center gap-2 rounded-md border border-amber-500/40 bg-amber-500/5 p-3 text-xs">
+          <input
+            type="checkbox"
+            checked={isUpcoming}
+            onChange={(e) => setIsUpcoming(e.target.checked)}
+            className="h-3.5 w-3.5 accent-amber-500"
+          />
+          <span>
+            <span className="font-semibold text-amber-500">Mark as upcoming</span> — shows in the "Coming soon" strip so clients can thumbs-up before it goes live.
+          </span>
+        </label>
 
         <label className="mt-4 block text-xs font-medium">Deal type</label>
         <div className="mt-1 flex flex-wrap gap-1.5">
