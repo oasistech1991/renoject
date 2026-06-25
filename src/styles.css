@@ -63,6 +63,13 @@
   --font-display: "Sora", ui-sans-serif, system-ui, sans-serif;
   --color-brand: var(--brand);
   --color-brand-foreground: var(--brand-foreground);
+  --color-deal-btl: var(--deal-btl);
+  --color-deal-turnkey: var(--deal-turnkey);
+  --color-deal-offmarket: var(--deal-offmarket);
+  --color-deal-mixeduse: var(--deal-mixeduse);
+  --color-deal-hmo: var(--deal-hmo);
+  --color-deal-brr: var(--deal-brr);
+  --color-deal-other: var(--deal-other);
 }
 
 :root {
