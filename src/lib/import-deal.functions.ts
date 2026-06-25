@@ -255,7 +255,7 @@ export const parsePropertyUrl = createServerFn({ method: "POST" })
       const res = await fetch(data.url, {
         headers: {
           "User-Agent":
-            "Mozilla/5.0 (compatible; HartstoneDealBot/1.0; +https://hartstoneholdings.com)",
+            "Mozilla/5.0 (compatible; RenojectDealBot/1.0; +https://renojectholdings.com)",
           Accept: "text/html,application/xhtml+xml",
         },
         redirect: "follow",

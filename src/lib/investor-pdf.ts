@@ -196,7 +196,7 @@ function renderCover(
   doc.setTextColor(WHITE);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(11);
-  doc.text("HARTSTONE HOLDINGS", MARGIN, 9);
+  doc.text("RENOJECT", MARGIN, 9);
   doc.setFont("helvetica", "normal");
   doc.setFontSize(8);
   doc.text("INVESTOR PACK", PAGE_W - MARGIN, 9, { align: "right" });
@@ -573,7 +573,7 @@ function renderContact(doc: jsPDF) {
   doc.setTextColor(WHITE);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(11);
-  doc.text("HARTSTONE HOLDINGS", MARGIN, 9);
+  doc.text("RENOJECT", MARGIN, 9);
 
   doc.setTextColor(WHITE);
   doc.setFont("helvetica", "bold");
@@ -594,8 +594,8 @@ function renderContact(doc: jsPDF) {
   doc.text("EMAIL", MARGIN, 102);
   doc.setFont("helvetica", "normal");
   doc.setTextColor(WHITE);
-  doc.text("hartstoneholdings.com", MARGIN + 22, 90);
-  doc.text("invest@hartstoneholdings.com", MARGIN + 22, 102);
+  doc.text("renojectholdings.com", MARGIN + 22, 90);
+  doc.text("invest@renojectholdings.com", MARGIN + 22, 102);
 
   doc.setFont("helvetica", "normal");
   doc.setFontSize(7.5);
@@ -629,5 +629,5 @@ export async function exportInvestorPack(propertyId: string): Promise<void> {
   renderContact(doc);
 
   const safeName = (property.name || "investor-pack").replace(/[^a-z0-9-_ ]+/gi, "").slice(0, 60).trim();
-  doc.save(`Hartstone Holdings — ${safeName} — Investor Pack.pdf`);
+  doc.save(`Renoject — ${safeName} — Investor Pack.pdf`);
 }

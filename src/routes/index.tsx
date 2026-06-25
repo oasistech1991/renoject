@@ -13,14 +13,14 @@ import {
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Hartstone Holdings — Property investment toolkit" },
+      { title: "Renoject — Property investment toolkit" },
       { name: "description", content: "A single workspace for UK property investors: deal calculators, HMO compliance, market search, renovation costs and tradesmen." },
-      { property: "og:title", content: "Hartstone Holdings" },
+      { property: "og:title", content: "Renoject" },
       { property: "og:description", content: "A single workspace for UK property investors — calculators, compliance, market search and tradesmen." },
-      { property: "og:url", content: "https://hartstoneholdings.com/" },
+      { property: "og:url", content: "https://renojectholdings.com/" },
     ],
     links: [
-      { rel: "canonical", href: "https://hartstoneholdings.com/" },
+      { rel: "canonical", href: "https://renojectholdings.com/" },
     ],
   }),
   component: Index,
@@ -46,7 +46,7 @@ function Index() {
           <div className="inline-flex items-center gap-2 rounded-full border border-muted bg-background/40 px-3 py-1 mb-6">
             <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground animate-pulse" />
             <span className="text-[10px] font-bold uppercase tracking-widest text-foreground">
-              Hartstone Holdings
+              Renoject
             </span>
           </div>
           <h1 className="font-display text-4xl lg:text-5xl font-bold text-foreground leading-[1.1] mb-6">

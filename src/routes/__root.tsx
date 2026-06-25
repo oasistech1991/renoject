@@ -94,16 +94,16 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "HARTSTONE HOLDINGS" },
-      { name: "description", content: "Property investment tools by HARTSTONE HOLDINGS — Property calculator, HMO compliance checker and renovation calculator." },
-      { name: "author", content: "HARTSTONE HOLDINGS" },
-      { property: "og:title", content: "HARTSTONE HOLDINGS" },
-      { property: "og:description", content: "Property investment tools by HARTSTONE HOLDINGS — Property calculator, HMO compliance checker and renovation calculator." },
+      { title: "RENOJECT" },
+      { name: "description", content: "Property investment tools by RENOJECT — Property calculator, HMO compliance checker and renovation calculator." },
+      { name: "author", content: "RENOJECT" },
+      { property: "og:title", content: "RENOJECT" },
+      { property: "og:description", content: "Property investment tools by RENOJECT — Property calculator, HMO compliance checker and renovation calculator." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
-      { name: "twitter:site", content: "@HartstoneHoldings" },
-      { name: "twitter:title", content: "HARTSTONE HOLDINGS" },
-      { name: "twitter:description", content: "Property investment tools by HARTSTONE HOLDINGS — Property calculator, HMO compliance checker and renovation calculator." },
+      { name: "twitter:site", content: "@renoject" },
+      { name: "twitter:title", content: "RENOJECT" },
+      { name: "twitter:description", content: "Property investment tools by RENOJECT — Property calculator, HMO compliance checker and renovation calculator." },
       { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/c1276a80-d9e7-4e45-ab8c-0ace548ad884/id-preview-f90c6f5c--33ab3ec4-e05b-416f-827e-db8cec69c227.lovable.app-1779874236024.png" },
       { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/c1276a80-d9e7-4e45-ab8c-0ace548ad884/id-preview-f90c6f5c--33ab3ec4-e05b-416f-827e-db8cec69c227.lovable.app-1779874236024.png" },
     ],
@@ -125,8 +125,8 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         children: JSON.stringify({
           "@context": "https://schema.org",
           "@type": "Organization",
-          name: "Hartstone Holdings",
-          url: "https://hartstoneholdings.com",
+          name: "Renoject",
+          url: "https://renojectholdings.com",
           description:
             "UK property investment toolkit — BTL & BRRR calculators, HMO compliance, market search, renovation costs and trusted tradesmen.",
         }),
@@ -136,13 +136,13 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         children: JSON.stringify({
           "@context": "https://schema.org",
           "@type": "WebSite",
-          name: "Hartstone Holdings",
-          url: "https://hartstoneholdings.com",
+          name: "Renoject",
+          url: "https://renojectholdings.com",
           potentialAction: {
             "@type": "SearchAction",
             target: {
               "@type": "EntryPoint",
-              urlTemplate: "https://hartstoneholdings.com/market?q={search_term_string}",
+              urlTemplate: "https://renojectholdings.com/market?q={search_term_string}",
             },
             "query-input": "required name=search_term_string",
           },
@@ -153,7 +153,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         children: JSON.stringify({
           "@context": "https://schema.org",
           "@type": "SoftwareApplication",
-          name: "Hartstone Holdings",
+          name: "Renoject",
           applicationCategory: "FinanceApplication",
           operatingSystem: "Web",
           description:
@@ -287,7 +287,7 @@ function SignInScreen({ onUnlock }: { onUnlock: () => void }) {
         onSubmit={handleSubmit}
         className="w-full max-w-sm rounded-lg border border-border bg-card p-8 shadow-sm"
       >
-        <h1 className="text-xl font-bold tracking-wide text-foreground">HARTSTONE HOLDINGS</h1>
+        <h1 className="text-xl font-bold tracking-wide text-foreground">RENOJECT</h1>
         <p className="mt-2 text-sm text-muted-foreground">Admin sign-in. Customers should use the public sign-in below.</p>
 
         <label className="mt-6 block text-xs font-medium text-foreground">Username</label>
@@ -356,11 +356,11 @@ function AppShell({
     <>
       <div className="p-6">
         <Link to="/" className="flex items-center gap-2 text-foreground" onClick={() => setMobileOpen(false)}>
-          <span className="flex h-8 w-8 items-center justify-center rounded bg-muted-foreground/80">
-            <Home className="h-5 w-5 text-background" />
+          <span className="flex h-8 w-8 items-center justify-center rounded bg-primary font-display text-base font-extrabold text-primary-foreground">
+            R
           </span>
-          <span className="font-display text-sm font-bold uppercase tracking-tight leading-tight">
-            Hartstone<br />Holdings
+          <span className="font-display text-base font-extrabold uppercase tracking-[0.18em] leading-none">
+            RENOJECT
           </span>
         </Link>
       </div>

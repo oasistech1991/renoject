@@ -16,12 +16,12 @@ export const Route = createFileRoute("/auth")({
   validateSearch: search,
   head: () => ({
     meta: [
-      { title: "Sign in — HARTSTONE HOLDINGS" },
-      { name: "description", content: "Sign in or create your Hartstone Holdings account." },
-      { property: "og:url", content: "https://hartstoneholdings.com/auth" },
+      { title: "Sign in — RENOJECT" },
+      { name: "description", content: "Sign in or create your Renoject account." },
+      { property: "og:url", content: "https://renojectholdings.com/auth" },
     ],
     links: [
-      { rel: "canonical", href: "https://hartstoneholdings.com/auth" },
+      { rel: "canonical", href: "https://renojectholdings.com/auth" },
     ],
   }),
   component: AuthPage,
@@ -40,7 +40,7 @@ function AuthPage() {
 
   return (
     <div className="mx-auto flex min-h-[80vh] max-w-md flex-col justify-center px-4 py-12">
-      <h1 className="text-2xl font-bold tracking-tight">HARTSTONE HOLDINGS</h1>
+      <h1 className="text-2xl font-bold tracking-tight">RENOJECT</h1>
       <p className="mt-1 text-sm text-muted-foreground">
         Free tools. Subscribe for Market Search & Tradesmen background checks.
       </p>

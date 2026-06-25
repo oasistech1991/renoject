@@ -11,12 +11,12 @@ import { jsPDF } from "jspdf";
 export const Route = createFileRoute("/tokenize")({
   head: () => ({
     meta: [
-      { title: "Tokenize — HARTSTONE HOLDINGS" },
+      { title: "Tokenize — RENOJECT" },
       { name: "description", content: "Visual demo of property tokenization: mint NFT deeds, fractionalize ownership, and transfer to new parties on-chain." },
-      { property: "og:url", content: "https://hartstoneholdings.com/tokenize" },
+      { property: "og:url", content: "https://renojectholdings.com/tokenize" },
     ],
     links: [
-      { rel: "canonical", href: "https://hartstoneholdings.com/tokenize" },
+      { rel: "canonical", href: "https://renojectholdings.com/tokenize" },
     ],
   }),
   component: TokenizePage,
@@ -50,7 +50,7 @@ function downloadTransferReceipt(tr: Transfer, opts: { propertyName?: string; to
   doc.setFont("helvetica", "bold");
   doc.setFontSize(10);
   doc.setTextColor(120);
-  doc.text("HARTSTONE HOLDINGS", margin, y);
+  doc.text("RENOJECT", margin, y);
   doc.text("base-sim · simulated", W - margin, y, { align: "right" });
   y += 24;
 

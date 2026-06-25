@@ -3,12 +3,12 @@ import { createFileRoute } from "@tanstack/react-router";
 export const Route = createFileRoute("/terms")({
   head: () => ({
     meta: [
-      { title: "Terms & Conditions — HARTSTONE HOLDINGS" },
-      { name: "description", content: "Hartstone Holdings terms of service." },
-      { property: "og:url", content: "https://hartstoneholdings.com/terms" },
+      { title: "Terms & Conditions — RENOJECT" },
+      { name: "description", content: "Renoject terms of service." },
+      { property: "og:url", content: "https://renojectholdings.com/terms" },
     ],
     links: [
-      { rel: "canonical", href: "https://hartstoneholdings.com/terms" },
+      { rel: "canonical", href: "https://renojectholdings.com/terms" },
     ],
   }),
   component: TermsPage,
@@ -22,8 +22,8 @@ function TermsPage() {
 
       <h2 className="mt-8 text-lg font-semibold">1. Who we are</h2>
       <p>
-        These terms govern your use of the Hartstone Holdings property
-        investment tools (the "Service"), operated by Hartstone Holdings
+        These terms govern your use of the Renoject property
+        investment tools (the "Service"), operated by Renoject
         ("we", "us"). By creating an account or continuing to use the Service
         you agree to these terms.
       </p>

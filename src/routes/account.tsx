@@ -6,7 +6,7 @@ import { Loader2 } from "lucide-react";
 import type { Session } from "@supabase/supabase-js";
 
 export const Route = createFileRoute("/account")({
-  head: () => ({ meta: [{ title: "Account — HARTSTONE HOLDINGS" }] }),
+  head: () => ({ meta: [{ title: "Account — RENOJECT" }] }),
   component: AccountPage,
 });
 

@@ -27,12 +27,12 @@ import { ChevronDown, RotateCcw } from "lucide-react";
 export const Route = createFileRoute("/tradesmen")({
   head: () => ({
     meta: [
-      { title: "Tradesmen & Services — HARTSTONE HOLDINGS" },
+      { title: "Tradesmen & Services — RENOJECT" },
       { name: "description", content: "Shared directory of trusted tradesmen and services with contact details, specialities and rates." },
-      { property: "og:url", content: "https://hartstoneholdings.com/tradesmen" },
+      { property: "og:url", content: "https://renojectholdings.com/tradesmen" },
     ],
     links: [
-      { rel: "canonical", href: "https://hartstoneholdings.com/tradesmen" },
+      { rel: "canonical", href: "https://renojectholdings.com/tradesmen" },
     ],
   }),
   component: TradesmenPage,
