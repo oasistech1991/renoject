@@ -819,7 +819,7 @@ function PostSheet({
               dealType={post.deal_type}
             />
           </div>
-          <PollBreakdown post={post} onVote={(v) => onVote(post.id, v)} />
+          <SpeakToTeamBlock post={post} onInterest={() => onInterest(post.id)} />
           <div className="pt-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
             Comments
           </div>
