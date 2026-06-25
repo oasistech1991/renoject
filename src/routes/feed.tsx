@@ -66,9 +66,12 @@ type Interest = { post_id: string; user_id: string; status: string; note: string
 
 type PollVote = { post_id: string; user_id: string; vote: "yes" | "no" };
 
+type MediaItem = { kind: "image" | "video"; url: string };
+
 type FeedPost = FeedPostRow & {
   property: Property | null;
   cover_resolved: string | null;
+  media: MediaItem[];
   reactions: Reaction[];
   comment_count: number;
   interested: boolean;
