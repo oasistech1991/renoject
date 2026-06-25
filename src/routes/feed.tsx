@@ -142,10 +142,10 @@ function FeedPage() {
         : Promise.resolve({ data: [] as any[] }),
       propIds.length
         ? supabase.from("property_media")
-            .select("property_id,storage_path")
+            .select("property_id,storage_path,kind,is_hero,sort_order")
             .in("property_id", propIds)
-            .eq("is_hero", true)
-            .eq("kind", "image")
+            .order("is_hero", { ascending: false })
+            .order("sort_order", { ascending: true })
         : Promise.resolve({ data: [] as any[] }),
       authorIds.length
         ? supabase.from("client_profiles").select("user_id,display_name,avatar_url").in("user_id", authorIds)
