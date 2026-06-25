@@ -343,6 +343,7 @@ function FeedPage() {
               onSave={toggleSave}
               onInterest={expressInterest}
               onShare={share}
+              onVote={castVote}
               onOpen={() => setOpenPostId(p.id)}
             />
           ))}
@@ -399,6 +400,7 @@ function PostCard({
   onSave,
   onInterest,
   onShare,
+  onVote,
   onOpen,
 }: {
   post: FeedPost;
@@ -408,6 +410,7 @@ function PostCard({
   onSave: (id: string) => void;
   onInterest: (id: string) => void;
   onShare: (id: string) => void;
+  onVote: (id: string, vote: "yes" | "no") => void;
   onOpen: () => void;
 }) {
   const prop = post.property;
@@ -469,6 +472,16 @@ function PostCard({
             </>
           )}
         </div>
+
+        {!hidden.has("purchasePrice") && (inputs.purchasePrice ?? 0) > 0 && (
+          <PollBlock
+            price={inputs.purchasePrice ?? 0}
+            yes={post.poll_yes}
+            no={post.poll_no}
+            myVote={post.my_vote}
+            onVote={(v) => onVote(post.id, v)}
+          />
+        )}
 
         <div className="mt-5 flex flex-wrap items-center gap-2 border-t border-border pt-4">
           <ReactBtn
