@@ -328,6 +328,8 @@ function FeedPage() {
   }
 
   const visiblePosts = tab === "saved" ? posts.filter((p) => p.saved) : posts;
+  const upcomingPosts = tab === "feed" ? visiblePosts.filter((p) => p.is_upcoming) : [];
+  const livePosts = tab === "feed" ? visiblePosts.filter((p) => !p.is_upcoming) : visiblePosts;
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-8">
@@ -360,6 +362,28 @@ function FeedPage() {
 
       {!loading && (tab === "feed" || tab === "saved") && (
         <div className="mt-6 space-y-6">
+          {tab === "feed" && upcomingPosts.length > 0 && (
+            <section>
+              <div className="mb-3 flex items-center gap-2">
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-500/15 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-amber-500">
+                  <ThumbsUp className="h-3 w-3" /> Coming soon — register interest
+                </span>
+                <span className="text-xs text-muted-foreground">{upcomingPosts.length} deal{upcomingPosts.length === 1 ? "" : "s"} in the pipeline</span>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2">
+                {upcomingPosts.map((p) => (
+                  <UpcomingCard
+                    key={p.id}
+                    post={p}
+                    onThumbsUp={() => toggleReact(p.id, "like")}
+                    onInterest={() => expressInterest(p.id)}
+                  />
+                ))}
+              </div>
+              <div className="mt-6 border-t border-dashed border-border" />
+            </section>
+          )}
+
           {visiblePosts.length === 0 && (
             <div className="rounded-xl border border-dashed border-border p-10 text-center">
               <p className="text-sm text-muted-foreground">
@@ -367,7 +391,7 @@ function FeedPage() {
               </p>
             </div>
           )}
-          {visiblePosts.map((p) => (
+          {livePosts.map((p) => (
             <div key={p.id} className="space-y-0">
               <PostCard
                 post={p}
