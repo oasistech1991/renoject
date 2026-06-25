@@ -36,12 +36,16 @@ type Profile = {
   preferred_deal_types: string[];
   budget_min: number | null;
   budget_max: number | null;
+  available_capital: number | null;
+  capital_notes: string | null;
+  capital_updated_at: string | null;
 };
 
 const EMPTY: Profile = {
   user_id: "", display_name: "", avatar_url: null, cover_url: null,
   headline: "", bio: "", location: "", investor_type: "",
   preferred_areas: [], preferred_deal_types: [], budget_min: null, budget_max: null,
+  available_capital: null, capital_notes: null, capital_updated_at: null,
 };
 
 type ActivityItem = {
@@ -190,6 +194,8 @@ function ProfilePage() {
   async function save() {
     if (!userId) return;
     setSaving(true);
+    const capitalChanged =
+      profile.available_capital !== null && profile.available_capital !== undefined;
     const { error } = await supabase.from("client_profiles").upsert({
       user_id: userId,
       display_name: profile.display_name,
@@ -201,6 +207,9 @@ function ProfilePage() {
       preferred_deal_types: profile.preferred_deal_types,
       budget_min: profile.budget_min,
       budget_max: profile.budget_max,
+      available_capital: profile.available_capital,
+      capital_notes: profile.capital_notes,
+      capital_updated_at: capitalChanged ? new Date().toISOString() : profile.capital_updated_at,
     });
     setSaving(false);
     if (error) toast.error(error.message);
