@@ -214,6 +214,7 @@ function CrmPage() {
         {view === "suppliers" && <ContractorsRoster />}
         {view === "sales" && <SalesBoard onOpenProperty={setActivePropertyId} />}
         {view === "projects" && <ProjectsBoard onOpenProperty={setActivePropertyId} />}
+        {view === "lettings_legacy" && <LettingsBoard />}
         {view === "leads" && <LeadsInbox />}
         {view === "investors" && (
           <div className="space-y-6">
