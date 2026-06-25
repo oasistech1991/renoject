@@ -354,6 +354,7 @@ function AddPropertyDialog({
     setAddress(""); setPostcode(""); setPurchasePrice(""); setCurrentValue(""); setBeds(""); setNotes("");
     setPropertyType("btl"); setStatus("sourcing");
     onCreated();
+    notifyChanged();
   };
 
   return (
