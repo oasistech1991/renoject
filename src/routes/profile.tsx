@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import {
   Camera, MapPin, Pencil, Save, X, Heart, MessageCircle, Bookmark,
-  Target, Wallet, Hash, ThumbsUp, ThumbsDown, Loader2,
+  Target, Wallet, Hash, ThumbsUp, ThumbsDown, Loader2, Check,
 } from "lucide-react";
 import { DEAL_TYPES, dealTypeMeta } from "@/lib/feed";
 import { fmtGBP } from "@/lib/btl";
@@ -307,7 +307,7 @@ function ProfilePage() {
           {tab === "about" && <AboutTab profile={profile} editing={editing} setProfile={setProfile} />}
           {tab === "activity" && <ActivityTab items={activity} />}
           {tab === "saved" && <SavedTab items={saved} />}
-          {tab === "preferences" && <PreferencesTab profile={profile} editing={editing} setProfile={setProfile} />}
+          {tab === "preferences" && <PreferencesTab profile={profile} setProfile={setProfile} userId={userId} />}
         </div>
       </div>
     </div>
