@@ -42,6 +42,7 @@ export type FeedPostRow = {
   hidden_fields: HidableFieldKey[];
   deal_type: string | null;
   is_published: boolean;
+  is_upcoming?: boolean;
   created_at: string;
   updated_at: string;
 };
