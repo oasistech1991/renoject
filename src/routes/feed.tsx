@@ -664,8 +664,14 @@ function ReactBtn({
 // ---------------- Post detail sheet (with comments) ----------------
 
 function PostSheet({
-  postId, userId, onClose,
-}: { postId: string; userId: string; onClose: () => void }) {
+  post, userId, onVote, onClose,
+}: {
+  post: FeedPost;
+  userId: string;
+  onVote: (postId: string, vote: "yes" | "no") => void;
+  onClose: () => void;
+}) {
+  const postId = post.id;
   const [comments, setComments] = useState<Comment[]>([]);
   const [profiles, setProfiles] = useState<Record<string, Profile>>({});
   const [body, setBody] = useState("");
@@ -711,14 +717,18 @@ function PostSheet({
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 p-0 sm:items-center sm:p-6" onClick={onClose}>
       <div
-        className="flex max-h-[85vh] w-full max-w-xl flex-col overflow-hidden rounded-t-xl border border-border bg-card sm:rounded-xl"
+        className="flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-t-xl border border-border bg-card sm:rounded-xl"
         onClick={(e) => e.stopPropagation()}
       >
         <header className="flex items-center justify-between border-b border-border p-4">
-          <h3 className="text-sm font-semibold">Comments</h3>
+          <h3 className="text-sm font-semibold">{post.property?.name ?? "Deal"}</h3>
           <button onClick={onClose} className="text-sm text-muted-foreground hover:text-foreground">Close</button>
         </header>
         <div className="flex-1 space-y-3 overflow-y-auto p-4">
+          <PollBreakdown post={post} onVote={(v) => onVote(post.id, v)} />
+          <div className="pt-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            Comments
+          </div>
           {comments.length === 0 && (
             <p className="text-sm text-muted-foreground">Be the first to comment.</p>
           )}
