@@ -643,9 +643,6 @@ function PollOption({
     </button>
   );
 }
-    </div>
-  );
-}
 
 function ReactBtn({
   icon, count, active, onClick,
