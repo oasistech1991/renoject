@@ -1,6 +1,9 @@
 export type PropertyType = "btl" | "hmo" | "flip" | "commercial" | "mixed" | "dev_site" | "other";
 export type PropertyStatus = "sourcing" | "under_offer" | "owned" | "refurb" | "let" | "sold";
-export type ProjectStage = "planning" | "permits" | "demo" | "first_fix" | "second_fix" | "snagging" | "complete" | "refinanced";
+export type ProjectStage =
+  | "deal_agreed" | "exchange" | "completion" | "architect"
+  | "planning" | "permits" | "demo" | "first_fix" | "second_fix"
+  | "under_construction" | "snagging" | "complete" | "refinanced";
 export type ProjectType = "light_refurb" | "heavy_refurb" | "conversion" | "new_build";
 export type UnitStatus = "vacant" | "marketing" | "offer" | "referencing" | "let" | "notice" | "refurb";
 export type TenantStatus = "current" | "past" | "arrears" | "notice";
@@ -101,18 +104,36 @@ export const PROPERTY_STATUS_COLOR: Record<PropertyStatus, string> = {
   sold: "bg-rose-500/15 text-rose-300 border-rose-500/30",
 };
 
-export const PROJECT_STAGES: ProjectStage[] = ["planning", "permits", "demo", "first_fix", "second_fix", "snagging", "complete", "refinanced"];
+export const PROJECT_STAGES: ProjectStage[] = [
+  "deal_agreed", "exchange", "completion", "architect",
+  "planning", "under_construction", "snagging", "complete", "refinanced",
+];
 export const PROJECT_STAGE_LABEL: Record<ProjectStage, string> = {
-  planning: "Planning", permits: "Permits", demo: "Demo",
-  first_fix: "First fix", second_fix: "Second fix", snagging: "Snagging",
-  complete: "Complete", refinanced: "Refinanced",
+  deal_agreed: "Deal agreed",
+  exchange: "Exchange",
+  completion: "Completion",
+  architect: "Architect",
+  planning: "Planning",
+  permits: "Permits",
+  demo: "Demo",
+  first_fix: "First fix",
+  second_fix: "Second fix",
+  under_construction: "Under construction",
+  snagging: "Snagging",
+  complete: "Complete",
+  refinanced: "Refinanced",
 };
 export const PROJECT_STAGE_COLOR: Record<ProjectStage, string> = {
-  planning: "bg-slate-500/15 text-slate-300 border-slate-500/30",
+  deal_agreed: "bg-slate-500/15 text-slate-300 border-slate-500/30",
+  exchange: "bg-indigo-500/15 text-indigo-300 border-indigo-500/30",
+  completion: "bg-cyan-500/15 text-cyan-300 border-cyan-500/30",
+  architect: "bg-violet-500/15 text-violet-300 border-violet-500/30",
+  planning: "bg-purple-500/15 text-purple-300 border-purple-500/30",
   permits: "bg-violet-500/15 text-violet-300 border-violet-500/30",
   demo: "bg-rose-500/15 text-rose-300 border-rose-500/30",
   first_fix: "bg-amber-500/15 text-amber-300 border-amber-500/30",
   second_fix: "bg-orange-500/15 text-orange-300 border-orange-500/30",
+  under_construction: "bg-orange-500/15 text-orange-300 border-orange-500/30",
   snagging: "bg-blue-500/15 text-blue-300 border-blue-500/30",
   complete: "bg-emerald-500/15 text-emerald-300 border-emerald-500/30",
   refinanced: "bg-teal-500/15 text-teal-300 border-teal-500/30",
