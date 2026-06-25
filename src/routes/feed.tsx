@@ -58,6 +58,8 @@ type Reaction = { post_id: string; user_id: string; kind: ReactionKind };
 
 type Interest = { post_id: string; user_id: string; status: string; note: string | null; created_at: string };
 
+type PollVote = { post_id: string; user_id: string; vote: "yes" | "no" };
+
 type FeedPost = FeedPostRow & {
   property: Property | null;
   cover_resolved: string | null;
@@ -66,6 +68,9 @@ type FeedPost = FeedPostRow & {
   interested: boolean;
   saved: boolean;
   my_reaction: ReactionKind | null;
+  poll_yes: number;
+  poll_no: number;
+  my_vote: "yes" | "no" | null;
 };
 
 type Tab = "feed" | "saved" | "manage" | "inbox";
@@ -110,7 +115,7 @@ function FeedPage() {
     const propIds = (postRows ?? []).map((p) => p.property_id);
     const postIds = (postRows ?? []).map((p) => p.id);
     const authorIds = Array.from(new Set((postRows ?? []).map((p) => p.author_id)));
-    const [propsRes, reactsRes, commentsRes, intRes, savesRes, mediaRes, profsRes] = await Promise.all([
+    const [propsRes, reactsRes, commentsRes, intRes, savesRes, mediaRes, profsRes, pollsRes] = await Promise.all([
       propIds.length
         ? supabase.from("properties").select("id,name,inputs,metrics,source").in("id", propIds)
         : Promise.resolve({ data: [] as any[] }),
@@ -136,6 +141,9 @@ function FeedPage() {
       authorIds.length
         ? supabase.from("client_profiles").select("user_id,display_name,avatar_url").in("user_id", authorIds)
         : Promise.resolve({ data: [] as any[] }),
+      postIds.length
+        ? supabase.from("feed_poll_votes").select("post_id,user_id,vote").in("post_id", postIds)
+        : Promise.resolve({ data: [] as any[] }),
     ]);
 
     const propMap = new Map<string, Property>(
@@ -154,6 +162,13 @@ function FeedPage() {
     const interestedSet = new Set(((intRes.data as { post_id: string }[]) ?? []).map((r) => r.post_id));
     const savedSet = new Set(((savesRes.data as { post_id: string }[]) ?? []).map((r) => r.post_id));
 
+    const pollMap = new Map<string, PollVote[]>();
+    for (const v of (pollsRes.data as PollVote[]) ?? []) {
+      const arr = pollMap.get(v.post_id) ?? [];
+      arr.push(v);
+      pollMap.set(v.post_id, arr);
+    }
+
     const coverMap: Record<string, string> = {};
     await Promise.all(
       ((mediaRes.data as { property_id: string; storage_path: string }[]) ?? []).map(async (m) => {
@@ -170,6 +185,7 @@ function FeedPage() {
 
     const enriched: FeedPost[] = ((postRows ?? []) as any[]).map((p) => {
       const reacts = reactMap.get(p.id) ?? [];
+      const votes = pollMap.get(p.id) ?? [];
       return {
         ...p,
         hidden_fields: (p.hidden_fields ?? []) as HidableFieldKey[],
@@ -180,6 +196,9 @@ function FeedPage() {
         interested: interestedSet.has(p.id),
         saved: savedSet.has(p.id),
         my_reaction: (reacts.find((r) => r.user_id === userId)?.kind ?? null) as ReactionKind | null,
+        poll_yes: votes.filter((v) => v.vote === "yes").length,
+        poll_no: votes.filter((v) => v.vote === "no").length,
+        my_vote: (votes.find((v) => v.user_id === userId)?.vote ?? null) as "yes" | "no" | null,
       };
     });
     setPosts(enriched);
@@ -233,6 +252,20 @@ function FeedPage() {
       toast.success("Interest sent. The deal owner has been notified.");
       loadFeed();
     }
+  };
+
+  const castVote = async (postId: string, vote: "yes" | "no") => {
+    if (!userId) return;
+    const post = posts.find((p) => p.id === postId);
+    if (!post) return;
+    if (post.my_vote === vote) {
+      await supabase.from("feed_poll_votes").delete().eq("post_id", postId).eq("user_id", userId);
+    } else {
+      await supabase
+        .from("feed_poll_votes")
+        .upsert({ post_id: postId, user_id: userId, vote }, { onConflict: "post_id,user_id" });
+    }
+    loadFeed();
   };
 
   const share = async (postId: string) => {
@@ -310,6 +343,7 @@ function FeedPage() {
               onSave={toggleSave}
               onInterest={expressInterest}
               onShare={share}
+              onVote={castVote}
               onOpen={() => setOpenPostId(p.id)}
             />
           ))}
@@ -366,6 +400,7 @@ function PostCard({
   onSave,
   onInterest,
   onShare,
+  onVote,
   onOpen,
 }: {
   post: FeedPost;
@@ -375,6 +410,7 @@ function PostCard({
   onSave: (id: string) => void;
   onInterest: (id: string) => void;
   onShare: (id: string) => void;
+  onVote: (id: string, vote: "yes" | "no") => void;
   onOpen: () => void;
 }) {
   const prop = post.property;
@@ -437,6 +473,16 @@ function PostCard({
           )}
         </div>
 
+        {!hidden.has("purchasePrice") && (inputs.purchasePrice ?? 0) > 0 && (
+          <PollBlock
+            price={inputs.purchasePrice ?? 0}
+            yes={post.poll_yes}
+            no={post.poll_no}
+            myVote={post.my_vote}
+            onVote={(v) => onVote(post.id, v)}
+          />
+        )}
+
         <div className="mt-5 flex flex-wrap items-center gap-2 border-t border-border pt-4">
           <ReactBtn
             icon={<ThumbsUp className="h-4 w-4" />}
@@ -491,6 +537,77 @@ function Stat({ label, value }: { label: string; value: string }) {
     <div className="rounded-md bg-muted/40 px-3 py-2">
       <div className="text-[10px] uppercase tracking-wider text-muted-foreground">{label}</div>
       <div className="text-sm font-semibold tabular-nums">{value}</div>
+    </div>
+  );
+}
+
+function PollBlock({
+  price, yes, no, myVote, onVote,
+}: {
+  price: number;
+  yes: number;
+  no: number;
+  myVote: "yes" | "no" | null;
+  onVote: (v: "yes" | "no") => void;
+}) {
+  const total = yes + no;
+  const yesPct = total ? Math.round((yes / total) * 100) : 0;
+  const noPct = total ? 100 - yesPct : 0;
+  return (
+    <div className="mt-4 rounded-lg border border-border bg-muted/30 p-3">
+      <div className="text-sm font-medium">
+        Would you buy at {fmtGBP(price)}?
+      </div>
+      <div className="mt-2 grid grid-cols-2 gap-2">
+        <button
+          onClick={() => onVote("yes")}
+          className={`relative overflow-hidden rounded-md border px-3 py-2 text-left text-sm transition-colors ${
+            myVote === "yes"
+              ? "border-primary bg-primary/10 text-foreground"
+              : "border-border hover:bg-accent"
+          }`}
+        >
+          {total > 0 && (
+            <span
+              className="absolute inset-y-0 left-0 bg-primary/15"
+              style={{ width: `${yesPct}%` }}
+              aria-hidden
+            />
+          )}
+          <span className="relative flex items-center justify-between gap-2">
+            <span className="font-medium">Yes, I'd buy</span>
+            <span className="text-xs text-muted-foreground tabular-nums">
+              {yes} · {yesPct}%
+            </span>
+          </span>
+        </button>
+        <button
+          onClick={() => onVote("no")}
+          className={`relative overflow-hidden rounded-md border px-3 py-2 text-left text-sm transition-colors ${
+            myVote === "no"
+              ? "border-primary bg-primary/10 text-foreground"
+              : "border-border hover:bg-accent"
+          }`}
+        >
+          {total > 0 && (
+            <span
+              className="absolute inset-y-0 left-0 bg-muted-foreground/20"
+              style={{ width: `${noPct}%` }}
+              aria-hidden
+            />
+          )}
+          <span className="relative flex items-center justify-between gap-2">
+            <span className="font-medium">No, too high</span>
+            <span className="text-xs text-muted-foreground tabular-nums">
+              {no} · {noPct}%
+            </span>
+          </span>
+        </button>
+      </div>
+      <div className="mt-2 text-[11px] text-muted-foreground">
+        {total} vote{total === 1 ? "" : "s"}
+        {myVote && " · click your choice again to remove your vote"}
+      </div>
     </div>
   );
 }
