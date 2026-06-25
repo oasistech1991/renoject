@@ -17,25 +17,49 @@ export type Database = {
       client_profiles: {
         Row: {
           avatar_url: string | null
+          bio: string | null
+          budget_max: number | null
+          budget_min: number | null
+          cover_url: string | null
           created_at: string
           display_name: string | null
+          headline: string | null
           investor_type: string | null
+          location: string | null
+          preferred_areas: string[]
+          preferred_deal_types: string[]
           updated_at: string
           user_id: string
         }
         Insert: {
           avatar_url?: string | null
+          bio?: string | null
+          budget_max?: number | null
+          budget_min?: number | null
+          cover_url?: string | null
           created_at?: string
           display_name?: string | null
+          headline?: string | null
           investor_type?: string | null
+          location?: string | null
+          preferred_areas?: string[]
+          preferred_deal_types?: string[]
           updated_at?: string
           user_id: string
         }
         Update: {
           avatar_url?: string | null
+          bio?: string | null
+          budget_max?: number | null
+          budget_min?: number | null
+          cover_url?: string | null
           created_at?: string
           display_name?: string | null
+          headline?: string | null
           investor_type?: string | null
+          location?: string | null
+          preferred_areas?: string[]
+          preferred_deal_types?: string[]
           updated_at?: string
           user_id?: string
         }
@@ -485,9 +509,13 @@ export type Database = {
         Row: {
           created_at: string
           created_by: string | null
+          geocoded_address: string | null
+          geocoded_at: string | null
           id: string
           in_portfolio: boolean
           inputs: Json
+          lat: number | null
+          lng: number | null
           metrics: Json
           name: string
           source: string | null
@@ -496,9 +524,13 @@ export type Database = {
         Insert: {
           created_at?: string
           created_by?: string | null
+          geocoded_address?: string | null
+          geocoded_at?: string | null
           id?: string
           in_portfolio?: boolean
           inputs: Json
+          lat?: number | null
+          lng?: number | null
           metrics: Json
           name: string
           source?: string | null
@@ -507,9 +539,13 @@ export type Database = {
         Update: {
           created_at?: string
           created_by?: string | null
+          geocoded_address?: string | null
+          geocoded_at?: string | null
           id?: string
           in_portfolio?: boolean
           inputs?: Json
+          lat?: number | null
+          lng?: number | null
           metrics?: Json
           name?: string
           source?: string | null

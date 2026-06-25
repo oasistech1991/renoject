@@ -31,6 +31,7 @@ import {
   Coins,
   UserCircle,
   Users,
+  User,
 } from "lucide-react";
 
 function NotFoundComponent() {
@@ -337,6 +338,7 @@ const TOOL_ITEMS: Array<{ to: string; label: string; icon: typeof Home }> = [
 ];
 
 const ACCOUNT_ITEMS: Array<{ to: string; label: string; icon: typeof Home; authOnly?: boolean }> = [
+  { to: "/profile", label: "My Profile", icon: User, authOnly: true },
   { to: "/account", label: "Account", icon: UserCircle, authOnly: true },
 ];
 
