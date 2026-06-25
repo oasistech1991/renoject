@@ -34,6 +34,7 @@ import {
   User,
   MessageSquare,
   Briefcase,
+  HardHat,
 } from "lucide-react";
 
 function NotFoundComponent() {
@@ -332,6 +333,7 @@ const TOOL_ITEMS: Array<{ to: string; label: string; icon: typeof Home }> = [
   { to: "/market", label: "Market Search", icon: Search },
   { to: "/properties", label: "View Deals", icon: Building2 },
   { to: "/portfolio-timeline", label: "Portfolio Timeline", icon: LineChart },
+  { to: "/construction-timeline", label: "Construction Timeline", icon: HardHat },
   { to: "/forecast", label: "Forecast", icon: LineChart },
   { to: "/feed", label: "Client Feed", icon: Users },
   { to: "/messages", label: "Messages", icon: MessageSquare },

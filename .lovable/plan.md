@@ -1,38 +1,74 @@
-## Problem
+## Goal
 
-The contextual "Add X" buttons I added to the CRM header only work for **Add property** and **New task**. The rest (Add expense, Add certificate, Upload document, Add supplier, Add deal, Add project, Add unit, Add lead, Add investor, plus the "New tenancy" / "Log payment" hints) just toast or fire an event with no listener — so nothing happens.
+Add a new **Construction Timeline** tool under the sidebar's "Tools" section, modelled on Build4Cast's construction scheduling software. It lets you plan a build per property: phases → tasks, durations, dependencies, milestones, working calendars, multiple views (Gantt / weekly / calendar / list), templates, colour-coded trades, and links into existing project data (properties, refurb costs, tradesmen, documents).
 
-## Fix
+## What gets built
 
-Make every header CTA open a working create dialog at the `/crm` page level, so the button is the real entry point for that page's primary action.
+### 1. New route `/construction-timeline` (admin/team only, under `_authenticated` semantics)
+A single page with a left sidebar listing schedules, a top toolbar, and a main canvas that swaps between four views.
 
-### New dialogs (each a small `Sheet` with the minimum required fields, inserts into the existing table, then refreshes)
+### 2. Database (new tables, RLS + GRANTs in one migration)
 
-| View | Button | Inserts into | Key fields |
-|---|---|---|---|
-| Expenses | Add expense | `crm_expenses` | property, date, category, amount, VAT, notes |
-| Compliance | Add certificate | `crm_compliance_items` | property, type, issued, expires, notes |
-| Documents | Upload document | `crm_documents` (+ Storage upload to `property-media/crm/{property_id}/`) | property, name, kind, file |
-| Suppliers | Add supplier | `tradesmen` (+ `crm_contractor_meta`) | name, trade, phone, email |
-| Sales | Add deal | `crm_deal_clients` | linked feed post, client, stage, amount, probability |
-| Projects | Add project | `crm_projects` | property, name, type, stage, budget, target end |
-| Lettings board | Add unit | `crm_units` | property, label, beds, rent pcm, status |
-| Leads | Add lead | `crm_leads` | name, email, phone, source, status, budget |
-| Investors | Add investor | `client_profiles` (+ `crm_contact_meta`) | name, email, available capital, stage |
-| Tenancies | New tenancy | `crm_tenants` | unit, full name, rent pcm, start/end, status |
-| Rent | Log payment | `crm_rent_payments` | tenant, due date, due amount, paid amount, paid on |
+- `construction_schedules` — one schedule per build
+  - `id`, `user_id`, `property_id` (nullable, FK `crm_properties` or `properties`), `name`, `planned_start`, `planned_finish`, `working_days` (int[] for Mon–Sun), `non_working_dates` (date[]), `colour_palette` (jsonb of trade→hex), `template_of_id` (self-FK, nullable), `created_at`, `updated_at`.
+- `construction_phases` — ordered phases within a schedule
+  - `id`, `schedule_id`, `name`, `position`, `colour`.
+- `construction_tasks` — tasks under phases
+  - `id`, `schedule_id`, `phase_id`, `name`, `trade` (text), `assignee_tradesman_id` (FK `tradesmen`, nullable), `planned_start`, `planned_finish`, `duration_days`, `actual_start`, `actual_finish`, `percent_complete`, `is_milestone` (bool), `priority` (`low|normal|high|critical`), `notes`, `position`.
+- `construction_task_links` — dependencies between tasks
+  - `id`, `from_task_id`, `to_task_id`, `link_type` (`FS|SS|FF|SF` — default FS), `lag_days`.
+- `construction_daily_logs` — site diary entries linked to a schedule/task
+  - `id`, `schedule_id`, `task_id` (nullable), `log_date`, `weather`, `crew_count`, `hours_worked`, `notes`, `delay_reason` (nullable).
+- `construction_attachments` — files & RFIs against a task
+  - `id`, `task_id`, `kind` (`document|drawing|rfi|approval`), `title`, `url`, `status` (`open|approved|rejected|answered`), `created_at`.
 
-All dialogs follow the same shape as the existing `AddPropertyDialog` and `NewTaskDialog`: open state held in `crm.tsx`, save via `supabase.from(...).insert(...)`, toast + close + refresh on success.
+All tables: enable RLS, restrict to admins via `has_role`, plus owner (`user_id = auth.uid()`) for `construction_schedules`. Cascade deletes. GRANTs for `authenticated` + `service_role`.
 
-### Wiring
+### 3. Sidebar entry
+Add `{ to: "/construction-timeline", label: "Construction Timeline", icon: HardHat }` to `TOOL_ITEMS` in `src/routes/__root.tsx`, slotted right after Portfolio Timeline.
 
-- Replace the `dispatch(...) + toast.message(...)` placeholders in `PrimaryAction` with real `onClick` handlers that set the matching dialog's `open` state.
-- Properties lists (suppliers, leads, etc.) auto-refresh after insert by reusing each module's existing fetch — for modules that load on mount only, I'll bump a `refreshTick` state passed in as a prop they re-read on, or have the dialog dispatch a `crm:refresh` event each module listens to. I'll use the event approach so I don't have to touch every module's props.
+### 4. UI modules (each maps to a Build4Cast feature)
 
-### Out of scope
+| Build4Cast feature | Built as |
+|---|---|
+| Project Setup | "New schedule" dialog: name, property link, planned start/finish, working days, non-working dates |
+| Viewing Options | View toggle: **Gantt** / **Weekly planner** / **Calendar** / **Phase & task list** |
+| Task Management | Inline task table per phase; click row → right-side drawer to edit dates, duration, assignee, trade, notes, % complete |
+| Group Tasks | Drag-and-drop tasks into phases; collapsible phase headers |
+| Link Tasks | "+ Add dependency" inside the task drawer; predecessor picker, FS/SS/FF/SF + lag days; Gantt bars draw arrows; bar drag respects predecessors |
+| Reusable Templates | "Save as template" / "Create from template" actions on a schedule; templated schedules clone phases, tasks, durations (no dates) |
+| Shared Timelines | Realtime via Supabase channel on `construction_*` tables so two admins watching the same schedule see live edits |
+| Integrated Tools | Task drawer has tabs: **Details**, **Daily logs**, **Attachments/RFIs**; "Link to property" pulls refurb cost from the existing deal; "Assign tradesman" picks from the existing `tradesmen` table |
+| Spot risks / colours | Trade colour palette in schedule settings; bars coloured by trade; high/critical tasks get a red border; overlap detection highlights clashes |
+| Progress tracking | Each task has planned vs actual dates + % complete; top KPI strip shows on-time %, days slipped, tasks at risk |
+| Milestones | `is_milestone` tasks render as diamond markers on the Gantt |
 
-- No schema changes — every table already exists.
-- No redesign of existing module pages; only the header CTA gets wired.
-- Reports stays with no CTA.
+### 5. Gantt view (the hero view)
+- Built with existing project libs (no new chart dep): a CSS-grid timeline where the X axis is days (zoomable: day / week / month buttons), rows are tasks grouped under phase headers.
+- Bars are absolutely-positioned divs sized by `(duration_days × cellWidth)`; draggable on X to shift dates; resizable on the right edge to change duration; both write back to Supabase.
+- Dependency arrows drawn with an SVG overlay between bar edges.
+- "Today" vertical guideline; non-working days shaded.
 
-Confirm and I'll build it.
+### 6. Lifecycle strip (top of page)
+Five-step strip mirroring Build4Cast's "Planning → Pre-Construction → Live → Progress → Completion" with a button on each step that filters the task list to relevant phases.
+
+### 7. Property linkage
+- New schedule dialog can pre-populate phases from a starter template ("Cosmetic refurb", "Full BRRR refurb", "HMO conversion") so users get going in one click.
+- If linked to a `crm_properties` row, the schedule shows the property address in the header and a "Open in CRM" link.
+
+### 8. SEO + metadata
+`head()` block on the route with route-specific title/description ("Construction Timeline — Renoject"), no og:image at root.
+
+## Technical Notes (not user-facing)
+
+- All queries through the browser Supabase client; mutations rely on RLS. No server functions needed for v1.
+- Drag-and-drop with `@dnd-kit/core` (already in repo if present; else add).
+- Date math with `date-fns` (already used elsewhere).
+- Realtime: one channel per `schedule_id` subscribing to insert/update/delete on the three child tables, then refetch.
+- Build incrementally: ship list + Gantt + task drawer + templates first; Daily Logs/Attachments and FS/SS/FF/SF advanced link types in the same PR but behind simple UI.
+
+## Out of scope (can come later)
+
+- Mobile field app, push notifications.
+- Auto-rescheduling on dependency change (v1 just warns).
+- Bid/proposal/estimation modules from Build4Cast — separate tools, not in this plan.
