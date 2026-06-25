@@ -28,6 +28,17 @@ export function SalesBoard({ onOpenProperty }: { onOpenProperty: (id: string) =>
   };
   useEffect(() => { load(); }, []);
 
+  useEffect(() => {
+    const onAdd = (e: Event) => { if ((e as CustomEvent).detail === "sales") setNewOpen(true); };
+    const onChanged = () => load();
+    window.addEventListener("crm:open-add", onAdd);
+    window.addEventListener("crm:data-changed", onChanged);
+    return () => {
+      window.removeEventListener("crm:open-add", onAdd);
+      window.removeEventListener("crm:data-changed", onChanged);
+    };
+  }, []);
+
   const grouped = useMemo(() => {
     const map = Object.fromEntries(SOURCING_STAGES.map((s) => [s, [] as Property[]])) as Record<PropertyStatus, Property[]>;
     items.forEach((p) => { if (SOURCING_STAGES.includes(p.status)) map[p.status].push(p); });
