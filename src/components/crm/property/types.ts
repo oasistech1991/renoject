@@ -148,3 +148,64 @@ export const LEAD_STATUS_COLOR: Record<LeadStatus, string> = {
 
 export const fmtGBP = (n: number | null | undefined) =>
   typeof n === "number" ? `£${Math.round(n).toLocaleString()}` : "—";
+
+/* ===== Landlord-ops additions ===== */
+export type RentPayment = {
+  id: string;
+  tenant_id: string;
+  due_date: string;
+  due_amount: number;
+  paid_amount: number;
+  paid_on: string | null;
+  method: string | null;
+  notes: string | null;
+};
+export type Expense = {
+  id: string;
+  property_id: string;
+  supplier_id: string | null;
+  date: string;
+  category: string;
+  amount: number;
+  vat_amount: number;
+  notes: string | null;
+  receipt_url: string | null;
+};
+export type ComplianceItem = {
+  id: string;
+  property_id: string;
+  type: string;
+  issued_on: string | null;
+  expires_on: string | null;
+  document_url: string | null;
+  notes: string | null;
+};
+export type CrmDocument = {
+  id: string;
+  property_id: string;
+  name: string;
+  kind: string;
+  file_url: string;
+  uploaded_at: string;
+};
+
+export const EXPENSE_CATEGORIES = [
+  "maintenance","repairs","management","insurance","utilities","mortgage",
+  "service_charge","ground_rent","legal","letting_fees","other",
+] as const;
+
+export const COMPLIANCE_TYPES = [
+  "Gas safety","EICR","EPC","PAT","Fire alarm","HMO licence","Deposit protection","Legionella",
+] as const;
+
+export const DOCUMENT_KINDS = [
+  "tenancy_agreement","certificate","statement","invoice","insurance","other",
+] as const;
+
+export const expiryStatus = (iso: string | null): { label: string; color: string } => {
+  if (!iso) return { label: "Unknown", color: "bg-slate-500/15 text-slate-300 border-slate-500/30" };
+  const days = Math.floor((new Date(iso).getTime() - Date.now()) / 86400000);
+  if (days < 0) return { label: "Expired", color: "bg-rose-500/15 text-rose-300 border-rose-500/30" };
+  if (days <= 60) return { label: `${days}d left`, color: "bg-amber-500/15 text-amber-300 border-amber-500/30" };
+  return { label: `${days}d left`, color: "bg-emerald-500/15 text-emerald-300 border-emerald-500/30" };
+};
