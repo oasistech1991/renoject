@@ -30,6 +30,7 @@ import {
   ChevronRight,
   ImageOff,
 } from "lucide-react";
+import { Map as MapIcon } from "lucide-react";
 
 export const Route = createFileRoute("/feed")({
   head: () => ({
@@ -329,6 +330,11 @@ function FeedPage() {
             New BRRR deals, fresh off the calculator.
           </p>
         </div>
+        <Link to="/feed/map">
+          <Button variant="outline" size="sm" className="gap-2">
+            <MapIcon className="h-4 w-4" /> Map view
+          </Button>
+        </Link>
       </header>
 
       <div className="mt-6 flex flex-wrap gap-2 border-b border-border pb-2">
