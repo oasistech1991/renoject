@@ -16,10 +16,13 @@ export type Database = {
     Tables: {
       client_profiles: {
         Row: {
+          available_capital: number | null
           avatar_url: string | null
           bio: string | null
           budget_max: number | null
           budget_min: number | null
+          capital_notes: string | null
+          capital_updated_at: string | null
           cover_url: string | null
           created_at: string
           display_name: string | null
@@ -32,10 +35,13 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          available_capital?: number | null
           avatar_url?: string | null
           bio?: string | null
           budget_max?: number | null
           budget_min?: number | null
+          capital_notes?: string | null
+          capital_updated_at?: string | null
           cover_url?: string | null
           created_at?: string
           display_name?: string | null
@@ -48,10 +54,13 @@ export type Database = {
           user_id: string
         }
         Update: {
+          available_capital?: number | null
           avatar_url?: string | null
           bio?: string | null
           budget_max?: number | null
           budget_min?: number | null
+          capital_notes?: string | null
+          capital_updated_at?: string | null
           cover_url?: string | null
           created_at?: string
           display_name?: string | null
@@ -264,6 +273,7 @@ export type Database = {
           hidden_fields: Json
           id: string
           is_published: boolean
+          is_upcoming: boolean
           property_id: string
           updated_at: string
         }
@@ -277,6 +287,7 @@ export type Database = {
           hidden_fields?: Json
           id?: string
           is_published?: boolean
+          is_upcoming?: boolean
           property_id: string
           updated_at?: string
         }
@@ -290,6 +301,7 @@ export type Database = {
           hidden_fields?: Json
           id?: string
           is_published?: boolean
+          is_upcoming?: boolean
           property_id?: string
           updated_at?: string
         }
