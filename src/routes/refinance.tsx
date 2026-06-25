@@ -194,6 +194,7 @@ function RefinancePage() {
   const [method, setMethod] = useState<CalcMethod>("brrr");
   const [btlInputs, setBtlInputs] = useState<BTLInputs>(btlDefaults);
   const [propertyName, setPropertyName] = useState("");
+  const [propertyAddress, setPropertyAddress] = useState("");
   const [propertyId, setPropertyId] = useState<string | null>(null);
   const [source, setSource] = useState<PropertySource | "">("");
   const [saving, setSaving] = useState(false);
@@ -276,6 +277,7 @@ function RefinancePage() {
     setBtlInputs(zeroBtl);
     setMethod("brrr");
     setPropertyName("");
+    setPropertyAddress("");
     setPropertyId(null);
     setSource("");
     setSavedAt(null);
@@ -320,6 +322,7 @@ function RefinancePage() {
       setMethod(savedMethod);
       setBtlInputs({ ...btlDefaults, ...((__btl ?? {}) as Partial<BTLInputs>) });
       setPropertyName(data.name);
+      setPropertyAddress(typeof rawInputs.address === "string" ? rawInputs.address : "");
       setPropertyId(data.id);
       setSource(((data as any).source as PropertySource) ?? "");
       setSavedAt(new Date(data.updated_at));
@@ -385,6 +388,8 @@ function RefinancePage() {
     setSaving(true);
     const inputsPayload: any = { ...inputs };
     if (method === "btl") inputsPayload.__btl = btlInputs;
+    if (propertyAddress.trim()) inputsPayload.address = propertyAddress.trim();
+    else delete inputsPayload.address;
     const payload = {
       name: propertyName.trim(),
       inputs: inputsPayload,
@@ -585,6 +590,17 @@ function RefinancePage() {
                 placeholder="e.g. 12 High Street, Leeds"
                 value={propertyName}
                 onChange={(e) => setPropertyName(e.target.value)}
+              />
+            </div>
+            <div className="flex-1">
+              <label htmlFor="propaddress" className="mb-1 block text-xs font-medium text-muted-foreground">
+                Address (for map)
+              </label>
+              <Input
+                id="propaddress"
+                placeholder="e.g. 12 High Street, Leeds, LS1 4AB"
+                value={propertyAddress}
+                onChange={(e) => setPropertyAddress(e.target.value)}
               />
             </div>
             <div className="sm:w-56">
