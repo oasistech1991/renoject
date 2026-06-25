@@ -387,6 +387,7 @@ function AppShell({
             <Link
               key={item.to}
               to={item.to as "/refinance"}
+              search={{}}
               onClick={() => setMobileOpen(false)}
               className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
               activeProps={{ className: "flex items-center gap-3 px-3 py-2 rounded-lg text-sm bg-accent text-foreground font-medium" }}
