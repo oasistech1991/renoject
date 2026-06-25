@@ -418,34 +418,70 @@ function SavedTab({ items }: { items: SavedDeal[] }) {
   );
 }
 
-function PreferencesTab({ profile, editing, setProfile }: { profile: Profile; editing: boolean; setProfile: (f: (p: Profile) => Profile) => void }) {
+function PreferencesTab({ profile, setProfile, userId }: { profile: Profile; setProfile: (f: (p: Profile) => Profile) => void; userId: string | null }) {
   const [areaInput, setAreaInput] = useState("");
+  const [savingKey, setSavingKey] = useState<string | null>(null);
+  const [savedKey, setSavedKey] = useState<string | null>(null);
+
+  async function persist(patch: Partial<Profile>, key: string) {
+    if (!userId) return;
+    setSavingKey(key);
+    const { error } = await supabase.from("client_profiles").upsert({ user_id: userId, ...patch });
+    setSavingKey(null);
+    if (error) { toast.error(error.message); return; }
+    setSavedKey(key);
+    setTimeout(() => setSavedKey((k) => (k === key ? null : k)), 1500);
+  }
+
+  const toggleDealType = (k: string) => {
+    const active = profile.preferred_deal_types.includes(k);
+    const next = active ? profile.preferred_deal_types.filter((x) => x !== k) : [...profile.preferred_deal_types, k];
+    setProfile((p) => ({ ...p, preferred_deal_types: next }));
+    persist({ preferred_deal_types: next } as Partial<Profile>, "deal_types");
+  };
+
   const addArea = () => {
     const v = areaInput.trim();
     if (!v) return;
     if (profile.preferred_areas.includes(v)) { setAreaInput(""); return; }
-    setProfile((p) => ({ ...p, preferred_areas: [...p.preferred_areas, v] }));
+    const next = [...profile.preferred_areas, v];
+    setProfile((p) => ({ ...p, preferred_areas: next }));
+    persist({ preferred_areas: next } as Partial<Profile>, "areas");
     setAreaInput("");
   };
+  const removeArea = (a: string) => {
+    const next = profile.preferred_areas.filter((x) => x !== a);
+    setProfile((p) => ({ ...p, preferred_areas: next }));
+    persist({ preferred_areas: next } as Partial<Profile>, "areas");
+  };
+  const saveBudget = (field: "budget_min" | "budget_max", value: number | null) => {
+    setProfile((p) => ({ ...p, [field]: value }));
+    persist({ [field]: value } as Partial<Profile>, field);
+  };
+
+  const statusFor = (key: string) =>
+    savingKey === key ? (
+      <span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground"><Loader2 className="h-3 w-3 animate-spin" /> Saving…</span>
+    ) : savedKey === key ? (
+      <span className="inline-flex items-center gap-1 text-[10px] text-primary"><Check className="h-3 w-3" /> Saved</span>
+    ) : null;
+
   return (
     <div className="space-y-5">
       <div className="rounded-xl border border-border bg-card p-5">
-        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-muted-foreground">Preferred deal types</h2>
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Preferred deal types</h2>
+          {statusFor("deal_types")}
+        </div>
         <div className="flex flex-wrap gap-2">
           {DEAL_TYPES.map((d) => {
             const active = profile.preferred_deal_types.includes(d.key);
             return (
               <button
                 key={d.key}
-                disabled={!editing}
-                onClick={() => setProfile((p) => ({
-                  ...p,
-                  preferred_deal_types: active
-                    ? p.preferred_deal_types.filter((k) => k !== d.key)
-                    : [...p.preferred_deal_types, d.key],
-                }))}
-                className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors disabled:cursor-default ${
-                  active ? "border-transparent text-white" : "border-border text-foreground hover:bg-accent disabled:hover:bg-transparent"
+                onClick={() => toggleDealType(d.key)}
+                className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
+                  active ? "border-transparent text-white" : "border-border text-foreground hover:bg-accent"
                 }`}
                 style={active ? { backgroundColor: d.color } : undefined}
               >
@@ -455,44 +491,57 @@ function PreferencesTab({ profile, editing, setProfile }: { profile: Profile; ed
             );
           })}
         </div>
+        <p className="mt-3 text-xs text-muted-foreground">Tap to toggle — changes save automatically.</p>
       </div>
 
       <div className="rounded-xl border border-border bg-card p-5">
-        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-muted-foreground">Preferred areas</h2>
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Preferred areas</h2>
+          {statusFor("areas")}
+        </div>
         <div className="flex flex-wrap gap-2">
           {profile.preferred_areas.map((a) => (
             <Badge key={a} variant="secondary" className="gap-1">
               {a}
-              {editing && (
-                <button onClick={() => setProfile((p) => ({ ...p, preferred_areas: p.preferred_areas.filter((x) => x !== a) }))} className="ml-1 hover:text-destructive">
-                  <X className="h-3 w-3" />
-                </button>
-              )}
+              <button onClick={() => removeArea(a)} className="ml-1 hover:text-destructive">
+                <X className="h-3 w-3" />
+              </button>
             </Badge>
           ))}
-          {!profile.preferred_areas.length && !editing && <p className="text-sm text-muted-foreground italic">No areas yet.</p>}
+          {!profile.preferred_areas.length && <p className="text-sm text-muted-foreground italic">No areas yet — add one below.</p>}
         </div>
-        {editing && (
-          <div className="mt-3 flex gap-2">
-            <Input
-              value={areaInput}
-              onChange={(e) => setAreaInput(e.target.value)}
-              onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addArea(); } }}
-              placeholder="e.g. Manchester M14"
-            />
-            <Button type="button" size="sm" onClick={addArea}>Add</Button>
-          </div>
-        )}
+        <div className="mt-3 flex gap-2">
+          <Input
+            value={areaInput}
+            onChange={(e) => setAreaInput(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addArea(); } }}
+            placeholder="e.g. Manchester M14"
+          />
+          <Button type="button" size="sm" onClick={addArea}>Add</Button>
+        </div>
       </div>
 
       <div className="rounded-xl border border-border bg-card p-5">
-        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-muted-foreground">Budget range (GBP)</h2>
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Budget range (GBP)</h2>
+          {(statusFor("budget_min") ?? statusFor("budget_max"))}
+        </div>
         <div className="grid gap-3 sm:grid-cols-2">
           <Field label="Minimum">
-            <Input type="number" disabled={!editing} value={profile.budget_min ?? ""} onChange={(e) => setProfile((p) => ({ ...p, budget_min: e.target.value ? Number(e.target.value) : null }))} />
+            <Input
+              type="number"
+              value={profile.budget_min ?? ""}
+              onChange={(e) => setProfile((p) => ({ ...p, budget_min: e.target.value ? Number(e.target.value) : null }))}
+              onBlur={(e) => saveBudget("budget_min", e.target.value ? Number(e.target.value) : null)}
+            />
           </Field>
           <Field label="Maximum">
-            <Input type="number" disabled={!editing} value={profile.budget_max ?? ""} onChange={(e) => setProfile((p) => ({ ...p, budget_max: e.target.value ? Number(e.target.value) : null }))} />
+            <Input
+              type="number"
+              value={profile.budget_max ?? ""}
+              onChange={(e) => setProfile((p) => ({ ...p, budget_max: e.target.value ? Number(e.target.value) : null }))}
+              onBlur={(e) => saveBudget("budget_max", e.target.value ? Number(e.target.value) : null)}
+            />
           </Field>
         </div>
       </div>
