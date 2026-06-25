@@ -111,8 +111,8 @@ async function firecrawlEnrich(candidate: Candidate, trade: string, town: string
   const apiKey = process.env.FIRECRAWL_API_KEY;
   if (!apiKey) return;
   try {
-    const { default: Firecrawl } = await import("@mendable/firecrawl-js");
-    const fc = new Firecrawl({ apiKey });
+    const { createFirecrawl } = await import("./firecrawl-client");
+    const fc = createFirecrawl(apiKey);
     const q = `${candidate.company ?? candidate.name} ${trade} ${town} reviews`;
     const result = await fc.search(q, { limit: 4, scrapeOptions: { formats: ["markdown"] } } as any);
     const items: Array<{ url?: string; title?: string; description?: string; markdown?: string }> =
