@@ -57,24 +57,35 @@ async function searchGooglePlaces(query: string): Promise<Candidate[]> {
   const lovableKey = process.env.LOVABLE_API_KEY;
   if (!apiKey || !lovableKey) return [];
 
-  const res = await fetch("https://connector-gateway.lovable.dev/google_maps/places/v1/places:searchText", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${lovableKey}`,
-      "X-Connection-Api-Key": apiKey,
-      "Content-Type": "application/json",
-      "X-Goog-FieldMask":
-        "places.id,places.displayName,places.formattedAddress,places.nationalPhoneNumber,places.internationalPhoneNumber,places.websiteUri,places.rating,places.userRatingCount,places.reviews,places.types,places.businessStatus",
-    },
-    body: JSON.stringify({ textQuery: query, pageSize: 15 }),
-  });
-
-  if (!res.ok) {
-    console.error("Places searchText failed", res.status, await res.text().catch(() => ""));
-    return [];
+  // Places API (New) returns max 20 per page; paginate up to 3 pages (60).
+  const allPlaces: Array<Record<string, any>> = [];
+  let pageToken: string | undefined;
+  for (let i = 0; i < 3; i++) {
+    const body: Record<string, unknown> = { textQuery: query, pageSize: 20 };
+    if (pageToken) body.pageToken = pageToken;
+    const res = await fetch("https://connector-gateway.lovable.dev/google_maps/places/v1/places:searchText", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${lovableKey}`,
+        "X-Connection-Api-Key": apiKey,
+        "Content-Type": "application/json",
+        "X-Goog-FieldMask":
+          "nextPageToken,places.id,places.displayName,places.formattedAddress,places.nationalPhoneNumber,places.internationalPhoneNumber,places.websiteUri,places.rating,places.userRatingCount,places.reviews,places.types,places.businessStatus",
+      },
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) {
+      console.error("Places searchText failed", res.status, await res.text().catch(() => ""));
+      break;
+    }
+    const data = (await res.json()) as { places?: Array<Record<string, any>>; nextPageToken?: string };
+    if (data.places?.length) allPlaces.push(...data.places);
+    if (!data.nextPageToken) break;
+    pageToken = data.nextPageToken;
+    // Google requires a short delay before the next page token becomes valid.
+    await new Promise((r) => setTimeout(r, 1500));
   }
-  const data = (await res.json()) as { places?: Array<Record<string, any>> };
-  const places = data.places ?? [];
+  const places = allPlaces;
 
   return places
     .filter((p) => p.businessStatus !== "CLOSED_PERMANENTLY")
@@ -365,7 +376,7 @@ export const searchTradesmen = createServerFn({ method: "POST" })
       const k = normaliseKey(c.name, c.phone);
       if (!seen.has(k)) seen.set(k, c);
     }
-    const candidates = Array.from(seen.values()).slice(0, 12);
+    const candidates = Array.from(seen.values()).slice(0, 40);
 
     // Enrich + sense-check in parallel (bounded)
     await Promise.all(
