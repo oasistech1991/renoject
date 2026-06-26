@@ -870,7 +870,7 @@ function CommentsPanel({
         .select("user_id,display_name,avatar_url")
         .in("user_id", ids);
       const map: Record<string, Profile> = {};
-      for (const p of (profs as Profile[]) ?? []) map[p.user_id] = p;
+      for (const p of ((profs as unknown) as Profile[]) ?? []) map[p.user_id] = p;
       setProfiles(map);
     }
   };
