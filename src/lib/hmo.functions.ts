@@ -199,8 +199,38 @@ Return ONLY valid PlanScript source code following the cheatsheet.`;
       dsl = await askForDSL(`Your previous PlanScript failed to compile with these errors:\n${errMsg}\nReturn a corrected PlanScript that compiles cleanly.`);
       result = compile(dsl);
       if (!result.success) {
-        const e2 = result.errors?.map((e: any) => e.message ?? String(e)).join("; ") ?? "unknown error";
-        throw new Error(`Floorplan compile failed: ${e2}`);
+        // Fallback: openings are the most common cause of grammar drift
+        // (e.g. `on bed_1.west at 2` instead of `on bed_1.edge west at 2`).
+        // Strip all opening lines and recompile — rooms + footprint still render.
+        const stripped = dsl
+          .split("\n")
+          .filter((l) => !/^\s*opening\b/.test(l))
+          .join("\n");
+        result = compile(stripped);
+        if (!result.success) {
+          // Last resort: render just the footprint + rooms from input data deterministically.
+          const w = side;
+          const h = side;
+          const cols = Math.ceil(Math.sqrt(data.rooms.length));
+          const rows = Math.ceil(data.rooms.length / cols);
+          const cw = w / cols;
+          const rh = h / rows;
+          const roomDsl = data.rooms
+            .map((r, i) => {
+              const cx = i % cols;
+              const cy = Math.floor(i / cols);
+              const id = `r_${i + 1}`;
+              const label = r.label.replace(/"/g, "'");
+              return `  room ${id} { rect (${(cx * cw).toFixed(2)},${(cy * rh).toFixed(2)}) (${((cx + 1) * cw).toFixed(2)},${((cy + 1) * rh).toFixed(2)}) label "${label}" }`;
+            })
+            .join("\n");
+          const fallbackDsl = `units m\nplan "${data.scenarioLabel}" {\n  footprint rect (0,0) (${w},${h})\n${roomDsl}\n}`;
+          result = compile(fallbackDsl);
+          if (!result.success) {
+            const e3 = result.errors?.map((e: any) => e.message ?? String(e)).join("; ") ?? "unknown error";
+            throw new Error(`Floorplan compile failed: ${e3}`);
+          }
+        }
       }
     }
 
