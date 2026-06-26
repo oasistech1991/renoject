@@ -731,7 +731,7 @@ function TaskDrawer({ task, schedule, allTasks, links, onClose, onSave, onDelete
       <SheetContent className="w-full sm:max-w-lg overflow-y-auto">
         <SheetHeader>
           <SheetTitle>
-            <Input value={task.name} onChange={(e) => onSave({ id: task.id, name: e.target.value })} className="text-base font-semibold" />
+            <TaskNameInput task={task} onSave={onSave} />
           </SheetTitle>
         </SheetHeader>
 
