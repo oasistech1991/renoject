@@ -41,6 +41,7 @@ type Schedule = {
   working_days: number[]; non_working_dates: string[];
   colour_palette: Record<string, string>;
   template_of_id: string | null; is_template: boolean;
+  client_id: string | null;
   created_at: string; updated_at: string;
 };
 type Phase = { id: string; schedule_id: string; name: string; position: number; colour: string | null };
@@ -232,6 +233,15 @@ function ConstructionTimelinePage() {
             </div>
           </div>
           <div className="flex items-center gap-2">
+            {active && (
+              <ClientPicker
+                scheduleId={active.id}
+                value={active.client_id}
+                onChange={(client_id) =>
+                  setSchedules((xs) => xs.map((s) => (s.id === active.id ? { ...s, client_id } : s)))
+                }
+              />
+            )}
             {active && (
               <Button variant="outline" size="sm" onClick={saveAsTemplate} disabled={active.is_template}>
                 <Save className="h-4 w-4 mr-1" /> {active.is_template ? "Template" : "Save as template"}
@@ -1006,5 +1016,50 @@ function NewScheduleDialog({ open, onOpenChange, templates, onCreated }: {
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+// ============ Client picker ============
+function ClientPicker({
+  scheduleId,
+  value,
+  onChange,
+}: {
+  scheduleId: string;
+  value: string | null;
+  onChange: (v: string | null) => void;
+}) {
+  const [clients, setClients] = useState<Array<{ user_id: string; display_name: string | null }>>([]);
+  useEffect(() => {
+    supabase
+      .from("client_profiles")
+      .select("user_id, display_name")
+      .order("display_name")
+      .then(({ data }) => setClients((data as any) ?? []));
+  }, []);
+  const save = async (next: string) => {
+    const client_id = next === "none" ? null : next;
+    const { error } = await supabase
+      .from("construction_schedules")
+      .update({ client_id })
+      .eq("id", scheduleId);
+    if (error) return toast.error(error.message);
+    onChange(client_id);
+    toast.success(client_id ? "Client assigned" : "Client unassigned");
+  };
+  return (
+    <Select value={value ?? "none"} onValueChange={save}>
+      <SelectTrigger className="h-8 w-56 text-xs">
+        <SelectValue placeholder="Assign client…" />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value="none">— No client —</SelectItem>
+        {clients.map((c) => (
+          <SelectItem key={c.user_id} value={c.user_id}>
+            {c.display_name ?? "Unnamed client"}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
   );
 }

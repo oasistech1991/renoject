@@ -71,7 +71,7 @@ function ProfilePage() {
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [tab, setTab] = useState<"about" | "activity" | "saved" | "preferences">("about");
+  const [tab, setTab] = useState<"about" | "progress" | "activity" | "saved" | "preferences">("about");
   const [activity, setActivity] = useState<ActivityItem[]>([]);
   const [saved, setSaved] = useState<SavedDeal[]>([]);
 
@@ -289,6 +289,7 @@ function ProfilePage() {
         <div className="mt-6 flex gap-1 border-b border-border">
           {([
             ["about", "About"],
+            ["progress", "Progress"],
             ["activity", "Activity"],
             ["saved", "Saved"],
             ["preferences", "Preferences"],
@@ -305,6 +306,7 @@ function ProfilePage() {
 
         <div className="mt-6">
           {tab === "about" && <AboutTab profile={profile} editing={editing} setProfile={setProfile} />}
+          {tab === "progress" && <ProgressTab userId={userId} />}
           {tab === "activity" && <ActivityTab items={activity} />}
           {tab === "saved" && <SavedTab items={saved} />}
           {tab === "preferences" && <PreferencesTab profile={profile} setProfile={setProfile} userId={userId} />}
@@ -560,4 +562,228 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 
 function Empty({ text }: { text: string }) {
   return <div className="rounded-xl border border-dashed border-border bg-card/50 p-8 text-center text-sm text-muted-foreground">{text}</div>;
+}
+
+// ============ Progress (client-facing simplified construction view) ============
+type ProgSchedule = {
+  id: string; name: string;
+  planned_start: string | null; planned_finish: string | null;
+};
+type ProgPhase = { id: string; schedule_id: string; name: string; position: number; colour: string | null };
+type ProgTask = {
+  id: string; schedule_id: string; phase_id: string | null; name: string;
+  planned_start: string | null; planned_finish: string | null; percent_complete: number;
+  is_milestone: boolean;
+};
+type ProgLog = {
+  id: string; schedule_id: string; log_date: string; notes: string | null;
+  weather: string | null; hours_worked: number | null; crew_count: number | null;
+};
+type ProgComment = {
+  id: string; schedule_id: string; task_id: string | null; phase_id: string | null;
+  body: string; author_id: string; created_at: string;
+};
+
+function ProgressTab({ userId }: { userId: string | null }) {
+  const [schedules, setSchedules] = useState<ProgSchedule[]>([]);
+  const [activeId, setActiveId] = useState<string | null>(null);
+  const [phases, setPhases] = useState<ProgPhase[]>([]);
+  const [tasks, setTasks] = useState<ProgTask[]>([]);
+  const [logs, setLogs] = useState<ProgLog[]>([]);
+  const [comments, setComments] = useState<ProgComment[]>([]);
+  const [newComment, setNewComment] = useState("");
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!userId) return;
+    (async () => {
+      const { data } = await supabase
+        .from("construction_schedules")
+        .select("id,name,planned_start,planned_finish")
+        .eq("client_id", userId)
+        .order("created_at", { ascending: false });
+      const list = (data as ProgSchedule[]) ?? [];
+      setSchedules(list);
+      if (list.length && !activeId) setActiveId(list[0].id);
+      setLoading(false);
+    })();
+  }, [userId]);
+
+  useEffect(() => {
+    if (!activeId) return;
+    (async () => {
+      const [p, t, l, c] = await Promise.all([
+        supabase.from("construction_phases").select("*").eq("schedule_id", activeId).order("position"),
+        supabase.from("construction_tasks").select("*").eq("schedule_id", activeId),
+        supabase.from("construction_daily_logs").select("*").eq("schedule_id", activeId).order("log_date", { ascending: false }).limit(10),
+        supabase.from("construction_progress_comments").select("*").eq("schedule_id", activeId).order("created_at", { ascending: false }),
+      ]);
+      setPhases((p.data as ProgPhase[]) ?? []);
+      setTasks((t.data as ProgTask[]) ?? []);
+      setLogs((l.data as ProgLog[]) ?? []);
+      setComments((c.data as ProgComment[]) ?? []);
+    })();
+  }, [activeId]);
+
+  const active = schedules.find((s) => s.id === activeId) ?? null;
+
+  const overall = useMemo(() => {
+    if (!tasks.length) return 0;
+    return Math.round(tasks.reduce((a, t) => a + (t.percent_complete || 0), 0) / tasks.length);
+  }, [tasks]);
+
+  const nextMilestone = useMemo(() => {
+    const today = new Date().toISOString().slice(0, 10);
+    return tasks
+      .filter((t) => t.planned_finish && t.planned_finish >= today && t.percent_complete < 100)
+      .sort((a, b) => (a.planned_finish! < b.planned_finish! ? -1 : 1))[0] ?? null;
+  }, [tasks]);
+
+  const phaseProgress = useMemo(() => {
+    return phases.map((ph) => {
+      const phTasks = tasks.filter((t) => t.phase_id === ph.id);
+      const pct = phTasks.length
+        ? Math.round(phTasks.reduce((a, t) => a + (t.percent_complete || 0), 0) / phTasks.length)
+        : 0;
+      return { ...ph, pct, count: phTasks.length };
+    });
+  }, [phases, tasks]);
+
+  const postComment = async () => {
+    if (!activeId || !userId || !newComment.trim()) return;
+    const { data, error } = await supabase
+      .from("construction_progress_comments")
+      .insert({ schedule_id: activeId, author_id: userId, body: newComment.trim() })
+      .select()
+      .single();
+    if (error) return toast.error(error.message);
+    setComments((xs) => [data as ProgComment, ...xs]);
+    setNewComment("");
+  };
+
+  if (loading) return <Empty text="Loading your projects…" />;
+  if (!schedules.length) {
+    return <Empty text="No active projects assigned to you yet. Your team will share a timeline here once your project kicks off." />;
+  }
+
+  return (
+    <div className="space-y-5">
+      {schedules.length > 1 && (
+        <div className="flex flex-wrap gap-2">
+          {schedules.map((s) => (
+            <button
+              key={s.id}
+              onClick={() => setActiveId(s.id)}
+              className={`rounded-full border px-3 py-1 text-xs font-medium ${
+                activeId === s.id ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              {s.name}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {active && (
+        <>
+          <div className="grid gap-3 sm:grid-cols-3">
+            <div className="rounded-xl border border-border bg-card p-4">
+              <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Overall progress</div>
+              <div className="mt-1 text-3xl font-bold text-primary">{overall}%</div>
+              <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-muted">
+                <div className="h-full bg-primary" style={{ width: `${overall}%` }} />
+              </div>
+            </div>
+            <div className="rounded-xl border border-border bg-card p-4">
+              <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Estimated completion</div>
+              <div className="mt-1 text-lg font-semibold">
+                {active.planned_finish ? new Date(active.planned_finish).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }) : "—"}
+              </div>
+              {active.planned_start && (
+                <div className="text-xs text-muted-foreground">Started {new Date(active.planned_start).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}</div>
+              )}
+            </div>
+            <div className="rounded-xl border border-border bg-card p-4">
+              <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Next milestone</div>
+              <div className="mt-1 text-sm font-semibold truncate">{nextMilestone?.name ?? "All caught up"}</div>
+              {nextMilestone?.planned_finish && (
+                <div className="text-xs text-muted-foreground">
+                  by {new Date(nextMilestone.planned_finish).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="rounded-xl border border-border bg-card p-5">
+            <h3 className="mb-3 text-sm font-semibold">Phases</h3>
+            {phaseProgress.length === 0 ? (
+              <p className="text-sm text-muted-foreground">Your team hasn't broken the project into phases yet.</p>
+            ) : (
+              <div className="space-y-3">
+                {phaseProgress.map((ph) => (
+                  <div key={ph.id}>
+                    <div className="mb-1 flex items-center justify-between text-xs">
+                      <span className="font-medium">{ph.name}</span>
+                      <span className="text-muted-foreground">{ph.pct}% · {ph.count} task{ph.count === 1 ? "" : "s"}</span>
+                    </div>
+                    <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+                      <div
+                        className="h-full"
+                        style={{ width: `${ph.pct}%`, backgroundColor: ph.colour ?? undefined }}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="rounded-xl border border-border bg-card p-5">
+            <h3 className="mb-3 text-sm font-semibold">Latest site updates</h3>
+            {logs.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No site diary entries yet.</p>
+            ) : (
+              <ul className="space-y-3">
+                {logs.map((l) => (
+                  <li key={l.id} className="rounded-lg border border-border bg-background/40 p-3 text-sm">
+                    <div className="mb-1 flex items-center justify-between text-xs text-muted-foreground">
+                      <span>{new Date(l.log_date).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" })}</span>
+                      <span>{[l.weather, l.crew_count ? `${l.crew_count} crew` : null, l.hours_worked ? `${l.hours_worked}h` : null].filter(Boolean).join(" · ")}</span>
+                    </div>
+                    {l.notes && <p className="whitespace-pre-wrap">{l.notes}</p>}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+
+          <div className="rounded-xl border border-border bg-card p-5">
+            <h3 className="mb-3 text-sm font-semibold">Your comments & questions</h3>
+            <div className="flex gap-2">
+              <Input
+                value={newComment}
+                onChange={(e) => setNewComment(e.target.value)}
+                placeholder="Ask a question or leave feedback…"
+                onKeyDown={(e) => { if (e.key === "Enter") postComment(); }}
+              />
+              <Button onClick={postComment} disabled={!newComment.trim()}>Post</Button>
+            </div>
+            <ul className="mt-4 space-y-2">
+              {comments.map((c) => (
+                <li key={c.id} className="rounded-lg border border-border bg-background/40 p-3 text-sm">
+                  <div className="mb-1 text-[11px] text-muted-foreground">
+                    {c.author_id === userId ? "You" : "Team"} · {new Date(c.created_at).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" })}
+                  </div>
+                  <p className="whitespace-pre-wrap">{c.body}</p>
+                </li>
+              ))}
+              {comments.length === 0 && (
+                <li className="text-xs text-muted-foreground">No comments yet — start the conversation above.</li>
+              )}
+            </ul>
+          </div>
+        </>
+      )}
+    </div>
+  );
 }
