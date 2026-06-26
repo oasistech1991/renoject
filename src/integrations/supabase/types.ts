@@ -2152,7 +2152,42 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      public_client_profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string | null
+          display_name: string | null
+          headline: string | null
+          location: string | null
+          preferred_areas: string[] | null
+          preferred_deal_types: string[] | null
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string | null
+          display_name?: string | null
+          headline?: string | null
+          location?: string | null
+          preferred_areas?: string[] | null
+          preferred_deal_types?: string[] | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string | null
+          display_name?: string | null
+          headline?: string | null
+          location?: string | null
+          preferred_areas?: string[] | null
+          preferred_deal_types?: string[] | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       has_active_subscription: {
