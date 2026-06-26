@@ -21,6 +21,7 @@ import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as PortfolioTimelineRouteImport } from './routes/portfolio-timeline'
 import { Route as MessagesRouteImport } from './routes/messages'
 import { Route as MarketRouteImport } from './routes/market'
+import { Route as LegalRouteImport } from './routes/legal'
 import { Route as HmoComplianceRouteImport } from './routes/hmo-compliance'
 import { Route as ForecastRouteImport } from './routes/forecast'
 import { Route as FeedRouteImport } from './routes/feed'
@@ -92,6 +93,11 @@ const MarketRoute = MarketRouteImport.update({
   path: '/market',
   getParentRoute: () => rootRouteImport,
 } as any)
+const LegalRoute = LegalRouteImport.update({
+  id: '/legal',
+  path: '/legal',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const HmoComplianceRoute = HmoComplianceRouteImport.update({
   id: '/hmo-compliance',
   path: '/hmo-compliance',
@@ -153,6 +159,7 @@ export interface FileRoutesByFullPath {
   '/feed': typeof FeedRoute
   '/forecast': typeof ForecastRoute
   '/hmo-compliance': typeof HmoComplianceRoute
+  '/legal': typeof LegalRoute
   '/market': typeof MarketRoute
   '/messages': typeof MessagesRoute
   '/portfolio-timeline': typeof PortfolioTimelineRoute
@@ -177,6 +184,7 @@ export interface FileRoutesByTo {
   '/feed': typeof FeedRoute
   '/forecast': typeof ForecastRoute
   '/hmo-compliance': typeof HmoComplianceRoute
+  '/legal': typeof LegalRoute
   '/market': typeof MarketRoute
   '/messages': typeof MessagesRoute
   '/portfolio-timeline': typeof PortfolioTimelineRoute
@@ -202,6 +210,7 @@ export interface FileRoutesById {
   '/feed': typeof FeedRoute
   '/forecast': typeof ForecastRoute
   '/hmo-compliance': typeof HmoComplianceRoute
+  '/legal': typeof LegalRoute
   '/market': typeof MarketRoute
   '/messages': typeof MessagesRoute
   '/portfolio-timeline': typeof PortfolioTimelineRoute
@@ -228,6 +237,7 @@ export interface FileRouteTypes {
     | '/feed'
     | '/forecast'
     | '/hmo-compliance'
+    | '/legal'
     | '/market'
     | '/messages'
     | '/portfolio-timeline'
@@ -252,6 +262,7 @@ export interface FileRouteTypes {
     | '/feed'
     | '/forecast'
     | '/hmo-compliance'
+    | '/legal'
     | '/market'
     | '/messages'
     | '/portfolio-timeline'
@@ -276,6 +287,7 @@ export interface FileRouteTypes {
     | '/feed'
     | '/forecast'
     | '/hmo-compliance'
+    | '/legal'
     | '/market'
     | '/messages'
     | '/portfolio-timeline'
@@ -301,6 +313,7 @@ export interface RootRouteChildren {
   FeedRoute: typeof FeedRoute
   ForecastRoute: typeof ForecastRoute
   HmoComplianceRoute: typeof HmoComplianceRoute
+  LegalRoute: typeof LegalRoute
   MarketRoute: typeof MarketRoute
   MessagesRoute: typeof MessagesRoute
   PortfolioTimelineRoute: typeof PortfolioTimelineRoute
@@ -402,6 +415,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MarketRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/legal': {
+      id: '/legal'
+      path: '/legal'
+      fullPath: '/legal'
+      preLoaderRoute: typeof LegalRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/hmo-compliance': {
       id: '/hmo-compliance'
       path: '/hmo-compliance'
@@ -485,6 +505,7 @@ const rootRouteChildren: RootRouteChildren = {
   FeedRoute: FeedRoute,
   ForecastRoute: ForecastRoute,
   HmoComplianceRoute: HmoComplianceRoute,
+  LegalRoute: LegalRoute,
   MarketRoute: MarketRoute,
   MessagesRoute: MessagesRoute,
   PortfolioTimelineRoute: PortfolioTimelineRoute,
