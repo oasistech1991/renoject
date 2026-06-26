@@ -156,7 +156,7 @@ function FeedPage() {
             .order("sort_order", { ascending: true })
         : Promise.resolve({ data: [] as any[] }),
       authorIds.length
-        ? supabase.from("client_profiles").select("user_id,display_name,avatar_url").in("user_id", authorIds)
+        ? supabase.from("public_client_profiles" as any).select("user_id,display_name,avatar_url").in("user_id", authorIds)
         : Promise.resolve({ data: [] as any[] }),
       postIds.length
         ? supabase.from("feed_poll_votes").select("post_id,user_id,vote").in("post_id", postIds)
@@ -866,7 +866,7 @@ function CommentsPanel({
     const ids = Array.from(new Set(rows.map((r) => r.user_id)));
     if (ids.length) {
       const { data: profs } = await supabase
-        .from("client_profiles")
+        .from("public_client_profiles" as any)
         .select("user_id,display_name,avatar_url")
         .in("user_id", ids);
       const map: Record<string, Profile> = {};
