@@ -100,7 +100,7 @@ function DealLocationPage() {
   const search = Route.useSearch();
   const navigate = Route.useNavigate();
   const setParam = <K extends keyof typeof search>(k: K, v: (typeof search)[K]) =>
-    navigate({ search: (prev) => ({ ...prev, [k]: v }), replace: true });
+    navigate({ search: (prev: typeof search) => ({ ...prev, [k]: v }), replace: true });
 
   const query = search.q;
   const minPrice = search.minPrice;
