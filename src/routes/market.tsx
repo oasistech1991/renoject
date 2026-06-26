@@ -34,11 +34,11 @@ function regionFor(name: string): RegionKey | null {
 
 const searchSchema = z.object({
   q: fallback(z.string(), "").default(""),
-  minPrice: fallback(z.number().optional(), undefined),
-  maxPrice: fallback(z.number().optional(), undefined),
-  minBeds: fallback(z.number().optional(), undefined),
-  minRoi: fallback(z.number().optional(), undefined),
-  minCash: fallback(z.number().optional(), undefined),
+  minPrice: fallback(z.number(), undefined as unknown as number).optional(),
+  maxPrice: fallback(z.number(), undefined as unknown as number).optional(),
+  minBeds: fallback(z.number(), undefined as unknown as number).optional(),
+  minRoi: fallback(z.number(), undefined as unknown as number).optional(),
+  minCash: fallback(z.number(), undefined as unknown as number).optional(),
   status: fallback(z.enum(["all", "live", "upcoming", "sold"]), "all").default("all"),
   types: fallback(z.string().array(), []).default([]),
   regions: fallback(z.string().array(), []).default([]),
