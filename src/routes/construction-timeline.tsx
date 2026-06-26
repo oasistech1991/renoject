@@ -41,6 +41,7 @@ type Schedule = {
   working_days: number[]; non_working_dates: string[];
   colour_palette: Record<string, string>;
   template_of_id: string | null; is_template: boolean;
+  client_id: string | null;
   created_at: string; updated_at: string;
 };
 type Phase = { id: string; schedule_id: string; name: string; position: number; colour: string | null };
