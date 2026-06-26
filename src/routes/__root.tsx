@@ -330,6 +330,7 @@ function SignInScreen({ onUnlock }: { onUnlock: () => void }) {
 }
 
 const TOOL_ITEMS: Array<{ to: string; label: string; icon: typeof Home }> = [
+  { to: "/crm", label: "Team CRM", icon: Briefcase },
   { to: "/refinance", label: "Property Calculator", icon: Calculator },
   { to: "/condition", label: "Renovation", icon: Hammer },
   { to: "/market", label: "Market Search", icon: Search },
@@ -338,7 +339,6 @@ const TOOL_ITEMS: Array<{ to: string; label: string; icon: typeof Home }> = [
   { to: "/forecast", label: "Forecast", icon: LineChart },
   { to: "/feed", label: "Client Feed", icon: Users },
   { to: "/messages", label: "Messages", icon: MessageSquare },
-  { to: "/crm", label: "Team CRM", icon: Briefcase },
   { to: "/hmo-compliance", label: "HMO Compliance", icon: ShieldCheck },
   { to: "/legal", label: "Legal Review", icon: ScrollText },
   { to: "/tradesmen", label: "Tradesmen", icon: Wrench },
@@ -394,6 +394,25 @@ function AppShell({
 
         {TOOL_ITEMS.map((item) => {
           const Icon = item.icon;
+          const isFeatured = item.to === "/crm";
+          if (isFeatured) {
+            return (
+              <Link
+                key={item.to}
+                to={item.to as "/crm"}
+                search={{}}
+                onClick={() => setMobileOpen(false)}
+                className="group relative flex items-center gap-3 px-3 py-2.5 mb-2 rounded-lg text-sm font-semibold bg-gradient-to-r from-primary to-primary/80 text-primary-foreground shadow-md shadow-primary/30 hover:shadow-lg hover:shadow-primary/40 transition-all"
+                activeProps={{ className: "group relative flex items-center gap-3 px-3 py-2.5 mb-2 rounded-lg text-sm font-semibold bg-gradient-to-r from-primary to-primary/80 text-primary-foreground shadow-lg shadow-primary/40 ring-2 ring-primary/40" }}
+              >
+                <Icon className="h-4 w-4" />
+                <span>{item.label}</span>
+                <span className="ml-auto rounded-full bg-primary-foreground/20 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider">
+                  Live
+                </span>
+              </Link>
+            );
+          }
           return (
             <Link
               key={item.to}
