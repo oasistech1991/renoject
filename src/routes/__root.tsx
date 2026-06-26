@@ -335,7 +335,7 @@ const TOOL_ITEMS: Array<{ to: string; label: string; icon: typeof Home }> = [
   { to: "/crm", label: "Team CRM", icon: Briefcase },
   { to: "/refinance", label: "Property Calculator", icon: Calculator },
   { to: "/condition", label: "Renovation", icon: Hammer },
-  { to: "/market", label: "Market Search", icon: Search },
+  { to: "/market", label: "Deal Locations", icon: Search },
   { to: "/properties", label: "View Deals", icon: Building2 },
   { to: "/construction-timeline", label: "Construction Timeline", icon: HardHat },
   { to: "/forecast", label: "Forecast", icon: LineChart },
