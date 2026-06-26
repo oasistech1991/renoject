@@ -156,7 +156,7 @@ function CrmPage() {
       supabase.from("crm_contact_meta").select("*"),
       supabase.from("crm_deal_clients").select("*"),
       supabase.from("crm_tasks").select("*").order("due_at", { ascending: true, nullsFirst: false }),
-      supabase.from("feed_posts").select("id, title, address"),
+      supabase.from("feed_posts").select("id, caption, property_id"),
     ]);
     const metaMap = new Map<string, Meta>((metaRes.data ?? []).map((m: any) => [m.client_id, m]));
     const merged: Contact[] = (profilesRes.data ?? []).map((p: any) => ({
@@ -166,8 +166,16 @@ function CrmPage() {
     setContacts(merged);
     setDeals((dealRes.data as DealClient[]) ?? []);
     setTasks((taskRes.data as Task[]) ?? []);
+    const propIds = Array.from(new Set((postRes.data ?? []).map((p: any) => p.property_id).filter(Boolean)));
+    const addrMap: Record<string, string> = {};
+    if (propIds.length) {
+      const { data: addrRows } = await supabase.from("crm_properties").select("id, address").in("id", propIds);
+      (addrRows ?? []).forEach((r: any) => { addrMap[r.id] = r.address; });
+    }
     const pMap: Record<string, FeedPost> = {};
-    (postRes.data ?? []).forEach((p: any) => { pMap[p.id] = p; });
+    (postRes.data ?? []).forEach((p: any) => {
+      pMap[p.id] = { id: p.id, title: p.caption ?? null, address: addrMap[p.property_id] ?? null };
+    });
     setPosts(pMap);
   };
 
