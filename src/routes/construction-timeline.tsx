@@ -1018,3 +1018,48 @@ function NewScheduleDialog({ open, onOpenChange, templates, onCreated }: {
     </Dialog>
   );
 }
+
+// ============ Client picker ============
+function ClientPicker({
+  scheduleId,
+  value,
+  onChange,
+}: {
+  scheduleId: string;
+  value: string | null;
+  onChange: (v: string | null) => void;
+}) {
+  const [clients, setClients] = useState<Array<{ user_id: string; display_name: string | null }>>([]);
+  useEffect(() => {
+    supabase
+      .from("client_profiles")
+      .select("user_id, display_name")
+      .order("display_name")
+      .then(({ data }) => setClients((data as any) ?? []));
+  }, []);
+  const save = async (next: string) => {
+    const client_id = next === "none" ? null : next;
+    const { error } = await supabase
+      .from("construction_schedules")
+      .update({ client_id })
+      .eq("id", scheduleId);
+    if (error) return toast.error(error.message);
+    onChange(client_id);
+    toast.success(client_id ? "Client assigned" : "Client unassigned");
+  };
+  return (
+    <Select value={value ?? "none"} onValueChange={save}>
+      <SelectTrigger className="h-8 w-56 text-xs">
+        <SelectValue placeholder="Assign client…" />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value="none">— No client —</SelectItem>
+        {clients.map((c) => (
+          <SelectItem key={c.user_id} value={c.user_id}>
+            {c.display_name ?? "Unnamed client"}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+}
