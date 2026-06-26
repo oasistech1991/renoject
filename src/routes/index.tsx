@@ -316,16 +316,6 @@ function TeamDashboard() {
   );
 }
 
-type _ClientCapital = {
-  user_id: string;
-  display_name: string | null;
-  available_capital: number | null;
-  capital_notes: string | null;
-  capital_updated_at: string | null;
-  preferred_deal_types: string[] | null;
-  location: string | null;
-};
-
 function AdminCashPipeline() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [clients, setClients] = useState<ClientCapital[]>([]);
