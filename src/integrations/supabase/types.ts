@@ -1650,6 +1650,24 @@ export type Database = {
           },
         ]
       }
+      legal_source_cache: {
+        Row: {
+          fetched_at: string
+          title: string
+          url: string
+        }
+        Insert: {
+          fetched_at?: string
+          title: string
+          url: string
+        }
+        Update: {
+          fetched_at?: string
+          title?: string
+          url?: string
+        }
+        Relationships: []
+      }
       market_watchlist: {
         Row: {
           created_at: string
