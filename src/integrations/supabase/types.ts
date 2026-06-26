@@ -983,6 +983,53 @@ export type Database = {
           },
         ]
       }
+      crm_property_legal_packs: {
+        Row: {
+          created_at: string
+          document_type: string | null
+          filename: string
+          id: string
+          property_id: string
+          red_flag_count: number
+          review_json: Json | null
+          storage_path: string
+          summary: string | null
+          uploaded_by: string
+        }
+        Insert: {
+          created_at?: string
+          document_type?: string | null
+          filename: string
+          id?: string
+          property_id: string
+          red_flag_count?: number
+          review_json?: Json | null
+          storage_path: string
+          summary?: string | null
+          uploaded_by: string
+        }
+        Update: {
+          created_at?: string
+          document_type?: string | null
+          filename?: string
+          id?: string
+          property_id?: string
+          red_flag_count?: number
+          review_json?: Json | null
+          storage_path?: string
+          summary?: string | null
+          uploaded_by?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_property_legal_packs_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "crm_properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       crm_rent_payments: {
         Row: {
           created_at: string
