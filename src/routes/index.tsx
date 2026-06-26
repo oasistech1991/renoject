@@ -207,7 +207,7 @@ function TeamDashboard() {
   const kpis = [
     { label: "Portfolio value", value: fmtGBP(d.pipelineValue), sub: `${d.propertiesCount} properties`, icon: Building2, to: "/crm" as const },
     { label: "Client capital ready", value: fmtGBP(d.totalClientCapital), sub: `${d.clientsReady} investors`, icon: Wallet, to: "/crm" as const },
-    { label: "Project spend", value: fmtGBP(d.totalSpent), sub: `of ${fmtGBP(d.totalBudget)} budget`, icon: TrendingUp, to: "/portfolio-timeline" as const },
+    { label: "Project spend", value: fmtGBP(d.totalSpent), sub: `of ${fmtGBP(d.totalBudget)} budget`, icon: TrendingUp, to: "/crm" as const },
     { label: "Open tasks", value: String(d.openTasks), sub: d.overdueTasks > 0 ? `${d.overdueTasks} overdue` : "On track", icon: ListChecks, to: "/crm" as const },
   ];
 
