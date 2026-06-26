@@ -234,6 +234,15 @@ function ConstructionTimelinePage() {
           </div>
           <div className="flex items-center gap-2">
             {active && (
+              <ClientPicker
+                scheduleId={active.id}
+                value={active.client_id}
+                onChange={(client_id) =>
+                  setSchedules((xs) => xs.map((s) => (s.id === active.id ? { ...s, client_id } : s)))
+                }
+              />
+            )}
+            {active && (
               <Button variant="outline" size="sm" onClick={saveAsTemplate} disabled={active.is_template}>
                 <Save className="h-4 w-4 mr-1" /> {active.is_template ? "Template" : "Save as template"}
               </Button>
