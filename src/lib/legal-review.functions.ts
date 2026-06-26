@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { UK_PROPERTY_LEGAL_SYSTEM_PROMPT, UK_SOURCE_SITES } from "./legal-review.uk-prompt";
 
 const PdfInput = z.object({
   pdfBase64: z.string().min(1).max(20_000_000),
@@ -26,6 +27,7 @@ const AttachInput = z.object({
   filename: z.string().min(1).max(255),
   review: z.object({
     documentType: z.string(),
+    jurisdiction: z.enum(["england-wales", "scotland", "northern-ireland", "unknown"]).optional(),
     summary: z.string(),
     parties: z.array(z.string()),
     keyTerms: z.array(z.object({ label: z.string(), value: z.string() })),
@@ -35,6 +37,9 @@ const AttachInput = z.object({
         severity: z.enum(["high", "medium", "low"]),
         clause: z.string(),
         concern: z.string(),
+        source: z
+          .object({ title: z.string(), url: z.string().optional() })
+          .optional(),
       })
     ),
     missingClauses: z.array(z.string()),
@@ -90,14 +95,86 @@ function gatewayError(status: number, body: string): Error {
 
 export type LegalReview = {
   documentType: string;
+  jurisdiction?: "england-wales" | "scotland" | "northern-ireland" | "unknown";
   summary: string;
   parties: string[];
   keyTerms: { label: string; value: string }[];
   obligations: { party: string; obligation: string }[];
-  redFlags: { severity: "high" | "medium" | "low"; clause: string; concern: string }[];
+  redFlags: {
+    severity: "high" | "medium" | "low";
+    clause: string;
+    concern: string;
+    source?: { title: string; url?: string };
+  }[];
   missingClauses: string[];
   recommendedQuestions: string[];
 };
+
+async function resolveUkSourceUrl(title: string): Promise<string | null> {
+  const apiKey = process.env.FIRECRAWL_API_KEY;
+  if (!apiKey) return null;
+  const trimmed = title.trim().slice(0, 200);
+  if (!trimmed) return null;
+
+  // Check cache (server-side, via admin client).
+  try {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const cached = await supabaseAdmin
+      .from("legal_source_cache")
+      .select("url")
+      .eq("title", trimmed)
+      .maybeSingle();
+    if (cached.data?.url) return cached.data.url;
+  } catch {
+    // ignore cache failures
+  }
+
+  // Live lookup via Firecrawl search, constrained to UK official sources.
+  try {
+    const Firecrawl = (await import("@mendable/firecrawl-js")).default;
+    const fc = new Firecrawl({ apiKey });
+    const siteFilter = UK_SOURCE_SITES.map((s) => `site:${s}`).join(" OR ");
+    const result = await fc.search(`${trimmed} (${siteFilter})`, {
+      limit: 1,
+    });
+    const first =
+      (result as { web?: Array<{ url?: string }> }).web?.[0]?.url ??
+      (result as { data?: Array<{ url?: string }> }).data?.[0]?.url ??
+      null;
+    if (first) {
+      try {
+        const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+        await supabaseAdmin
+          .from("legal_source_cache")
+          .upsert({ title: trimmed, url: first, fetched_at: new Date().toISOString() });
+      } catch {
+        // ignore cache write failures
+      }
+      return first;
+    }
+  } catch {
+    // Firecrawl errors are non-fatal; review still renders.
+  }
+  return null;
+}
+
+async function enrichRedFlagSources(review: LegalReview): Promise<LegalReview> {
+  const flagsNeedingUrl = review.redFlags
+    .map((f, i) => ({ f, i }))
+    .filter(({ f }) => f.source?.title && !f.source.url)
+    .slice(0, 5);
+  if (flagsNeedingUrl.length === 0) return review;
+
+  const urls = await Promise.all(
+    flagsNeedingUrl.map(({ f }) => resolveUkSourceUrl(f.source!.title))
+  );
+  const updated = review.redFlags.map((f) => ({ ...f }));
+  flagsNeedingUrl.forEach(({ i }, n) => {
+    const url = urls[n];
+    if (url && updated[i].source) updated[i].source = { ...updated[i].source!, url };
+  });
+  return { ...review, redFlags: updated };
+}
 
 export const analyzeLegalPdf = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => PdfInput.parse(data))
@@ -134,8 +211,7 @@ export const analyzeLegalPdf = createServerFn({ method: "POST" })
         messages: [
           {
             role: "system",
-            content:
-              "You are a UK-qualified property solicitor reviewing legal documents (leases, ASTs, JV agreements, loan/bridging contracts, option agreements, sale contracts). Flag risks plainly. Never invent clauses. If a section isn't present, list it under missingClauses. Use plain English.",
+            content: UK_PROPERTY_LEGAL_SYSTEM_PROMPT,
           },
           {
             role: "user",
@@ -153,6 +229,10 @@ export const analyzeLegalPdf = createServerFn({ method: "POST" })
                 additionalProperties: false,
                 properties: {
                   documentType: { type: "string" },
+                  jurisdiction: {
+                    type: "string",
+                    enum: ["england-wales", "scotland", "northern-ireland", "unknown"],
+                  },
                   summary: { type: "string" },
                   parties: { type: "array", items: { type: "string" } },
                   keyTerms: {
@@ -182,8 +262,16 @@ export const analyzeLegalPdf = createServerFn({ method: "POST" })
                         severity: { type: "string", enum: ["high", "medium", "low"] },
                         clause: { type: "string" },
                         concern: { type: "string" },
+                        source: {
+                          type: "object",
+                          additionalProperties: false,
+                          properties: {
+                            title: { type: "string" },
+                          },
+                          required: ["title"],
+                        },
                       },
-                      required: ["severity", "clause", "concern"],
+                      required: ["severity", "clause", "concern", "source"],
                     },
                   },
                   missingClauses: { type: "array", items: { type: "string" } },
@@ -191,6 +279,7 @@ export const analyzeLegalPdf = createServerFn({ method: "POST" })
                 },
                 required: [
                   "documentType",
+                  "jurisdiction",
                   "summary",
                   "parties",
                   "keyTerms",
@@ -215,7 +304,8 @@ export const analyzeLegalPdf = createServerFn({ method: "POST" })
     }
     try {
       const review = JSON.parse(call.function.arguments) as LegalReview;
-      return { documentText, review, warning: null };
+      const enriched = await enrichRedFlagSources(review);
+      return { documentText, review: enriched, warning: null };
     } catch {
       return { documentText, review: null, warning: "Failed to parse AI response." };
     }
