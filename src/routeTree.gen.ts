@@ -32,6 +32,7 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AccountRouteImport } from './routes/account'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as FeedMapRouteImport } from './routes/feed_.map'
+import { Route as ApiChatRouteImport } from './routes/api/chat'
 
 const TradesmenRoute = TradesmenRouteImport.update({
   id: '/tradesmen',
@@ -148,6 +149,11 @@ const FeedMapRoute = FeedMapRouteImport.update({
   path: '/feed/map',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiChatRoute = ApiChatRouteImport.update({
+  id: '/api/chat',
+  path: '/api/chat',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -172,6 +178,7 @@ export interface FileRoutesByFullPath {
   '/terms': typeof TermsRoute
   '/tokenize': typeof TokenizeRoute
   '/tradesmen': typeof TradesmenRoute
+  '/api/chat': typeof ApiChatRoute
   '/feed/map': typeof FeedMapRoute
 }
 export interface FileRoutesByTo {
@@ -197,6 +204,7 @@ export interface FileRoutesByTo {
   '/terms': typeof TermsRoute
   '/tokenize': typeof TokenizeRoute
   '/tradesmen': typeof TradesmenRoute
+  '/api/chat': typeof ApiChatRoute
   '/feed/map': typeof FeedMapRoute
 }
 export interface FileRoutesById {
@@ -223,6 +231,7 @@ export interface FileRoutesById {
   '/terms': typeof TermsRoute
   '/tokenize': typeof TokenizeRoute
   '/tradesmen': typeof TradesmenRoute
+  '/api/chat': typeof ApiChatRoute
   '/feed_/map': typeof FeedMapRoute
 }
 export interface FileRouteTypes {
@@ -250,6 +259,7 @@ export interface FileRouteTypes {
     | '/terms'
     | '/tokenize'
     | '/tradesmen'
+    | '/api/chat'
     | '/feed/map'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -275,6 +285,7 @@ export interface FileRouteTypes {
     | '/terms'
     | '/tokenize'
     | '/tradesmen'
+    | '/api/chat'
     | '/feed/map'
   id:
     | '__root__'
@@ -300,6 +311,7 @@ export interface FileRouteTypes {
     | '/terms'
     | '/tokenize'
     | '/tradesmen'
+    | '/api/chat'
     | '/feed_/map'
   fileRoutesById: FileRoutesById
 }
@@ -326,6 +338,7 @@ export interface RootRouteChildren {
   TermsRoute: typeof TermsRoute
   TokenizeRoute: typeof TokenizeRoute
   TradesmenRoute: typeof TradesmenRoute
+  ApiChatRoute: typeof ApiChatRoute
   FeedMapRoute: typeof FeedMapRoute
 }
 
@@ -492,6 +505,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof FeedMapRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/chat': {
+      id: '/api/chat'
+      path: '/api/chat'
+      fullPath: '/api/chat'
+      preLoaderRoute: typeof ApiChatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -518,6 +538,7 @@ const rootRouteChildren: RootRouteChildren = {
   TermsRoute: TermsRoute,
   TokenizeRoute: TokenizeRoute,
   TradesmenRoute: TradesmenRoute,
+  ApiChatRoute: ApiChatRoute,
   FeedMapRoute: FeedMapRoute,
 }
 export const routeTree = rootRouteImport

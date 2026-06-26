@@ -14,6 +14,7 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Toaster } from "@/components/ui/sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { CopilotFab } from "@/components/copilot/CopilotFab";
 import type { Session } from "@supabase/supabase-js";
 import {
   Loader2,
@@ -262,6 +263,7 @@ function AuthGate() {
         <Outlet />
       </AppShell>
       <Toaster />
+      <CopilotFab />
     </>
   );
 }
