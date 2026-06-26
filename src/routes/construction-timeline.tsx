@@ -682,6 +682,24 @@ function ListView({ phases, tasks, onSelect, onAddTask, palette }: {
 }
 
 // ============ Task drawer ============
+function TaskNameInput({ task, onSave }: { task: Task; onSave: (p: Partial<Task> & { id: string }) => void }) {
+  const [val, setVal] = useState(task.name);
+  const taskIdRef = useRef(task.id);
+  useEffect(() => {
+    if (taskIdRef.current !== task.id) { taskIdRef.current = task.id; setVal(task.name); }
+  }, [task.id, task.name]);
+  const commit = () => { if (val !== task.name) onSave({ id: task.id, name: val }); };
+  return (
+    <Input
+      value={val}
+      onChange={(e) => setVal(e.target.value)}
+      onBlur={commit}
+      onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
+      className="text-base font-semibold"
+    />
+  );
+}
+
 function TaskDrawer({ task, schedule, allTasks, links, onClose, onSave, onDelete }: {
   task: Task | null; schedule: Schedule | null; allTasks: Task[]; links: Link[];
   onClose: () => void; onSave: (p: Partial<Task> & { id: string }) => void;
