@@ -1,6 +1,8 @@
 /// <reference types="google.maps" />
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { zodValidator, fallback } from "@tanstack/zod-adapter";
+import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
 import { useServerFn } from "@tanstack/react-start";
 import { geocodeProperties } from "@/lib/geocode.functions";
@@ -11,6 +13,37 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { MapPin, Loader2, LayoutGrid } from "lucide-react";
 
+const REGIONS = [
+  { key: "nw", label: "North West", prefixes: ["M", "BL", "OL", "SK", "WA", "WN", "PR", "BB", "FY", "LA", "L", "CH", "CW"] },
+  { key: "ne", label: "North East", prefixes: ["NE", "SR", "DH", "DL", "TS"] },
+  { key: "yh", label: "Yorkshire", prefixes: ["LS", "BD", "HX", "HD", "WF", "S", "DN", "HU", "YO", "HG"] },
+  { key: "mid", label: "Midlands", prefixes: ["B", "CV", "DY", "WS", "WV", "DE", "NG", "LE", "NN", "LN", "ST", "TF", "WR", "HR"] },
+  { key: "ldn", label: "London", prefixes: ["E", "EC", "N", "NW", "SE", "SW", "W", "WC"] },
+  { key: "sth", label: "South", prefixes: ["BN", "RH", "TN", "ME", "CT", "PO", "SO", "BH", "DT", "GU", "RG", "OX", "SL", "HP", "MK", "LU", "AL", "SG", "CB", "IP", "NR", "CO", "SS", "RM", "IG", "DA", "BR", "CR", "KT", "SM", "TW", "UB", "HA", "EN", "WD", "BA", "BS", "EX", "PL", "TQ", "TR"] },
+] as const;
+
+type RegionKey = typeof REGIONS[number]["key"];
+
+function regionFor(name: string): RegionKey | null {
+  const m = name.toUpperCase().match(/\b([A-Z]{1,2})\d/);
+  const prefix = m?.[1];
+  if (!prefix) return null;
+  for (const r of REGIONS) if (r.prefixes.includes(prefix as never)) return r.key;
+  return null;
+}
+
+const searchSchema = z.object({
+  q: fallback(z.string(), "").default(""),
+  minPrice: fallback(z.number().optional(), undefined),
+  maxPrice: fallback(z.number().optional(), undefined),
+  minBeds: fallback(z.number().optional(), undefined),
+  minRoi: fallback(z.number().optional(), undefined),
+  minCash: fallback(z.number().optional(), undefined),
+  status: fallback(z.enum(["all", "live", "upcoming", "sold"]), "all").default("all"),
+  types: fallback(z.string().array(), []).default([]),
+  regions: fallback(z.string().array(), []).default([]),
+});
+
 export const Route = createFileRoute("/market")({
   head: () => ({
     meta: [
@@ -18,6 +51,7 @@ export const Route = createFileRoute("/market")({
       { name: "description", content: "Browse Renoject deals by location on an interactive map." },
     ],
   }),
+  validateSearch: zodValidator(searchSchema),
   component: DealLocationPage,
 });
 
@@ -27,10 +61,14 @@ type Deal = {
   name: string;
   dealType: string | null;
   isUpcoming: boolean;
+  isSold: boolean;
   price: number;
   rent: number;
   gdv: number;
   beds: number | null;
+  roi: number | null;
+  cashflow: number | null;
+  region: RegionKey | null;
   lat: number | null;
   lng: number | null;
   cover: string | null;
