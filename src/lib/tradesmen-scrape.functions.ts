@@ -12,6 +12,9 @@ function normaliseTown(input: string): string {
   const map: Record<string, string> = {
     middlesborough: "Middlesbrough",
     middlesbrouogh: "Middlesbrough",
+    middelsborough: "Middlesbrough",
+    middelsbrough: "Middlesbrough",
+    middlesbrough: "Middlesbrough",
     newcaslte: "Newcastle",
     manchster: "Manchester",
     birmingam: "Birmingham",
