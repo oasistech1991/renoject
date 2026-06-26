@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
+import { ScrollText, Download, AlertTriangle } from "lucide-react";
 import {
   type Property, type PropertyStatus, type Project, type Unit, type Tenant,
   PROPERTY_STATUSES, PROPERTY_STATUS_LABEL, PROPERTY_STATUS_COLOR,
@@ -25,6 +26,10 @@ export function PropertyDetailSheet({ propertyId, onClose, onChanged }: {
   const [projects, setProjects] = useState<Project[]>([]);
   const [units, setUnits] = useState<Unit[]>([]);
   const [tenants, setTenants] = useState<Tenant[]>([]);
+  const [legalPacks, setLegalPacks] = useState<Array<{
+    id: string; filename: string; storage_path: string; document_type: string | null;
+    summary: string | null; red_flag_count: number; created_at: string;
+  }>>([]);
 
   const load = async (id: string) => {
     const [pr, pj, u] = await Promise.all([
@@ -40,9 +45,26 @@ export function PropertyDetailSheet({ propertyId, onClose, onChanged }: {
       const { data: t } = await supabase.from("crm_tenants").select("*").in("unit_id", unitIds);
       setTenants((t as Tenant[]) ?? []);
     } else setTenants([]);
+    const { data: lp } = await supabase
+      .from("crm_property_legal_packs")
+      .select("id,filename,storage_path,document_type,summary,red_flag_count,created_at")
+      .eq("property_id", id)
+      .order("created_at", { ascending: false });
+    setLegalPacks((lp as any) ?? []);
   };
 
   useEffect(() => { if (propertyId) load(propertyId); }, [propertyId]);
+
+  const downloadPack = async (path: string, filename: string) => {
+    const { data, error } = await supabase.storage.from("property-media").createSignedUrl(path, 60);
+    if (error || !data) return toast.error(error?.message ?? "Could not get download link");
+    const a = document.createElement("a");
+    a.href = data.signedUrl;
+    a.download = filename;
+    a.target = "_blank";
+    a.rel = "noopener";
+    a.click();
+  };
 
   const save = async (patch: Partial<Property>) => {
     if (!p) return;
@@ -95,6 +117,7 @@ export function PropertyDetailSheet({ propertyId, onClose, onChanged }: {
                 <TabsTrigger value="overview">Overview</TabsTrigger>
                 <TabsTrigger value="project">Project</TabsTrigger>
                 <TabsTrigger value="units">Units & Tenants</TabsTrigger>
+                <TabsTrigger value="legal">Legal</TabsTrigger>
               </TabsList>
 
               <TabsContent value="overview" className="space-y-3">
@@ -160,6 +183,49 @@ export function PropertyDetailSheet({ propertyId, onClose, onChanged }: {
                   );
                 })}
                 {units.length === 0 && <p className="py-6 text-center text-sm text-muted-foreground">No units yet</p>}
+              </TabsContent>
+
+              <TabsContent value="legal" className="space-y-3">
+                {legalPacks.length === 0 ? (
+                  <p className="py-6 text-center text-sm text-muted-foreground">
+                    No legal packs attached. Upload one from the Legal Review page and choose this property.
+                  </p>
+                ) : (
+                  legalPacks.map((lp) => (
+                    <Card key={lp.id} className="p-3">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <p className="flex items-center gap-2 font-medium">
+                            <ScrollText className="h-4 w-4 shrink-0 text-orange-500" />
+                            <span className="truncate">{lp.filename}</span>
+                          </p>
+                          <p className="mt-0.5 text-xs text-muted-foreground">
+                            {lp.document_type ?? "Legal document"} ·{" "}
+                            {new Date(lp.created_at).toLocaleDateString()}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          {lp.red_flag_count > 0 && (
+                            <Badge variant="outline" className="border-amber-500/40 text-amber-500">
+                              <AlertTriangle className="mr-1 h-3 w-3" />
+                              {lp.red_flag_count}
+                            </Badge>
+                          )}
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => downloadPack(lp.storage_path, lp.filename)}
+                          >
+                            <Download className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                      </div>
+                      {lp.summary && (
+                        <p className="mt-2 line-clamp-3 text-xs text-muted-foreground">{lp.summary}</p>
+                      )}
+                    </Card>
+                  ))
+                )}
               </TabsContent>
             </Tabs>
           </>

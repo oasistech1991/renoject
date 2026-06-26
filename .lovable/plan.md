@@ -1,74 +1,34 @@
 ## Goal
+On the Legal Review page, let the user attach the uploaded PDF + AI review to one of their CRM properties (when any exist), so the legal pack lives against the property record.
 
-Add a new **Construction Timeline** tool under the sidebar's "Tools" section, modelled on Build4Cast's construction scheduling software. It lets you plan a build per property: phases → tasks, durations, dependencies, milestones, working calendars, multiple views (Gantt / weekly / calendar / list), templates, colour-coded trades, and links into existing project data (properties, refurb costs, tradesmen, documents).
+## UX
+After a review completes on `/legal`, show an "Attach to property" card next to the report:
+- Searchable Select listing `crm_properties` (address + status).
+- If no properties exist: card hidden, replaced by a subtle hint "Add a property in CRM to attach legal packs".
+- "Attach" button uploads the PDF to storage and writes a row linking it to the property + review summary.
+- After success: badge "Attached to {address}" + link to open the property in CRM.
 
-## What gets built
+In `PropertyDetail.tsx`, add a new **Legal** tab listing attached packs (filename, doc type, red-flag count, date, download link).
 
-### 1. New route `/construction-timeline` (admin/team only, under `_authenticated` semantics)
-A single page with a left sidebar listing schedules, a top toolbar, and a main canvas that swaps between four views.
+## Data
+New table `crm_property_legal_packs`:
+- `property_id` → `crm_properties.id` (cascade)
+- `uploaded_by` → `auth.users.id`
+- `filename`, `storage_path`
+- `document_type`, `summary` (text)
+- `red_flag_count` (int), `review_json` (jsonb) — full `LegalReview`
 
-### 2. Database (new tables, RLS + GRANTs in one migration)
+RLS: owner (`uploaded_by = auth.uid()`) or admin. Standard GRANTs.
 
-- `construction_schedules` — one schedule per build
-  - `id`, `user_id`, `property_id` (nullable, FK `crm_properties` or `properties`), `name`, `planned_start`, `planned_finish`, `working_days` (int[] for Mon–Sun), `non_working_dates` (date[]), `colour_palette` (jsonb of trade→hex), `template_of_id` (self-FK, nullable), `created_at`, `updated_at`.
-- `construction_phases` — ordered phases within a schedule
-  - `id`, `schedule_id`, `name`, `position`, `colour`.
-- `construction_tasks` — tasks under phases
-  - `id`, `schedule_id`, `phase_id`, `name`, `trade` (text), `assignee_tradesman_id` (FK `tradesmen`, nullable), `planned_start`, `planned_finish`, `duration_days`, `actual_start`, `actual_finish`, `percent_complete`, `is_milestone` (bool), `priority` (`low|normal|high|critical`), `notes`, `position`.
-- `construction_task_links` — dependencies between tasks
-  - `id`, `from_task_id`, `to_task_id`, `link_type` (`FS|SS|FF|SF` — default FS), `lag_days`.
-- `construction_daily_logs` — site diary entries linked to a schedule/task
-  - `id`, `schedule_id`, `task_id` (nullable), `log_date`, `weather`, `crew_count`, `hours_worked`, `notes`, `delay_reason` (nullable).
-- `construction_attachments` — files & RFIs against a task
-  - `id`, `task_id`, `kind` (`document|drawing|rfi|approval`), `title`, `url`, `status` (`open|approved|rejected|answered`), `created_at`.
+Storage: reuse existing `property-media` bucket under path `legal/{property_id}/{uuid}-{filename}`. Add a storage policy allowing authenticated upload/read scoped to that prefix (or rely on existing bucket policies if already permissive for authenticated users — verify in implementation).
 
-All tables: enable RLS, restrict to admins via `has_role`, plus owner (`user_id = auth.uid()`) for `construction_schedules`. Cascade deletes. GRANTs for `authenticated` + `service_role`.
+## Code changes
+1. **Migration** — create `crm_property_legal_packs` + policies + grants; add storage policy if needed.
+2. **`src/lib/legal-review.functions.ts`** — add `attachLegalPackToProperty` server fn (`requireSupabaseAuth`): accepts `{ propertyId, pdfBase64, filename, review }`, uploads to storage via admin client, inserts row.
+3. **`src/routes/legal.tsx`** — after review, fetch user's properties (browser supabase client); render `AttachToPropertyCard`; on submit call new server fn. Keep PDF bytes in state so we can re-upload.
+4. **`src/components/crm/property/PropertyDetail.tsx`** — add `Legal` tab that queries `crm_property_legal_packs` for `propertyId`, lists packs with signed-URL download.
+5. **`src/components/crm/property/types.ts`** — add `LegalPack` type.
 
-### 3. Sidebar entry
-Add `{ to: "/construction-timeline", label: "Construction Timeline", icon: HardHat }` to `TOOL_ITEMS` in `src/routes/__root.tsx`, slotted right after Portfolio Timeline.
-
-### 4. UI modules (each maps to a Build4Cast feature)
-
-| Build4Cast feature | Built as |
-|---|---|
-| Project Setup | "New schedule" dialog: name, property link, planned start/finish, working days, non-working dates |
-| Viewing Options | View toggle: **Gantt** / **Weekly planner** / **Calendar** / **Phase & task list** |
-| Task Management | Inline task table per phase; click row → right-side drawer to edit dates, duration, assignee, trade, notes, % complete |
-| Group Tasks | Drag-and-drop tasks into phases; collapsible phase headers |
-| Link Tasks | "+ Add dependency" inside the task drawer; predecessor picker, FS/SS/FF/SF + lag days; Gantt bars draw arrows; bar drag respects predecessors |
-| Reusable Templates | "Save as template" / "Create from template" actions on a schedule; templated schedules clone phases, tasks, durations (no dates) |
-| Shared Timelines | Realtime via Supabase channel on `construction_*` tables so two admins watching the same schedule see live edits |
-| Integrated Tools | Task drawer has tabs: **Details**, **Daily logs**, **Attachments/RFIs**; "Link to property" pulls refurb cost from the existing deal; "Assign tradesman" picks from the existing `tradesmen` table |
-| Spot risks / colours | Trade colour palette in schedule settings; bars coloured by trade; high/critical tasks get a red border; overlap detection highlights clashes |
-| Progress tracking | Each task has planned vs actual dates + % complete; top KPI strip shows on-time %, days slipped, tasks at risk |
-| Milestones | `is_milestone` tasks render as diamond markers on the Gantt |
-
-### 5. Gantt view (the hero view)
-- Built with existing project libs (no new chart dep): a CSS-grid timeline where the X axis is days (zoomable: day / week / month buttons), rows are tasks grouped under phase headers.
-- Bars are absolutely-positioned divs sized by `(duration_days × cellWidth)`; draggable on X to shift dates; resizable on the right edge to change duration; both write back to Supabase.
-- Dependency arrows drawn with an SVG overlay between bar edges.
-- "Today" vertical guideline; non-working days shaded.
-
-### 6. Lifecycle strip (top of page)
-Five-step strip mirroring Build4Cast's "Planning → Pre-Construction → Live → Progress → Completion" with a button on each step that filters the task list to relevant phases.
-
-### 7. Property linkage
-- New schedule dialog can pre-populate phases from a starter template ("Cosmetic refurb", "Full BRRR refurb", "HMO conversion") so users get going in one click.
-- If linked to a `crm_properties` row, the schedule shows the property address in the header and a "Open in CRM" link.
-
-### 8. SEO + metadata
-`head()` block on the route with route-specific title/description ("Construction Timeline — Renoject"), no og:image at root.
-
-## Technical Notes (not user-facing)
-
-- All queries through the browser Supabase client; mutations rely on RLS. No server functions needed for v1.
-- Drag-and-drop with `@dnd-kit/core` (already in repo if present; else add).
-- Date math with `date-fns` (already used elsewhere).
-- Realtime: one channel per `schedule_id` subscribing to insert/update/delete on the three child tables, then refetch.
-- Build incrementally: ship list + Gantt + task drawer + templates first; Daily Logs/Attachments and FS/SS/FF/SF advanced link types in the same PR but behind simple UI.
-
-## Out of scope (can come later)
-
-- Mobile field app, push notifications.
-- Auto-rescheduling on dependency change (v1 just warns).
-- Bid/proposal/estimation modules from Build4Cast — separate tools, not in this plan.
+## Out of scope
+- Re-running review from the property page (user uploads on `/legal` first).
+- Sharing packs with clients in the feed.

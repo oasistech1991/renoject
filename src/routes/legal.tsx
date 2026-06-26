@@ -6,11 +6,14 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Loader2, Upload, ScrollText, AlertTriangle, Send, FileWarning } from "lucide-react";
+import { Loader2, Upload, ScrollText, AlertTriangle, Send, FileWarning, Paperclip, Check } from "lucide-react";
 import {
   analyzeLegalPdf,
   chatWithLegalDoc,
+  attachLegalPackToProperty,
   type LegalReview,
 } from "@/lib/legal-review.functions";
 
@@ -52,19 +55,40 @@ type ChatMsg = { role: "user" | "assistant"; content: string };
 function LegalPage() {
   const analyze = useServerFn(analyzeLegalPdf);
   const chat = useServerFn(chatWithLegalDoc);
+  const attach = useServerFn(attachLegalPackToProperty);
   const [loading, setLoading] = useState(false);
   const [filename, setFilename] = useState<string | null>(null);
+  const [pdfBase64, setPdfBase64] = useState<string>("");
   const [docText, setDocText] = useState<string>("");
   const [review, setReview] = useState<LegalReview | null>(null);
   const [messages, setMessages] = useState<ChatMsg[]>([]);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
+  const [properties, setProperties] = useState<{ id: string; address: string; status: string }[]>([]);
+  const [selectedProperty, setSelectedProperty] = useState<string>("");
+  const [attaching, setAttaching] = useState(false);
+  const [attachedTo, setAttachedTo] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const chatBottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     chatBottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const { data: sess } = await supabase.auth.getSession();
+      if (!sess.session) return;
+      const { data } = await supabase
+        .from("crm_properties")
+        .select("id,address,status")
+        .order("created_at", { ascending: false })
+        .limit(200);
+      if (!cancelled && data) setProperties(data as any);
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   const onFile = async (file: File) => {
     if (file.type !== "application/pdf") {
@@ -79,13 +103,15 @@ function LegalPage() {
     setFilename(file.name);
     setReview(null);
     setMessages([]);
+    setAttachedTo(null);
     try {
       const buf = await file.arrayBuffer();
       const bytes = new Uint8Array(buf);
       let binary = "";
       for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i]);
-      const pdfBase64 = btoa(binary);
-      const result = await analyze({ data: { pdfBase64, filename: file.name } });
+      const b64 = btoa(binary);
+      setPdfBase64(b64);
+      const result = await analyze({ data: { pdfBase64: b64, filename: file.name } });
       setDocText(result.documentText);
       setReview(result.review);
       if (result.warning) toast.warning(result.warning);
@@ -94,6 +120,23 @@ function LegalPage() {
       toast.error(e?.message ?? "Failed to review document");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const onAttach = async () => {
+    if (!selectedProperty || !review || !pdfBase64 || !filename) return;
+    setAttaching(true);
+    try {
+      await attach({
+        data: { propertyId: selectedProperty, pdfBase64, filename, review },
+      });
+      const addr = properties.find((p) => p.id === selectedProperty)?.address ?? "property";
+      setAttachedTo(addr);
+      toast.success(`Attached to ${addr}`);
+    } catch (e: any) {
+      toast.error(e?.message ?? "Failed to attach");
+    } finally {
+      setAttaching(false);
     }
   };
 
@@ -156,6 +199,40 @@ function LegalPage() {
       {review && (
         <div className="grid gap-6 lg:grid-cols-5">
           <div className="space-y-4 lg:col-span-3">
+            <Card className="p-4">
+              <div className="flex items-center gap-2">
+                <Paperclip className="h-4 w-4 text-orange-500" />
+                <h3 className="font-semibold">Attach to a property</h3>
+              </div>
+              {properties.length === 0 ? (
+                <p className="mt-2 text-sm text-muted-foreground">
+                  Add a property in CRM to attach legal packs.
+                </p>
+              ) : attachedTo ? (
+                <p className="mt-2 flex items-center gap-2 text-sm text-emerald-500">
+                  <Check className="h-4 w-4" /> Attached to {attachedTo}
+                </p>
+              ) : (
+                <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+                  <Select value={selectedProperty} onValueChange={setSelectedProperty}>
+                    <SelectTrigger className="sm:flex-1">
+                      <SelectValue placeholder="Choose a property…" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {properties.map((p) => (
+                        <SelectItem key={p.id} value={p.id}>
+                          {p.address}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Button onClick={onAttach} disabled={!selectedProperty || attaching}>
+                    {attaching ? <Loader2 className="h-4 w-4 animate-spin" /> : "Attach pack"}
+                  </Button>
+                </div>
+              )}
+            </Card>
+
             <Card className="p-5">
               <div className="flex items-center justify-between gap-2">
                 <h2 className="text-lg font-semibold">{review.documentType}</h2>

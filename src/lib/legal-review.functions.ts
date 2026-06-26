@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 const PdfInput = z.object({
   pdfBase64: z.string().min(1).max(20_000_000),
@@ -17,6 +18,28 @@ const ChatInput = z.object({
     )
     .min(1)
     .max(40),
+});
+
+const AttachInput = z.object({
+  propertyId: z.string().uuid(),
+  pdfBase64: z.string().min(1).max(20_000_000),
+  filename: z.string().min(1).max(255),
+  review: z.object({
+    documentType: z.string(),
+    summary: z.string(),
+    parties: z.array(z.string()),
+    keyTerms: z.array(z.object({ label: z.string(), value: z.string() })),
+    obligations: z.array(z.object({ party: z.string(), obligation: z.string() })),
+    redFlags: z.array(
+      z.object({
+        severity: z.enum(["high", "medium", "low"]),
+        clause: z.string(),
+        concern: z.string(),
+      })
+    ),
+    missingClauses: z.array(z.string()),
+    recommendedQuestions: z.array(z.string()),
+  }),
 });
 
 async function extractPdfText(pdfBase64: string): Promise<string> {
@@ -182,4 +205,37 @@ export const chatWithLegalDoc = createServerFn({ method: "POST" })
       throw new Error("AI returned no reply.");
     }
     return { reply };
+  });
+
+export const attachLegalPackToProperty = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: unknown) => AttachInput.parse(data))
+  .handler(async ({ data, context }): Promise<{ id: string; storagePath: string }> => {
+    const { userId } = context;
+    const bytes = Uint8Array.from(atob(data.pdfBase64), (c) => c.charCodeAt(0));
+    const safeName = data.filename.replace(/[^a-zA-Z0-9._-]/g, "_").slice(0, 120);
+    const path = `legal/${data.propertyId}/${crypto.randomUUID()}-${safeName}`;
+
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const upload = await supabaseAdmin.storage
+      .from("property-media")
+      .upload(path, bytes, { contentType: "application/pdf", upsert: false });
+    if (upload.error) throw new Error(upload.error.message);
+
+    const { data: row, error } = await context.supabase
+      .from("crm_property_legal_packs")
+      .insert({
+        property_id: data.propertyId,
+        uploaded_by: userId,
+        filename: data.filename,
+        storage_path: path,
+        document_type: data.review.documentType,
+        summary: data.review.summary,
+        red_flag_count: data.review.redFlags.length,
+        review_json: data.review,
+      })
+      .select("id")
+      .single();
+    if (error) throw new Error(error.message);
+    return { id: row.id, storagePath: path };
   });
