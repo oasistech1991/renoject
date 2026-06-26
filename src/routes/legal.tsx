@@ -9,7 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Loader2, Upload, ScrollText, AlertTriangle, Send, FileWarning, Paperclip, Check } from "lucide-react";
+import { Loader2, Upload, ScrollText, AlertTriangle, Send, FileWarning, Paperclip, Check, ExternalLink } from "lucide-react";
 import {
   analyzeLegalPdf,
   chatWithLegalDoc,
@@ -204,9 +204,12 @@ function LegalPage() {
         <div className="flex items-center gap-2">
           <ScrollText className="h-6 w-6 text-orange-500" />
           <h1 className="text-2xl font-bold">Legal Document Review</h1>
+          <Badge variant="outline" className="ml-1 border-orange-500/40 text-orange-500">
+            UK Property v2
+          </Badge>
         </div>
         <p className="text-sm text-muted-foreground">
-          Upload a PDF (lease, AST, JV, bridging or sale contract). Get a risk report plus chat with the document.
+          Upload a PDF (lease, AST, auction pack, JV, bridging or sale contract). Reviewed against UK property law with citations to legislation.gov.uk and GOV.UK.
         </p>
       </header>
 
@@ -296,7 +299,20 @@ function LegalPage() {
             <Card className="p-5">
               <div className="flex items-center justify-between gap-2">
                 <h2 className="text-lg font-semibold">{review.documentType}</h2>
-                <Badge variant="outline">{review.parties.length} parties</Badge>
+                <div className="flex items-center gap-1.5">
+                  {review.jurisdiction && (
+                    <Badge variant="outline" className="border-orange-500/40 text-orange-500">
+                      {review.jurisdiction === "england-wales"
+                        ? "England & Wales"
+                        : review.jurisdiction === "scotland"
+                          ? "Scotland"
+                          : review.jurisdiction === "northern-ireland"
+                            ? "Northern Ireland"
+                            : "Jurisdiction unclear"}
+                    </Badge>
+                  )}
+                  <Badge variant="outline">{review.parties.length} parties</Badge>
+                </div>
               </div>
               <p className="mt-2 text-sm text-muted-foreground">{review.summary}</p>
               {review.parties.length > 0 && (
@@ -347,6 +363,23 @@ function LegalPage() {
                         </Badge>
                       </div>
                       <p className="mt-1 text-sm text-muted-foreground">{f.concern}</p>
+                      {f.source?.title && (
+                        <div className="mt-2 text-xs">
+                          {f.source.url ? (
+                            <a
+                              href={f.source.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1 text-orange-500 hover:underline"
+                            >
+                              <ExternalLink className="h-3 w-3" />
+                              {f.source.title}
+                            </a>
+                          ) : (
+                            <span className="text-muted-foreground">Source: {f.source.title}</span>
+                          )}
+                        </div>
+                      )}
                     </li>
                   ))}
                 </ul>
@@ -375,6 +408,10 @@ function LegalPage() {
                 </ul>
               </Card>
             )}
+
+            <p className="text-xs text-muted-foreground">
+              Draft for solicitor review — not legal advice. UK-qualified solicitor must verify any clause, citation, or risk before reliance.
+            </p>
           </div>
 
           <div className="lg:col-span-2">
