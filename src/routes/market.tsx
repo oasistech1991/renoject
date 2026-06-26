@@ -1,232 +1,321 @@
 /// <reference types="google.maps" />
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
-import {
-  MOCK_LISTINGS,
-  applyFilters,
-  fmtGBP,
-  fmtPct,
-  type Condition,
-  type Listing,
-  type ListingType,
-  type MarketFilters,
-  type PropertyType,
-  type InvestorMetrics,
-} from "@/lib/market-listings";
+import { supabase } from "@/integrations/supabase/client";
+import { useServerFn } from "@tanstack/react-start";
+import { geocodeProperties } from "@/lib/geocode.functions";
+import { fmtGBP } from "@/lib/btl";
+import { DEAL_TYPES, dealTypeMeta, type DealTypeKey } from "@/lib/feed";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { Textarea } from "@/components/ui/textarea";
-import { BarChart, Bar, XAxis, YAxis, Tooltip as RTooltip, ResponsiveContainer, ScatterChart, Scatter, ZAxis, CartesianGrid } from "recharts";
-import { supabase } from "@/integrations/supabase/client";
-import { toast } from "sonner";
+import { MapPin, Loader2, LayoutGrid } from "lucide-react";
+
 export const Route = createFileRoute("/market")({
   head: () => ({
     meta: [
-      { title: "Market Search — RENOJECT" },
-      { name: "description", content: "Search the UK property market with investor-grade filters: yield, BMV, HMO potential, auctions and refurb signals." },
-      { property: "og:url", content: "https://renojectholdings.com/market" },
-    ],
-    links: [
-      { rel: "canonical", href: "https://renojectholdings.com/market" },
+      { title: "Deal locations — Renoject" },
+      { name: "description", content: "Browse Renoject deals by location on an interactive map." },
     ],
   }),
-  component: MarketPage,
+  component: DealLocationPage,
 });
 
-type Row = Listing & { m: InvestorMetrics };
+type Deal = {
+  postId: string;
+  propertyId: string;
+  name: string;
+  dealType: string | null;
+  isUpcoming: boolean;
+  price: number;
+  rent: number;
+  gdv: number;
+  beds: number | null;
+  lat: number | null;
+  lng: number | null;
+  cover: string | null;
+};
 
-const DEFAULT_FILTERS: MarketFilters = { article4: "any" };
+declare global { interface Window { __renojectMarketInit?: () => void } }
+let mapsLoader: Promise<typeof google.maps> | null = null;
+function loadGoogleMaps(): Promise<typeof google.maps> {
+  if (typeof window === "undefined") return Promise.reject(new Error("ssr"));
+  if ((window as any).google?.maps) return Promise.resolve((window as any).google.maps);
+  if (mapsLoader) return mapsLoader;
+  mapsLoader = new Promise((resolve, reject) => {
+    const key = import.meta.env.VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_BROWSER_KEY;
+    const channel = import.meta.env.VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_TRACKING_ID;
+    if (!key) return reject(new Error("Missing Google Maps browser key"));
+    window.__renojectMarketInit = () => resolve((window as any).google.maps);
+    const s = document.createElement("script");
+    s.src = `https://maps.googleapis.com/maps/api/js?key=${key}&loading=async&callback=__renojectMarketInit${channel ? `&channel=${channel}` : ""}`;
+    s.async = true; s.defer = true;
+    s.onerror = () => reject(new Error("Failed to load Google Maps"));
+    document.head.appendChild(s);
+  });
+  return mapsLoader;
+}
 
-function MarketPage() {
-  const [filters, setFilters] = useState<MarketFilters>(DEFAULT_FILTERS);
+type Status = "all" | "live" | "upcoming";
+
+function DealLocationPage() {
+  const [deals, setDeals] = useState<Deal[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [query, setQuery] = useState("");
+  const [minPrice, setMinPrice] = useState<number | undefined>();
+  const [maxPrice, setMaxPrice] = useState<number | undefined>();
+  const [minBeds, setMinBeds] = useState<number | undefined>();
+  const [status, setStatus] = useState<Status>("all");
+  const [types, setTypes] = useState<Set<DealTypeKey>>(new Set());
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [watchlist, setWatchlist] = useState<Set<string>>(new Set());
-  const [reviewFor, setReviewFor] = useState<Row | null>(null);
+  const geocode = useServerFn(geocodeProperties);
+  const mapEl = useRef<HTMLDivElement | null>(null);
+  const mapInst = useRef<google.maps.Map | null>(null);
+  const markersRef = useRef<Map<string, google.maps.Marker>>(new Map());
 
-  const rows = useMemo(() => applyFilters(MOCK_LISTINGS, filters), [filters]);
-  const selected = rows.find((r) => r.id === selectedId) ?? null;
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const { data: posts, error: e1 } = await supabase
+          .from("feed_posts")
+          .select("id, property_id, deal_type, is_upcoming, cover_url")
+          .eq("is_published", true)
+          .order("created_at", { ascending: false })
+          .limit(200);
+        if (e1) throw e1;
+        const ids = Array.from(new Set((posts ?? []).map((p) => p.property_id))).filter(Boolean);
+        if (!ids.length) { setLoading(false); return; }
+        let { data: props, error: e2 } = await supabase
+          .from("properties").select("id, name, inputs, lat, lng").in("id", ids);
+        if (e2) throw e2;
+        const missingIds = (props ?? []).filter((p) => p.lat == null || p.lng == null).map((p) => p.id);
+        if (missingIds.length) {
+          try {
+            for (let i = 0; i < missingIds.length; i += 20) {
+              await geocode({ data: { propertyIds: missingIds.slice(i, i + 20) } });
+            }
+            const r = await supabase.from("properties").select("id, name, inputs, lat, lng").in("id", ids);
+            if (!r.error) props = r.data;
+          } catch (err) { console.warn("Geocode failed", err); }
+        }
+        const map = new Map((props ?? []).map((p) => [p.id, p] as const));
+        const next: Deal[] = [];
+        for (const post of posts ?? []) {
+          const prop = map.get(post.property_id);
+          if (!prop) continue;
+          const inputs = (prop.inputs ?? {}) as Record<string, any>;
+          next.push({
+            postId: post.id,
+            propertyId: prop.id,
+            name: prop.name,
+            dealType: post.deal_type ?? null,
+            isUpcoming: !!post.is_upcoming,
+            price: Number(inputs.purchasePrice ?? 0),
+            rent: Number(inputs.monthlyRent ?? 0),
+            gdv: Number(inputs.gdv ?? 0),
+            beds: inputs.beds != null ? Number(inputs.beds) : (inputs.rooms != null ? Number(inputs.rooms) : null),
+            lat: prop.lat as number | null,
+            lng: prop.lng as number | null,
+            cover: post.cover_url ?? null,
+          });
+        }
+        if (!cancelled) setDeals(next);
+      } catch (err: any) {
+        if (!cancelled) setError(err?.message ?? "Failed to load deals");
+      } finally { if (!cancelled) setLoading(false); }
+    })();
+    return () => { cancelled = true; };
+  }, [geocode]);
 
-  const stats = useMemo(() => {
-    if (rows.length === 0) return { count: 0, avgYield: 0, avgBmv: 0, underGuide: 0 };
-    const avgYield = rows.reduce((a, r) => a + r.m.grossYieldHmo, 0) / rows.length;
-    const avgBmv = rows.reduce((a, r) => a + r.m.bmvPct, 0) / rows.length;
-    const underGuide = rows.filter((r) => r.listingType === "auction" && r.guidePrice && r.guidePrice < r.price * 0.85).length;
-    return { count: rows.length, avgYield, avgBmv, underGuide };
-  }, [rows]);
-
-  const set = <K extends keyof MarketFilters>(k: K, v: MarketFilters[K]) =>
-    setFilters((p) => ({ ...p, [k]: v }));
-
-  const toggleWatch = (id: string) => {
-    setWatchlist((p) => {
-      const next = new Set(p);
-      next.has(id) ? next.delete(id) : next.add(id);
-      return next;
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return deals.filter((d) => {
+      if (q && !d.name.toLowerCase().includes(q)) return false;
+      if (minPrice != null && d.price < minPrice) return false;
+      if (maxPrice != null && d.price > maxPrice) return false;
+      if (minBeds != null && (d.beds == null || d.beds < minBeds)) return false;
+      if (status === "live" && d.isUpcoming) return false;
+      if (status === "upcoming" && !d.isUpcoming) return false;
+      if (types.size > 0 && !types.has((d.dealType ?? "other") as DealTypeKey)) return false;
+      return true;
     });
+  }, [deals, query, minPrice, maxPrice, minBeds, status, types]);
+
+  const mappable = useMemo(() => filtered.filter((d) => d.lat != null && d.lng != null), [filtered]);
+
+  // Init map
+  useEffect(() => {
+    if (!mapEl.current || mapInst.current) return;
+    loadGoogleMaps().then((maps) => {
+      if (!mapEl.current) return;
+      mapInst.current = new maps.Map(mapEl.current, {
+        center: { lat: 53.2, lng: -2.0 }, zoom: 6,
+        mapTypeControl: false, streetViewControl: false, fullscreenControl: false,
+      });
+    }).catch((e) => setError(e?.message ?? "Map failed to load"));
+  }, []);
+
+  // Sync markers
+  useEffect(() => {
+    const map = mapInst.current;
+    if (!map || typeof google === "undefined") return;
+    const next = new Map<string, google.maps.Marker>();
+    const bounds = new google.maps.LatLngBounds();
+    for (const d of mappable) {
+      const meta = dealTypeMeta(d.dealType);
+      const existing = markersRef.current.get(d.postId);
+      const marker = existing ?? new google.maps.Marker({
+        position: { lat: d.lat!, lng: d.lng! }, map, title: d.name,
+      });
+      const isActive = d.postId === selectedId;
+      marker.setIcon({
+        path: google.maps.SymbolPath.CIRCLE, scale: isActive ? 11 : 8,
+        fillColor: meta.color, fillOpacity: 0.95,
+        strokeColor: isActive ? "#ffffff" : "#111", strokeWeight: 2,
+      });
+      if (!existing) marker.addListener("click", () => setSelectedId(d.postId));
+      next.set(d.postId, marker);
+      bounds.extend({ lat: d.lat!, lng: d.lng! });
+    }
+    for (const [id, m] of markersRef.current) if (!next.has(id)) m.setMap(null);
+    markersRef.current = next;
+    if (mappable.length > 0 && !selectedId) map.fitBounds(bounds, 64);
+    else if (selectedId) {
+      const sel = mappable.find((d) => d.postId === selectedId);
+      if (sel) map.panTo({ lat: sel.lat!, lng: sel.lng! });
+    }
+  }, [mappable, selectedId]);
+
+  const toggleType = (k: DealTypeKey) => {
+    setTypes((p) => { const n = new Set(p); n.has(k) ? n.delete(k) : n.add(k); return n; });
   };
 
-  const saveAsDeal = async (r: Row) => {
-    try {
-      await supabase.from("properties").insert({
-        name: `${r.address}, ${r.postcode}`,
-        source: "market-search",
-        inputs: { listingId: r.id, postcode: r.postcode, price: r.price, beds: r.beds, sqft: r.sqft, rooms: r.hmoRoomsPotential },
-        metrics: r.m,
-      } as never);
-      toast.success("Saved to Deals");
-    } catch (e) {
-      toast.error("Couldn't save deal");
-    }
+  const reset = () => {
+    setQuery(""); setMinPrice(undefined); setMaxPrice(undefined);
+    setMinBeds(undefined); setStatus("all"); setTypes(new Set());
   };
 
   return (
     <div className="min-h-[calc(100vh-49px)] bg-background">
-      <FilterBar filters={filters} set={set} reset={() => setFilters(DEFAULT_FILTERS)} stats={stats} />
+      <div className="sticky top-0 z-10 border-b border-border bg-card/95 backdrop-blur">
+        <div className="mx-auto max-w-[1600px] px-4 py-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <Input
+              placeholder="Search deal name, town or postcode…"
+              className="h-9 w-72"
+              value={query} onChange={(e) => setQuery(e.target.value)}
+            />
+            <NumInput placeholder="Min £" value={minPrice} onChange={setMinPrice} />
+            <NumInput placeholder="Max £" value={maxPrice} onChange={setMaxPrice} />
+            <NumInput placeholder="Min beds" value={minBeds} onChange={setMinBeds} className="w-24" />
 
-      <div className="mx-auto grid max-w-[1600px] gap-4 px-4 py-4 lg:grid-cols-[1fr_460px]">
-        {/* Map placeholder */}
-        <div className="relative hidden h-[calc(100vh-260px)] overflow-hidden rounded-xl border border-border bg-card lg:block">
-          <MapPlaceholder rows={rows} selectedId={selectedId} onPick={setSelectedId} />
-        </div>
-
-        {/* List */}
-        <div className="h-[calc(100vh-260px)] overflow-y-auto rounded-xl border border-border bg-card p-3">
-          {rows.length === 0 && (
-            <p className="px-3 py-12 text-center text-sm text-muted-foreground">No listings match your filters.</p>
-          )}
-          <div className="space-y-3">
-            {rows.map((r) => (
-              <ListingCard
-                key={r.id}
-                row={r}
-                onOpen={() => setSelectedId(r.id)}
-                onWatch={() => toggleWatch(r.id)}
-                onSave={() => saveAsDeal(r)}
-                onExpert={() => setReviewFor(r)}
-                watched={watchlist.has(r.id)}
-              />
+            <Sep />
+            <span className="text-xs text-muted-foreground">Status:</span>
+            {(["all", "live", "upcoming"] as Status[]).map((s) => (
+              <Chip key={s} active={status === s} onClick={() => setStatus(s)}>{s}</Chip>
             ))}
+
+            <Sep />
+            <span className="text-xs text-muted-foreground">Deal type:</span>
+            {DEAL_TYPES.map((t) => (
+              <Chip key={t.key} active={types.has(t.key)} onClick={() => toggleType(t.key)}>
+                <span className="mr-1 inline-block h-2 w-2 rounded-full align-middle" style={{ backgroundColor: t.color }} />
+                {t.label}
+              </Chip>
+            ))}
+
+            <div className="ml-auto flex items-center gap-3 text-xs">
+              <span className="text-muted-foreground">
+                <b className="text-foreground">{filtered.length}</b> deal{filtered.length === 1 ? "" : "s"} · <b className="text-foreground">{mappable.length}</b> on map
+              </span>
+              <Link to="/feed"><Button size="sm" variant="outline" className="gap-1.5"><LayoutGrid className="h-3.5 w-3.5" /> Feed</Button></Link>
+              <Button size="sm" variant="outline" onClick={reset}>Reset</Button>
+            </div>
           </div>
         </div>
       </div>
 
-      <AnalyticsStrip rows={rows} />
+      {error && (
+        <div className="border-b border-destructive/40 bg-destructive/10 px-4 py-2 text-sm text-destructive">{error}</div>
+      )}
 
-      <Sheet open={!!selected} onOpenChange={(o) => !o && setSelectedId(null)}>
-        <SheetContent className="w-full overflow-y-auto sm:max-w-xl">
-          {selected && (
-            <DetailPanel
-              row={selected}
-              watched={watchlist.has(selected.id)}
-              onWatch={() => toggleWatch(selected.id)}
-              onSave={() => saveAsDeal(selected)}
-              onExpert={() => setReviewFor(selected)}
-            />
+      <div className="mx-auto grid max-w-[1600px] gap-4 px-4 py-4 lg:grid-cols-[1fr_440px]">
+        <div className="relative hidden h-[calc(100vh-220px)] overflow-hidden rounded-xl border border-border bg-card lg:block">
+          <div ref={mapEl} className="absolute inset-0" />
+          {loading && (
+            <div className="absolute inset-0 flex items-center justify-center bg-background/70 text-sm text-muted-foreground">
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading deals…
+            </div>
           )}
-        </SheetContent>
-      </Sheet>
+          {!loading && !mappable.length && (
+            <div className="absolute inset-0 flex items-center justify-center px-6 text-center text-sm text-muted-foreground">
+              No deals match these filters. Try resetting or check published deals on the feed.
+            </div>
+          )}
+        </div>
 
-      <ExpertReviewDialog row={reviewFor} onClose={() => setReviewFor(null)} />
+        <div className="h-[calc(100vh-220px)] overflow-y-auto rounded-xl border border-border bg-card p-3">
+          {loading ? (
+            <p className="py-12 text-center text-sm text-muted-foreground">Loading…</p>
+          ) : filtered.length === 0 ? (
+            <p className="py-12 text-center text-sm text-muted-foreground">No deals match your filters.</p>
+          ) : (
+            <div className="space-y-2">
+              {filtered.map((d) => (
+                <DealCard key={d.postId} deal={d} active={d.postId === selectedId} onSelect={() => setSelectedId(d.postId)} />
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
 
-function FilterBar({
-  filters,
-  set,
-  reset,
-  stats,
-}: {
-  filters: MarketFilters;
-  set: <K extends keyof MarketFilters>(k: K, v: MarketFilters[K]) => void;
-  reset: () => void;
-  stats: { count: number; avgYield: number; avgBmv: number; underGuide: number };
-}) {
-  const togglePT = (t: PropertyType) => {
-    const cur = new Set(filters.propertyTypes ?? []);
-    cur.has(t) ? cur.delete(t) : cur.add(t);
-    set("propertyTypes", Array.from(cur));
-  };
-  const toggleLT = (t: ListingType) => {
-    const cur = new Set(filters.listingTypes ?? []);
-    cur.has(t) ? cur.delete(t) : cur.add(t);
-    set("listingTypes", Array.from(cur));
-  };
-  const toggleCond = (t: Condition) => {
-    const cur = new Set(filters.conditions ?? []);
-    cur.has(t) ? cur.delete(t) : cur.add(t);
-    set("conditions", Array.from(cur));
-  };
-
+function DealCard({ deal, active, onSelect }: { deal: Deal; active: boolean; onSelect: () => void }) {
+  const meta = dealTypeMeta(deal.dealType);
   return (
-    <div className="sticky top-0 z-10 border-b border-border bg-card/95 backdrop-blur">
-      <div className="mx-auto max-w-[1600px] px-4 py-3">
-        <div className="flex flex-wrap items-center gap-2">
-          <Input
-            placeholder="Postcode, town or street…"
-            className="h-9 w-64"
-            value={filters.query ?? ""}
-            onChange={(e) => set("query", e.target.value || undefined)}
-          />
-          <NumInput placeholder="Min £" value={filters.minPrice} onChange={(v) => set("minPrice", v)} />
-          <NumInput placeholder="Max £" value={filters.maxPrice} onChange={(v) => set("maxPrice", v)} />
-          <NumInput placeholder="Min beds" value={filters.minBeds} onChange={(v) => set("minBeds", v)} className="w-24" />
-
-          <Separator />
-          <span className="text-xs text-muted-foreground">Type:</span>
-          {(["terraced", "semi", "detached", "flat"] as PropertyType[]).map((t) => (
-            <Chip key={t} active={(filters.propertyTypes ?? []).includes(t)} onClick={() => togglePT(t)}>
-              {t}
-            </Chip>
-          ))}
-
-          <Separator />
-          <span className="text-xs text-muted-foreground">Listing:</span>
-          {(["sale", "auction", "repossession", "probate"] as ListingType[]).map((t) => (
-            <Chip key={t} active={(filters.listingTypes ?? []).includes(t)} onClick={() => toggleLT(t)}>
-              {t}
-            </Chip>
-          ))}
+    <button
+      onClick={onSelect}
+      className={`flex w-full gap-3 overflow-hidden rounded-lg border bg-background p-2 text-left transition-colors ${active ? "border-primary ring-1 ring-primary" : "border-border hover:border-primary/50"}`}
+    >
+      {deal.cover ? (
+        <img src={deal.cover} alt={deal.name} className="h-20 w-24 flex-shrink-0 rounded-md object-cover" loading="lazy" />
+      ) : (
+        <div className="flex h-20 w-24 flex-shrink-0 items-center justify-center rounded-md bg-muted">
+          <MapPin className="h-5 w-5 text-muted-foreground" />
         </div>
-
-        <div className="mt-2 flex flex-wrap items-center gap-2">
-          <span className="text-xs text-muted-foreground">Investor:</span>
-          <NumInput placeholder="Min HMO yield %" value={filters.minHmoYield} onChange={(v) => set("minHmoYield", v)} className="w-32" />
-          <NumInput placeholder="Min ROI %" value={filters.minRoi} onChange={(v) => set("minRoi", v)} className="w-28" />
-          <NumInput placeholder="Min rooms" value={filters.minRooms} onChange={(v) => set("minRooms", v)} className="w-24" />
-          <NumInput placeholder="Min BMV %" value={filters.minBmv} onChange={(v) => set("minBmv", v)} className="w-28" />
-          <NumInput placeholder="Max £/sqft" value={filters.maxPpsf} onChange={(v) => set("maxPpsf", v)} className="w-28" />
-
-          <Separator />
-          <span className="text-xs text-muted-foreground">Article 4:</span>
-          {(["any", "exclude", "only"] as const).map((a) => (
-            <Chip key={a} active={(filters.article4 ?? "any") === a} onClick={() => set("article4", a)}>
-              {a}
-            </Chip>
-          ))}
-
-          <Separator />
-          <span className="text-xs text-muted-foreground">Condition:</span>
-          {(["turnkey", "light", "heavy"] as Condition[]).map((c) => (
-            <Chip key={c} active={(filters.conditions ?? []).includes(c)} onClick={() => toggleCond(c)}>
-              {c}
-            </Chip>
-          ))}
-
-          <div className="ml-auto flex items-center gap-3 text-xs">
-            <span className="text-muted-foreground">
-              <b className="text-foreground">{stats.count}</b> matches · avg HMO yield{" "}
-              <b className="text-primary">{fmtPct(stats.avgYield)}</b> · avg BMV{" "}
-              <b className={stats.avgBmv > 0 ? "text-primary" : "text-foreground"}>{fmtPct(stats.avgBmv)}</b>
-              {stats.underGuide > 0 && <> · {stats.underGuide} under-guide auctions</>}
-            </span>
-            <Button size="sm" variant="outline" onClick={reset}>Reset</Button>
-          </div>
+      )}
+      <div className="min-w-0 flex-1">
+        <div className="flex items-start justify-between gap-2">
+          <p className="truncate text-sm font-semibold">{deal.name}</p>
+          {deal.isUpcoming && <Badge variant="outline" className="text-[10px]">Upcoming</Badge>}
         </div>
+        <div className="mt-0.5 flex items-center gap-1.5">
+          <span className="h-2 w-2 rounded-full" style={{ backgroundColor: meta.color }} />
+          <span className="text-[11px] text-muted-foreground">{meta.label}</span>
+          {deal.beds != null && <span className="text-[11px] text-muted-foreground">· {deal.beds} bed</span>}
+        </div>
+        <div className="mt-1 grid grid-cols-3 gap-1 text-[11px]">
+          <Stat label="Price" value={deal.price ? fmtGBP(deal.price) : "—"} />
+          <Stat label="GDV" value={deal.gdv ? fmtGBP(deal.gdv) : "—"} />
+          <Stat label="Rent" value={deal.rent ? `${fmtGBP(deal.rent)}/m` : "—"} />
+        </div>
+        <Link to={`/feed`} search={{ post: deal.postId } as never} className="mt-1.5 inline-block text-[11px] font-medium text-primary hover:underline">
+          View deal →
+        </Link>
       </div>
+    </button>
+  );
+}
+
+function Stat({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <p className="text-[9px] uppercase tracking-wide text-muted-foreground">{label}</p>
+      <p className="font-semibold tabular-nums">{value}</p>
     </div>
   );
 }
@@ -234,439 +323,19 @@ function FilterBar({
 function NumInput({ placeholder, value, onChange, className }: { placeholder: string; value?: number; onChange: (v?: number) => void; className?: string }) {
   return (
     <Input
-      type="number"
-      placeholder={placeholder}
+      type="number" placeholder={placeholder}
       className={`h-9 w-28 ${className ?? ""}`}
       value={value ?? ""}
       onChange={(e) => onChange(e.target.value === "" ? undefined : Number(e.target.value))}
     />
   );
 }
-function Separator() { return <span className="mx-1 h-5 w-px bg-border" />; }
+function Sep() { return <span className="mx-1 h-5 w-px bg-border" />; }
 function Chip({ active, onClick, children }: { active?: boolean; onClick: () => void; children: React.ReactNode }) {
   return (
     <button
       onClick={onClick}
-      className={`rounded-full border px-3 py-1 text-xs capitalize transition-colors ${
-        active ? "border-primary bg-primary text-primary-foreground" : "border-border bg-background text-muted-foreground hover:text-foreground"
-      }`}
-    >
-      {children}
-    </button>
-  );
-}
-
-function yieldTone(y: number) {
-  if (y >= 12) return "text-primary";
-  if (y >= 8) return "text-foreground";
-  return "text-muted-foreground";
-}
-
-function ListingCard({
-  row,
-  onOpen,
-  onWatch,
-  onSave,
-  onExpert,
-  watched,
-}: {
-  row: Row;
-  onOpen: () => void;
-  onWatch: () => void;
-  onSave: () => void;
-  onExpert: () => void;
-  watched: boolean;
-}) {
-  return (
-    <div className="overflow-hidden rounded-lg border border-border bg-background transition-colors hover:border-primary/50">
-      <button onClick={onOpen} className="flex w-full text-left">
-        <img src={row.photos[0]} alt={row.address} className="h-32 w-40 flex-shrink-0 object-cover" loading="lazy" />
-        <div className="flex-1 p-3">
-          <div className="flex items-start justify-between gap-2">
-            <div>
-              <p className="text-sm font-semibold">{fmtGBP(row.price)} {row.listingType === "auction" && row.guidePrice && <span className="text-xs font-normal text-muted-foreground">· guide {fmtGBP(row.guidePrice)}</span>}</p>
-              <p className="text-xs text-muted-foreground">{row.address}, {row.postcode}</p>
-            </div>
-            <div className="flex flex-wrap justify-end gap-1">
-              {row.listingType !== "sale" && <Badge variant="destructive" className="text-[10px] capitalize">{row.listingType}</Badge>}
-              {row.article4 && <Badge variant="outline" className="text-[10px]">Art.4</Badge>}
-            </div>
-          </div>
-          <div className="mt-2 grid grid-cols-4 gap-2 text-[11px]">
-            <Metric label="HMO yield" value={fmtPct(row.m.grossYieldHmo)} tone={yieldTone(row.m.grossYieldHmo)} />
-            <Metric label="ROI" value={fmtPct(row.m.roiAnnual)} tone={yieldTone(row.m.roiAnnual)} />
-            <Metric label="BMV" value={fmtPct(row.m.bmvPct)} tone={row.m.bmvPct > 5 ? "text-primary" : "text-foreground"} />
-            <Metric label="Rooms" value={`${row.hmoRoomsPotential}`} />
-          </div>
-        </div>
-      </button>
-      <div className="flex gap-1 border-t border-border bg-card/30 px-2 py-1.5">
-        <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={onWatch}>{watched ? "★ Watching" : "☆ Watch"}</Button>
-        <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={onSave}>+ Save deal</Button>
-        <Button size="sm" variant="ghost" className="ml-auto h-7 text-xs" onClick={onExpert}>£49 Expert review</Button>
-      </div>
-    </div>
-  );
-}
-
-function Metric({ label, value, tone }: { label: string; value: string; tone?: string }) {
-  return (
-    <div>
-      <p className="text-[10px] uppercase text-muted-foreground">{label}</p>
-      <p className={`font-semibold ${tone ?? "text-foreground"}`}>{value}</p>
-    </div>
-  );
-}
-
-function MapPlaceholder({ rows, selectedId, onPick }: { rows: Row[]; selectedId: string | null; onPick: (id: string) => void }) {
-  const containerRef = useRef<HTMLDivElement | null>(null);
-  const mapRef = useRef<google.maps.Map | null>(null);
-  const markersRef = useRef<Map<string, google.maps.Marker>>(new Map());
-  const [ready, setReady] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  // Load the Google Maps JS API once.
-  useEffect(() => {
-    const key = import.meta.env.VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_BROWSER_KEY;
-    const channel = import.meta.env.VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_TRACKING_ID;
-    if (!key) {
-      setError("Google Maps key missing");
-      return;
-    }
-    const w = window as unknown as { google?: { maps?: unknown }; __initMarketMap?: () => void };
-    if (w.google?.maps) {
-      setReady(true);
-      return;
-    }
-    w.__initMarketMap = () => setReady(true);
-    const existing = document.querySelector<HTMLScriptElement>("script[data-market-gmaps]");
-    if (existing) return;
-    const s = document.createElement("script");
-    s.src = `https://maps.googleapis.com/maps/api/js?key=${key}&loading=async&callback=__initMarketMap${channel ? `&channel=${channel}` : ""}`;
-    s.async = true;
-    s.defer = true;
-    s.dataset.marketGmaps = "1";
-    s.onerror = () => setError("Failed to load Google Maps");
-    document.head.appendChild(s);
-  }, []);
-
-  // Init map once API is ready.
-  useEffect(() => {
-    if (!ready || !containerRef.current || mapRef.current) return;
-    mapRef.current = new google.maps.Map(containerRef.current, {
-      center: { lat: 53.2, lng: -2.0 },
-      zoom: 6,
-      mapTypeControl: false,
-      streetViewControl: false,
-      fullscreenControl: false,
-      styles: [
-        { elementType: "geometry", stylers: [{ color: "#1f2937" }] },
-        { elementType: "labels.text.stroke", stylers: [{ color: "#1f2937" }] },
-        { elementType: "labels.text.fill", stylers: [{ color: "#9ca3af" }] },
-        { featureType: "water", elementType: "geometry", stylers: [{ color: "#0f172a" }] },
-        { featureType: "road", elementType: "geometry", stylers: [{ color: "#374151" }] },
-        { featureType: "poi", stylers: [{ visibility: "off" }] },
-      ],
-    });
-  }, [ready]);
-
-  // Sync markers with rows.
-  useEffect(() => {
-    if (!ready || !mapRef.current) return;
-    const map = mapRef.current;
-    const next = new Map<string, google.maps.Marker>();
-    const bounds = new google.maps.LatLngBounds();
-
-    for (const r of rows) {
-      const y_ = r.m.grossYieldHmo;
-      const color = y_ >= 12 ? "#10b981" : y_ >= 9 ? "#a3e635" : y_ >= 7 ? "#facc15" : "#fb923c";
-      const isActive = r.id === selectedId;
-      const existing = markersRef.current.get(r.id);
-      const marker =
-        existing ??
-        new google.maps.Marker({
-          position: { lat: r.lat, lng: r.lng },
-          map,
-          title: `${r.town} · ${fmtPct(r.m.grossYieldHmo)}`,
-        });
-      marker.setIcon({
-        path: google.maps.SymbolPath.CIRCLE,
-        scale: isActive ? 10 : 7,
-        fillColor: color,
-        fillOpacity: 0.95,
-        strokeColor: isActive ? "#ffffff" : "#0f172a",
-        strokeWeight: 2,
-      });
-      marker.setZIndex(isActive ? 999 : 1);
-      if (!existing) marker.addListener("click", () => onPick(r.id));
-      next.set(r.id, marker);
-      bounds.extend({ lat: r.lat, lng: r.lng });
-    }
-    // Remove markers that are no longer in rows.
-    for (const [id, m] of markersRef.current) {
-      if (!next.has(id)) m.setMap(null);
-    }
-    markersRef.current = next;
-    if (rows.length > 0 && !selectedId) {
-      map.fitBounds(bounds, 64);
-    } else if (selectedId) {
-      const sel = rows.find((r) => r.id === selectedId);
-      if (sel) map.panTo({ lat: sel.lat, lng: sel.lng });
-    }
-  }, [ready, rows, selectedId, onPick]);
-
-  return (
-    <div className="relative h-full w-full">
-      <div ref={containerRef} className="absolute inset-0" />
-      {!ready && !error && (
-        <div className="absolute inset-0 flex items-center justify-center bg-muted/40 text-sm text-muted-foreground">
-          Loading map…
-        </div>
-      )}
-      {error && (
-        <div className="absolute inset-0 flex items-center justify-center bg-muted/40 px-6 text-center text-sm text-destructive">
-          {error}
-        </div>
-      )}
-      <div className="pointer-events-none absolute bottom-3 left-3 z-10 rounded-md border border-border bg-card/90 px-3 py-2 text-[10px] backdrop-blur">
-        <p className="mb-1 font-semibold uppercase tracking-wider text-muted-foreground">HMO yield</p>
-        <div className="flex items-center gap-2">
-          <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-orange-400" /> &lt;7%</span>
-          <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-yellow-400" /> 7-9</span>
-          <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-lime-400" /> 9-12</span>
-          <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-emerald-500" /> 12%+</span>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function DetailPanel({
-  row,
-  watched,
-  onWatch,
-  onSave,
-  onExpert,
-}: {
-  row: Row;
-  watched: boolean;
-  onWatch: () => void;
-  onSave: () => void;
-  onExpert: () => void;
-}) {
-  return (
-    <div className="space-y-4">
-      <SheetHeader>
-        <SheetTitle className="text-base">{row.address}, {row.postcode}</SheetTitle>
-      </SheetHeader>
-
-      <div className="grid grid-cols-3 gap-1">
-        {row.photos.map((p, i) => (
-          <img key={i} src={p} alt="" className="aspect-square w-full rounded object-cover" loading="lazy" />
-        ))}
-      </div>
-
-      <div className="flex items-baseline justify-between">
-        <p className="text-2xl font-bold">{fmtGBP(row.price)}</p>
-        <p className="text-xs text-muted-foreground">
-          {row.beds} bed · {row.baths} bath · {row.sqft.toLocaleString()} sqft · EPC {row.epc}
-        </p>
-      </div>
-
-      <p className="text-sm text-muted-foreground">{row.description}</p>
-
-      <div className="rounded-lg border border-border bg-card p-3">
-        <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Investor metrics</p>
-        <div className="grid grid-cols-2 gap-3 text-sm">
-          <Stat label="HMO gross yield" value={fmtPct(row.m.grossYieldHmo)} tone={yieldTone(row.m.grossYieldHmo)} />
-          <Stat label="Single-let yield" value={fmtPct(row.m.grossYieldBtl)} />
-          <Stat label="ROI (75% LTV)" value={fmtPct(row.m.roiAnnual)} tone={yieldTone(row.m.roiAnnual)} />
-          <Stat label="BMV vs median" value={fmtPct(row.m.bmvPct)} tone={row.m.bmvPct > 5 ? "text-primary" : undefined} />
-          <Stat label="Est. HMO GDV @ 8%" value={fmtGBP(row.m.estGdvHmo)} />
-          <Stat label="Refurb uplift est." value={fmtGBP(row.m.refurbUplift)} />
-          <Stat label="£/sqft" value={fmtGBP(Math.round(row.m.pricePerSqft))} />
-          <Stat label="Total cash in" value={fmtGBP(Math.round(row.m.totalInPlight))} />
-        </div>
-      </div>
-
-      <div className="grid grid-cols-2 gap-2">
-        <Button onClick={onSave} variant="default">+ Save to Deals</Button>
-        <Button onClick={onWatch} variant="outline">{watched ? "★ Watching" : "☆ Watch"}</Button>
-        <Button asChild variant="outline">
-          <a href={`/hmo-compliance?from=${row.id}`}>Analyse as HMO</a>
-        </Button>
-        <Button asChild variant="outline">
-          <a href={`/refinance?from=${row.id}`}>Property calculator</a>
-        </Button>
-        <Button onClick={onExpert} className="col-span-2 bg-gradient-to-r from-primary to-primary/70">
-          £49 — Request expert deal review
-        </Button>
-        <a href={row.sourceUrl} target="_blank" rel="noreferrer" className="col-span-2 text-center text-xs text-muted-foreground hover:text-foreground">
-          View original listing ↗
-        </a>
-      </div>
-    </div>
-  );
-}
-
-function Stat({ label, value, tone }: { label: string; value: string; tone?: string }) {
-  return (
-    <div>
-      <p className="text-[10px] uppercase text-muted-foreground">{label}</p>
-      <p className={`font-semibold ${tone ?? ""}`}>{value}</p>
-    </div>
-  );
-}
-
-function AnalyticsStrip({ rows }: { rows: Row[] }) {
-  const yieldBuckets = useMemo(() => {
-    const buckets = [
-      { range: "<6%", count: 0 },
-      { range: "6-8%", count: 0 },
-      { range: "8-10%", count: 0 },
-      { range: "10-12%", count: 0 },
-      { range: "12%+", count: 0 },
-    ];
-    rows.forEach((r) => {
-      const y = r.m.grossYieldHmo;
-      const i = y < 6 ? 0 : y < 8 ? 1 : y < 10 ? 2 : y < 12 ? 3 : 4;
-      buckets[i].count++;
-    });
-    return buckets;
-  }, [rows]);
-
-  const scatter = useMemo(() => rows.map((r) => ({ ppsf: r.m.pricePerSqft, yield: r.m.grossYieldHmo, name: r.postcode })), [rows]);
-
-  const byPostcode = useMemo(() => {
-    const m = new Map<string, { bmv: number; count: number }>();
-    rows.forEach((r) => {
-      const code = r.postcode.split(" ")[0];
-      const cur = m.get(code) ?? { bmv: 0, count: 0 };
-      cur.bmv += r.m.bmvPct;
-      cur.count++;
-      m.set(code, cur);
-    });
-    return Array.from(m.entries())
-      .map(([code, { bmv, count }]) => ({ code, bmv: bmv / count, count }))
-      .sort((a, b) => b.bmv - a.bmv)
-      .slice(0, 8);
-  }, [rows]);
-
-  return (
-    <div className="mx-auto max-w-[1600px] px-4 pb-8">
-      <h2 className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Market analytics (filtered)</h2>
-      <div className="grid gap-3 md:grid-cols-3">
-        <Card title="HMO yield distribution">
-          <ResponsiveContainer width="100%" height={160}>
-            <BarChart data={yieldBuckets}>
-              <CartesianGrid stroke="hsl(var(--border))" strokeDasharray="2 2" vertical={false} />
-              <XAxis dataKey="range" tick={{ fontSize: 10 }} />
-              <YAxis tick={{ fontSize: 10 }} allowDecimals={false} />
-              <RTooltip cursor={{ fill: "hsl(var(--muted))" }} contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", fontSize: 12 }} />
-              <Bar dataKey="count" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        </Card>
-        <Card title="Top postcodes by avg BMV %">
-          <ResponsiveContainer width="100%" height={160}>
-            <BarChart data={byPostcode} layout="vertical">
-              <CartesianGrid stroke="hsl(var(--border))" strokeDasharray="2 2" horizontal={false} />
-              <XAxis type="number" tick={{ fontSize: 10 }} />
-              <YAxis type="category" dataKey="code" tick={{ fontSize: 10 }} width={50} />
-              <RTooltip contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", fontSize: 12 }} formatter={(v: number) => `${v.toFixed(1)}%`} />
-              <Bar dataKey="bmv" fill="hsl(var(--primary))" radius={[0, 4, 4, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        </Card>
-        <Card title="£/sqft vs HMO yield">
-          <ResponsiveContainer width="100%" height={160}>
-            <ScatterChart>
-              <CartesianGrid stroke="hsl(var(--border))" strokeDasharray="2 2" />
-              <XAxis dataKey="ppsf" name="£/sqft" tick={{ fontSize: 10 }} />
-              <YAxis dataKey="yield" name="yield" tick={{ fontSize: 10 }} />
-              <ZAxis range={[60, 60]} />
-              <RTooltip cursor={{ strokeDasharray: "3 3" }} contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", fontSize: 12 }} formatter={(v: number, n: string) => (n === "yield" ? `${v.toFixed(1)}%` : `£${Math.round(v)}`)} />
-              <Scatter data={scatter} fill="hsl(var(--primary))" />
-            </ScatterChart>
-          </ResponsiveContainer>
-        </Card>
-      </div>
-    </div>
-  );
-}
-
-function Card({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <div className="rounded-xl border border-border bg-card p-3">
-      <p className="mb-2 text-xs font-medium text-muted-foreground">{title}</p>
-      {children}
-    </div>
-  );
-}
-
-function ExpertReviewDialog({ row, onClose }: { row: Row | null; onClose: () => void }) {
-  const [goal, setGoal] = useState("");
-  const [timeframe, setTimeframe] = useState("");
-  const [finance, setFinance] = useState("");
-  const [submitting, setSubmitting] = useState(false);
-
-  const submit = async () => {
-    if (!row) return;
-    setSubmitting(true);
-    try {
-      const { error } = await supabase.from("expert_reviews").insert({
-        user_id: (await supabase.auth.getUser()).data.user?.id ?? null,
-        listing_snapshot: row,
-        context: { goal, timeframe, finance },
-        status: "pending_payment",
-        fee_pence: 4900,
-      } as never);
-      if (error) throw error;
-      toast.success("Review request created. Payment checkout coming next — we'll email you to complete £49.");
-      onClose();
-    } catch (e: any) {
-      toast.error(e?.message ?? "Couldn't create review request");
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  return (
-    <Dialog open={!!row} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-w-lg">
-        <DialogHeader>
-          <DialogTitle>Expert deal review — £49</DialogTitle>
-          <DialogDescription>
-            An independent property expert assesses viability, exit options, refurb cost realism and red flags. Written review delivered within 48h.
-          </DialogDescription>
-        </DialogHeader>
-        {row && (
-          <div className="rounded-md border border-border bg-card/50 p-3 text-xs">
-            <p className="font-semibold">{row.address}, {row.postcode}</p>
-            <p className="text-muted-foreground">{fmtGBP(row.price)} · {row.beds} bed · HMO yield {fmtPct(row.m.grossYieldHmo)}</p>
-          </div>
-        )}
-        <div className="space-y-3">
-          <div>
-            <label className="text-xs font-medium">Your goal with this deal</label>
-            <Textarea rows={2} value={goal} onChange={(e) => setGoal(e.target.value)} placeholder="HMO conversion to BRRR, hold for cashflow, flip after refurb…" />
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="text-xs font-medium">Timeframe</label>
-              <Input value={timeframe} onChange={(e) => setTimeframe(e.target.value)} placeholder="e.g. complete in 8 weeks" />
-            </div>
-            <div>
-              <label className="text-xs font-medium">Finance status</label>
-              <Input value={finance} onChange={(e) => setFinance(e.target.value)} placeholder="AIP in place, bridge, cash" />
-            </div>
-          </div>
-        </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={onClose}>Cancel</Button>
-          <Button onClick={submit} disabled={submitting}>{submitting ? "Submitting…" : "Continue — £49"}</Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+      className={`rounded-full border px-3 py-1 text-xs capitalize transition-colors ${active ? "border-primary bg-primary text-primary-foreground" : "border-border bg-background text-muted-foreground hover:text-foreground"}`}
+    >{children}</button>
   );
 }
