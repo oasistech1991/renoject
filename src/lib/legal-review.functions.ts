@@ -129,17 +129,16 @@ async function resolveUkSourceUrl(title: string): Promise<string | null> {
     // ignore cache failures
   }
 
-  // Live lookup via Firecrawl search, constrained to UK official sources.
+  // Live lookup via Firecrawl REST API (Worker-safe), constrained to UK official sources.
   try {
-    const Firecrawl = (await import("@mendable/firecrawl-js")).default;
-    const fc = new Firecrawl({ apiKey });
+    const { createFirecrawl } = await import("./firecrawl-client");
+    const fc = createFirecrawl(apiKey);
     const siteFilter = UK_SOURCE_SITES.map((s) => `site:${s}`).join(" OR ");
-    const result = await fc.search(`${trimmed} (${siteFilter})`, {
-      limit: 1,
-    });
+    const result: any = await fc.search(`${trimmed} (${siteFilter})`, { limit: 1 });
     const first =
-      (result as { web?: Array<{ url?: string }> }).web?.[0]?.url ??
-      (result as { data?: Array<{ url?: string }> }).data?.[0]?.url ??
+      result?.web?.[0]?.url ??
+      result?.data?.[0]?.url ??
+      (Array.isArray(result) ? result[0]?.url : null) ??
       null;
     if (first) {
       try {
