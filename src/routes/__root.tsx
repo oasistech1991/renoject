@@ -29,7 +29,6 @@ import {
   Search,
   LineChart,
   Wrench,
-  Coins,
   UserCircle,
   Users,
   User,
@@ -344,7 +343,6 @@ const TOOL_ITEMS: Array<{ to: string; label: string; icon: typeof Home }> = [
   { to: "/hmo-compliance", label: "HMO Compliance", icon: ShieldCheck },
   { to: "/legal", label: "Legal Review", icon: ScrollText },
   { to: "/tradesmen", label: "Tradesmen", icon: Wrench },
-  { to: "/tokenize", label: "Tokenize", icon: Coins },
 ];
 
 const ACCOUNT_ITEMS: Array<{ to: string; label: string; icon: typeof Home; authOnly?: boolean }> = [

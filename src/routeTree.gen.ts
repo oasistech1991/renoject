@@ -10,7 +10,6 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as TradesmenRouteImport } from './routes/tradesmen'
-import { Route as TokenizeRouteImport } from './routes/tokenize'
 import { Route as TermsRouteImport } from './routes/terms'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
@@ -37,11 +36,6 @@ import { Route as ApiChatRouteImport } from './routes/api/chat'
 const TradesmenRoute = TradesmenRouteImport.update({
   id: '/tradesmen',
   path: '/tradesmen',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const TokenizeRoute = TokenizeRouteImport.update({
-  id: '/tokenize',
-  path: '/tokenize',
   getParentRoute: () => rootRouteImport,
 } as any)
 const TermsRoute = TermsRouteImport.update({
@@ -176,7 +170,6 @@ export interface FileRoutesByFullPath {
   '/reset-password': typeof ResetPasswordRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/terms': typeof TermsRoute
-  '/tokenize': typeof TokenizeRoute
   '/tradesmen': typeof TradesmenRoute
   '/api/chat': typeof ApiChatRoute
   '/feed/map': typeof FeedMapRoute
@@ -202,7 +195,6 @@ export interface FileRoutesByTo {
   '/reset-password': typeof ResetPasswordRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/terms': typeof TermsRoute
-  '/tokenize': typeof TokenizeRoute
   '/tradesmen': typeof TradesmenRoute
   '/api/chat': typeof ApiChatRoute
   '/feed/map': typeof FeedMapRoute
@@ -229,7 +221,6 @@ export interface FileRoutesById {
   '/reset-password': typeof ResetPasswordRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/terms': typeof TermsRoute
-  '/tokenize': typeof TokenizeRoute
   '/tradesmen': typeof TradesmenRoute
   '/api/chat': typeof ApiChatRoute
   '/feed_/map': typeof FeedMapRoute
@@ -257,7 +248,6 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/sitemap.xml'
     | '/terms'
-    | '/tokenize'
     | '/tradesmen'
     | '/api/chat'
     | '/feed/map'
@@ -283,7 +273,6 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/sitemap.xml'
     | '/terms'
-    | '/tokenize'
     | '/tradesmen'
     | '/api/chat'
     | '/feed/map'
@@ -309,7 +298,6 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/sitemap.xml'
     | '/terms'
-    | '/tokenize'
     | '/tradesmen'
     | '/api/chat'
     | '/feed_/map'
@@ -336,7 +324,6 @@ export interface RootRouteChildren {
   ResetPasswordRoute: typeof ResetPasswordRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   TermsRoute: typeof TermsRoute
-  TokenizeRoute: typeof TokenizeRoute
   TradesmenRoute: typeof TradesmenRoute
   ApiChatRoute: typeof ApiChatRoute
   FeedMapRoute: typeof FeedMapRoute
@@ -349,13 +336,6 @@ declare module '@tanstack/react-router' {
       path: '/tradesmen'
       fullPath: '/tradesmen'
       preLoaderRoute: typeof TradesmenRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/tokenize': {
-      id: '/tokenize'
-      path: '/tokenize'
-      fullPath: '/tokenize'
-      preLoaderRoute: typeof TokenizeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/terms': {
@@ -536,7 +516,6 @@ const rootRouteChildren: RootRouteChildren = {
   ResetPasswordRoute: ResetPasswordRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   TermsRoute: TermsRoute,
-  TokenizeRoute: TokenizeRoute,
   TradesmenRoute: TradesmenRoute,
   ApiChatRoute: ApiChatRoute,
   FeedMapRoute: FeedMapRoute,

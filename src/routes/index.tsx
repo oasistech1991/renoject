@@ -10,7 +10,6 @@ import {
   Building2,
   ShieldCheck,
   Wrench,
-  Coins,
   Wallet,
   Users,
 } from "lucide-react";
@@ -39,7 +38,6 @@ const tools: Array<{ to: string; title: string; desc: string; icon: typeof Calcu
   { to: "/forecast", title: "Forecast", desc: "Project long-term cashflow, equity and yield trajectories.", icon: LineChart },
   { to: "/hmo-compliance", title: "HMO Compliance", desc: "Check floorplans against UK HMO licensing rules.", icon: ShieldCheck },
   { to: "/tradesmen", title: "Tradesmen", desc: "Trusted contractors for refurbs, BTL and HMO conversions.", icon: Wrench },
-  { to: "/tokenize", title: "Tokenize", desc: "Fractionalise property equity for syndicated investment.", icon: Coins },
 ];
 
 function Index() {
