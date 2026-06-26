@@ -203,6 +203,7 @@ function RefinancePage() {
   const [importing, setImporting] = useState(false);
   const [importMsg, setImportMsg] = useState<string | null>(null);
   const [importUrl, setImportUrl] = useState("");
+  const [dragActive, setDragActive] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const imageRef = useRef<HTMLInputElement>(null);
   const parsePdf = useServerFn(parsePropertyPdf);
@@ -452,10 +453,7 @@ function RefinancePage() {
   };
 
   const onPickFile = () => fileRef.current?.click();
-  const onFileChosen = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    e.target.value = "";
-    if (!file) return;
+  const processPdfFile = async (file: File) => {
     if (file.type !== "application/pdf" && !file.name.toLowerCase().endsWith(".pdf")) {
       setImportMsg("Please choose a PDF file.");
       return;
@@ -484,6 +482,12 @@ function RefinancePage() {
       setImporting(false);
     }
   };
+  const onFileChosen = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    await processPdfFile(file);
+  };
 
   const onImportUrl = async () => {
     const url = importUrl.trim();
@@ -506,10 +510,7 @@ function RefinancePage() {
   };
 
   const onPickImages = () => imageRef.current?.click();
-  const onImagesChosen = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files ?? []);
-    e.target.value = "";
-    if (!files.length) return;
+  const processImageFiles = async (files: File[]) => {
     const valid = files.filter((f) => f.type.startsWith("image/"));
     if (!valid.length) {
       setImportMsg("Please choose image files (PNG, JPG, WEBP).");
@@ -551,6 +552,67 @@ function RefinancePage() {
       setImporting(false);
     }
   };
+  const onImagesChosen = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? []);
+    e.target.value = "";
+    if (!files.length) return;
+    await processImageFiles(files);
+  };
+
+  // Global drag-and-drop: drop a PDF or images anywhere on the page to auto-fill.
+  useEffect(() => {
+    let depth = 0;
+    const hasFiles = (e: DragEvent) =>
+      Array.from(e.dataTransfer?.types ?? []).includes("Files");
+    const onDragEnter = (e: DragEvent) => {
+      if (!hasFiles(e)) return;
+      e.preventDefault();
+      depth++;
+      setDragActive(true);
+    };
+    const onDragOver = (e: DragEvent) => {
+      if (!hasFiles(e)) return;
+      e.preventDefault();
+      if (e.dataTransfer) e.dataTransfer.dropEffect = "copy";
+    };
+    const onDragLeave = (e: DragEvent) => {
+      if (!hasFiles(e)) return;
+      e.preventDefault();
+      depth = Math.max(0, depth - 1);
+      if (depth === 0) setDragActive(false);
+    };
+    const onDrop = async (e: DragEvent) => {
+      if (!hasFiles(e)) return;
+      e.preventDefault();
+      depth = 0;
+      setDragActive(false);
+      const files = Array.from(e.dataTransfer?.files ?? []);
+      if (!files.length) return;
+      const pdf = files.find(
+        (f) => f.type === "application/pdf" || f.name.toLowerCase().endsWith(".pdf"),
+      );
+      if (pdf) {
+        await processPdfFile(pdf);
+        return;
+      }
+      const images = files.filter((f) => f.type.startsWith("image/"));
+      if (images.length) {
+        await processImageFiles(images);
+        return;
+      }
+      setImportMsg("Drop a PDF or image file to auto-fill the calculator.");
+    };
+    window.addEventListener("dragenter", onDragEnter);
+    window.addEventListener("dragover", onDragOver);
+    window.addEventListener("dragleave", onDragLeave);
+    window.addEventListener("drop", onDrop);
+    return () => {
+      window.removeEventListener("dragenter", onDragEnter);
+      window.removeEventListener("dragover", onDragOver);
+      window.removeEventListener("dragleave", onDragLeave);
+      window.removeEventListener("drop", onDrop);
+    };
+  }, []);
 
   const verdictTone =
     r.verdict === "full"
@@ -561,6 +623,16 @@ function RefinancePage() {
 
   return (
     <div className="min-h-screen bg-background">
+      {dragActive && (
+        <div className="pointer-events-none fixed inset-0 z-50 flex items-center justify-center bg-primary/10 backdrop-blur-sm">
+          <div className="rounded-2xl border-2 border-dashed border-primary bg-background/90 px-10 py-8 text-center shadow-xl">
+            <p className="text-2xl font-semibold text-primary">Drop to auto-fill</p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              PDF brochure or listing photos — we'll extract the numbers.
+            </p>
+          </div>
+        </div>
+      )}
       <header className="border-b border-border bg-card/50 backdrop-blur">
         <div className="mx-auto flex max-w-7xl flex-col gap-4 px-6 py-5">
           <div className="flex items-center justify-between gap-3">
