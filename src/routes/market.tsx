@@ -1,6 +1,8 @@
 /// <reference types="google.maps" />
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { zodValidator, fallback } from "@tanstack/zod-adapter";
+import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
 import { useServerFn } from "@tanstack/react-start";
 import { geocodeProperties } from "@/lib/geocode.functions";
@@ -11,6 +13,37 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { MapPin, Loader2, LayoutGrid } from "lucide-react";
 
+const REGIONS = [
+  { key: "nw", label: "North West", prefixes: ["M", "BL", "OL", "SK", "WA", "WN", "PR", "BB", "FY", "LA", "L", "CH", "CW"] },
+  { key: "ne", label: "North East", prefixes: ["NE", "SR", "DH", "DL", "TS"] },
+  { key: "yh", label: "Yorkshire", prefixes: ["LS", "BD", "HX", "HD", "WF", "S", "DN", "HU", "YO", "HG"] },
+  { key: "mid", label: "Midlands", prefixes: ["B", "CV", "DY", "WS", "WV", "DE", "NG", "LE", "NN", "LN", "ST", "TF", "WR", "HR"] },
+  { key: "ldn", label: "London", prefixes: ["E", "EC", "N", "NW", "SE", "SW", "W", "WC"] },
+  { key: "sth", label: "South", prefixes: ["BN", "RH", "TN", "ME", "CT", "PO", "SO", "BH", "DT", "GU", "RG", "OX", "SL", "HP", "MK", "LU", "AL", "SG", "CB", "IP", "NR", "CO", "SS", "RM", "IG", "DA", "BR", "CR", "KT", "SM", "TW", "UB", "HA", "EN", "WD", "BA", "BS", "EX", "PL", "TQ", "TR"] },
+] as const;
+
+type RegionKey = typeof REGIONS[number]["key"];
+
+function regionFor(name: string): RegionKey | null {
+  const m = name.toUpperCase().match(/\b([A-Z]{1,2})\d/);
+  const prefix = m?.[1];
+  if (!prefix) return null;
+  for (const r of REGIONS) if (r.prefixes.includes(prefix as never)) return r.key;
+  return null;
+}
+
+const searchSchema = z.object({
+  q: fallback(z.string(), "").default(""),
+  minPrice: fallback(z.number().optional(), undefined),
+  maxPrice: fallback(z.number().optional(), undefined),
+  minBeds: fallback(z.number().optional(), undefined),
+  minRoi: fallback(z.number().optional(), undefined),
+  minCash: fallback(z.number().optional(), undefined),
+  status: fallback(z.enum(["all", "live", "upcoming", "sold"]), "all").default("all"),
+  types: fallback(z.string().array(), []).default([]),
+  regions: fallback(z.string().array(), []).default([]),
+});
+
 export const Route = createFileRoute("/market")({
   head: () => ({
     meta: [
@@ -18,6 +51,7 @@ export const Route = createFileRoute("/market")({
       { name: "description", content: "Browse Renoject deals by location on an interactive map." },
     ],
   }),
+  validateSearch: zodValidator(searchSchema),
   component: DealLocationPage,
 });
 
@@ -27,10 +61,14 @@ type Deal = {
   name: string;
   dealType: string | null;
   isUpcoming: boolean;
+  isSold: boolean;
   price: number;
   rent: number;
   gdv: number;
   beds: number | null;
+  roi: number | null;
+  cashflow: number | null;
+  region: RegionKey | null;
   lat: number | null;
   lng: number | null;
   cover: string | null;
@@ -56,18 +94,28 @@ function loadGoogleMaps(): Promise<typeof google.maps> {
   return mapsLoader;
 }
 
-type Status = "all" | "live" | "upcoming";
+type Status = "all" | "live" | "upcoming" | "sold";
 
 function DealLocationPage() {
+  const search = Route.useSearch();
+  const navigate = Route.useNavigate();
+  const setParam = <K extends keyof typeof search>(k: K, v: (typeof search)[K]) =>
+    navigate({ search: (prev: typeof search) => ({ ...prev, [k]: v }), replace: true });
+
+  const query = search.q;
+  const minPrice = search.minPrice;
+  const maxPrice = search.maxPrice;
+  const minBeds = search.minBeds;
+  const minRoi = search.minRoi;
+  const minCash = search.minCash;
+  const status = search.status;
+  const types = useMemo(() => new Set(search.types as DealTypeKey[]), [search.types]);
+  const regions = useMemo(() => new Set(search.regions as RegionKey[]), [search.regions]);
+
   const [deals, setDeals] = useState<Deal[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [query, setQuery] = useState("");
-  const [minPrice, setMinPrice] = useState<number | undefined>();
-  const [maxPrice, setMaxPrice] = useState<number | undefined>();
-  const [minBeds, setMinBeds] = useState<number | undefined>();
-  const [status, setStatus] = useState<Status>("all");
-  const [types, setTypes] = useState<Set<DealTypeKey>>(new Set());
+  const [hasSoldField, setHasSoldField] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const geocode = useServerFn(geocodeProperties);
   const mapEl = useRef<HTMLDivElement | null>(null);
@@ -78,13 +126,30 @@ function DealLocationPage() {
     let cancelled = false;
     (async () => {
       try {
-        const { data: posts, error: e1 } = await supabase
+        // Try a select that includes `status`; fall back gracefully if the
+        // column doesn't exist (so the "Sold" chip stays hidden).
+        let posts: any[] | null = null;
+        let soldField = false;
+        const withStatus = await supabase
           .from("feed_posts")
-          .select("id, property_id, deal_type, is_upcoming, cover_url")
+          .select("id, property_id, deal_type, is_upcoming, cover_url, status")
           .eq("is_published", true)
           .order("created_at", { ascending: false })
           .limit(200);
-        if (e1) throw e1;
+        if (!withStatus.error) {
+          posts = withStatus.data as any[];
+          soldField = true;
+        } else {
+          const basic = await supabase
+            .from("feed_posts")
+            .select("id, property_id, deal_type, is_upcoming, cover_url")
+            .eq("is_published", true)
+            .order("created_at", { ascending: false })
+            .limit(200);
+          if (basic.error) throw basic.error;
+          posts = basic.data as any[];
+        }
+        if (!cancelled) setHasSoldField(soldField);
         const ids = Array.from(new Set((posts ?? []).map((p) => p.property_id))).filter(Boolean);
         if (!ids.length) { setLoading(false); return; }
         let { data: props, error: e2 } = await supabase
@@ -106,16 +171,28 @@ function DealLocationPage() {
           const prop = map.get(post.property_id);
           if (!prop) continue;
           const inputs = (prop.inputs ?? {}) as Record<string, any>;
+          const rent = Number(inputs.monthlyRent ?? 0);
+          const opex = Number(inputs.monthlyOpex ?? inputs.opex ?? 0);
+          const cashflow = rent ? Math.round(rent - opex) : null;
+          const roi = inputs.roi != null
+            ? Number(inputs.roi)
+            : inputs.roiAnnual != null
+              ? Number(inputs.roiAnnual)
+              : null;
           next.push({
             postId: post.id,
             propertyId: prop.id,
             name: prop.name,
             dealType: post.deal_type ?? null,
             isUpcoming: !!post.is_upcoming,
+            isSold: post.status === "sold",
             price: Number(inputs.purchasePrice ?? 0),
-            rent: Number(inputs.monthlyRent ?? 0),
+            rent,
             gdv: Number(inputs.gdv ?? 0),
             beds: inputs.beds != null ? Number(inputs.beds) : (inputs.rooms != null ? Number(inputs.rooms) : null),
+            roi,
+            cashflow,
+            region: regionFor(prop.name ?? ""),
             lat: prop.lat as number | null,
             lng: prop.lng as number | null,
             cover: post.cover_url ?? null,
@@ -136,12 +213,16 @@ function DealLocationPage() {
       if (minPrice != null && d.price < minPrice) return false;
       if (maxPrice != null && d.price > maxPrice) return false;
       if (minBeds != null && (d.beds == null || d.beds < minBeds)) return false;
-      if (status === "live" && d.isUpcoming) return false;
+      if (minRoi != null && (d.roi == null || d.roi < minRoi)) return false;
+      if (minCash != null && (d.cashflow == null || d.cashflow < minCash)) return false;
+      if (status === "live" && (d.isUpcoming || d.isSold)) return false;
       if (status === "upcoming" && !d.isUpcoming) return false;
+      if (status === "sold" && !d.isSold) return false;
       if (types.size > 0 && !types.has((d.dealType ?? "other") as DealTypeKey)) return false;
+      if (regions.size > 0 && (!d.region || !regions.has(d.region))) return false;
       return true;
     });
-  }, [deals, query, minPrice, maxPrice, minBeds, status, types]);
+  }, [deals, query, minPrice, maxPrice, minBeds, minRoi, minCash, status, types, regions]);
 
   const mappable = useMemo(() => filtered.filter((d) => d.lat != null && d.lng != null), [filtered]);
 
@@ -189,43 +270,44 @@ function DealLocationPage() {
   }, [mappable, selectedId]);
 
   const toggleType = (k: DealTypeKey) => {
-    setTypes((p) => { const n = new Set(p); n.has(k) ? n.delete(k) : n.add(k); return n; });
+    const next = new Set(types);
+    next.has(k) ? next.delete(k) : next.add(k);
+    setParam("types", Array.from(next));
   };
-
-  const reset = () => {
-    setQuery(""); setMinPrice(undefined); setMaxPrice(undefined);
-    setMinBeds(undefined); setStatus("all"); setTypes(new Set());
+  const toggleRegion = (k: RegionKey) => {
+    const next = new Set(regions);
+    next.has(k) ? next.delete(k) : next.add(k);
+    setParam("regions", Array.from(next));
   };
+  const reset = () => navigate({
+    search: { q: "", status: "all", types: [], regions: [], minPrice: undefined, maxPrice: undefined, minBeds: undefined, minRoi: undefined, minCash: undefined },
+    replace: true,
+  });
 
   return (
     <div className="min-h-[calc(100vh-49px)] bg-background">
       <div className="sticky top-0 z-10 border-b border-border bg-card/95 backdrop-blur">
-        <div className="mx-auto max-w-[1600px] px-4 py-3">
+        <div className="mx-auto max-w-[1600px] space-y-2 px-4 py-3">
+          {/* Row 1 — find a deal */}
           <div className="flex flex-wrap items-center gap-2">
             <Input
-              placeholder="Search deal name, town or postcode…"
+              placeholder="Search by deal name, town or postcode…"
               className="h-9 w-72"
-              value={query} onChange={(e) => setQuery(e.target.value)}
+              value={query}
+              onChange={(e) => setParam("q", e.target.value)}
             />
-            <NumInput placeholder="Min £" value={minPrice} onChange={setMinPrice} />
-            <NumInput placeholder="Max £" value={maxPrice} onChange={setMaxPrice} />
-            <NumInput placeholder="Min beds" value={minBeds} onChange={setMinBeds} className="w-24" />
-
             <Sep />
-            <span className="text-xs text-muted-foreground">Status:</span>
-            {(["all", "live", "upcoming"] as Status[]).map((s) => (
-              <Chip key={s} active={status === s} onClick={() => setStatus(s)}>{s}</Chip>
-            ))}
-
-            <Sep />
-            <span className="text-xs text-muted-foreground">Deal type:</span>
-            {DEAL_TYPES.map((t) => (
-              <Chip key={t.key} active={types.has(t.key)} onClick={() => toggleType(t.key)}>
-                <span className="mr-1 inline-block h-2 w-2 rounded-full align-middle" style={{ backgroundColor: t.color }} />
-                {t.label}
+            <span className="text-xs text-muted-foreground">Region:</span>
+            {REGIONS.map((r) => (
+              <Chip key={r.key} active={regions.has(r.key)} onClick={() => toggleRegion(r.key)}>
+                {r.label}
               </Chip>
             ))}
-
+            <Sep />
+            <span className="text-xs text-muted-foreground">Status:</span>
+            {(["all", "live", "upcoming", ...(hasSoldField ? ["sold" as const] : [])] as Status[]).map((s) => (
+              <Chip key={s} active={status === s} onClick={() => setParam("status", s)}>{s}</Chip>
+            ))}
             <div className="ml-auto flex items-center gap-3 text-xs">
               <span className="text-muted-foreground">
                 <b className="text-foreground">{filtered.length}</b> deal{filtered.length === 1 ? "" : "s"} · <b className="text-foreground">{mappable.length}</b> on map
@@ -233,6 +315,22 @@ function DealLocationPage() {
               <Link to="/feed"><Button size="sm" variant="outline" className="gap-1.5"><LayoutGrid className="h-3.5 w-3.5" /> Feed</Button></Link>
               <Button size="sm" variant="outline" onClick={reset}>Reset</Button>
             </div>
+          </div>
+          {/* Row 2 — refine */}
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs text-muted-foreground">Deal type:</span>
+            {DEAL_TYPES.map((t) => (
+              <Chip key={t.key} active={types.has(t.key)} onClick={() => toggleType(t.key)}>
+                <span className="mr-1 inline-block h-2 w-2 rounded-full align-middle" style={{ backgroundColor: t.color }} />
+                {t.label}
+              </Chip>
+            ))}
+            <Sep />
+            <NumInput placeholder="Min £" value={minPrice} onChange={(v) => setParam("minPrice", v)} />
+            <NumInput placeholder="Max £" value={maxPrice} onChange={(v) => setParam("maxPrice", v)} />
+            <NumInput placeholder="Min beds" value={minBeds} onChange={(v) => setParam("minBeds", v)} className="w-24" />
+            <NumInput placeholder="Min ROI %" value={minRoi} onChange={(v) => setParam("minRoi", v)} className="w-28" />
+            <NumInput placeholder="Min cashflow £/m" value={minCash} onChange={(v) => setParam("minCash", v)} className="w-36" />
           </div>
         </div>
       </div>
