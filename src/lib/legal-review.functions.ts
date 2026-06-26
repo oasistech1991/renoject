@@ -136,8 +136,6 @@ async function resolveUkSourceUrl(title: string): Promise<string | null> {
     const siteFilter = UK_SOURCE_SITES.map((s) => `site:${s}`).join(" OR ");
     const result = await fc.search(`${trimmed} (${siteFilter})`, {
       limit: 1,
-      lang: "en",
-      country: "gb",
     });
     const first =
       (result as { web?: Array<{ url?: string }> }).web?.[0]?.url ??
