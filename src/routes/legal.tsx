@@ -70,6 +70,34 @@ function LegalPage() {
   const [attachedTo, setAttachedTo] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const chatBottomRef = useRef<HTMLDivElement>(null);
+  const [isDragging, setIsDragging] = useState(false);
+
+  useEffect(() => {
+    const onDragOver = (e: DragEvent) => {
+      if (e.dataTransfer?.types?.includes("Files")) {
+        e.preventDefault();
+        setIsDragging(true);
+      }
+    };
+    const onDragLeave = (e: DragEvent) => {
+      if (e.relatedTarget === null) setIsDragging(false);
+    };
+    const onDrop = (e: DragEvent) => {
+      e.preventDefault();
+      setIsDragging(false);
+      const f = e.dataTransfer?.files?.[0];
+      if (f) onFile(f);
+    };
+    window.addEventListener("dragover", onDragOver);
+    window.addEventListener("dragleave", onDragLeave);
+    window.addEventListener("drop", onDrop);
+    return () => {
+      window.removeEventListener("dragover", onDragOver);
+      window.removeEventListener("dragleave", onDragLeave);
+      window.removeEventListener("drop", onDrop);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     chatBottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -162,7 +190,16 @@ function LegalPage() {
   };
 
   return (
-    <div className="mx-auto w-full max-w-6xl space-y-6 p-4 md:p-8">
+    <div className="relative mx-auto w-full max-w-6xl space-y-6 p-4 md:p-8">
+      {isDragging && (
+        <div className="pointer-events-none fixed inset-0 z-50 flex items-center justify-center bg-orange-500/10 backdrop-blur-sm">
+          <div className="rounded-2xl border-2 border-dashed border-orange-500 bg-background/95 px-10 py-8 text-center shadow-2xl">
+            <Upload className="mx-auto h-10 w-10 text-orange-500" />
+            <p className="mt-3 text-lg font-semibold">Drop PDF to review</p>
+            <p className="text-xs text-muted-foreground">Auto-uploads and analyses on drop</p>
+          </div>
+        </div>
+      )}
       <header className="space-y-2">
         <div className="flex items-center gap-2">
           <ScrollText className="h-6 w-6 text-orange-500" />
@@ -173,12 +210,29 @@ function LegalPage() {
         </p>
       </header>
 
-      <Card className="p-6">
+      <Card
+        className={`cursor-pointer border-2 border-dashed p-6 transition-colors ${
+          isDragging ? "border-orange-500 bg-orange-500/5" : "border-border hover:border-orange-500/50"
+        }`}
+        onClick={() => !loading && fileRef.current?.click()}
+        onDragOver={(e) => {
+          e.preventDefault();
+          setIsDragging(true);
+        }}
+        onDrop={(e) => {
+          e.preventDefault();
+          setIsDragging(false);
+          const f = e.dataTransfer?.files?.[0];
+          if (f) onFile(f);
+        }}
+      >
         <div className="flex flex-col items-center gap-3 text-center">
           <Upload className="h-8 w-8 text-muted-foreground" />
           <div>
             <p className="font-medium">{filename ?? "Upload a legal PDF"}</p>
-            <p className="text-xs text-muted-foreground">Max 15MB. Stored only in this session.</p>
+            <p className="text-xs text-muted-foreground">
+              Drag & drop a PDF anywhere, or click to choose. Max 15MB.
+            </p>
           </div>
           <Input
             ref={fileRef}
@@ -190,7 +244,13 @@ function LegalPage() {
               if (f) onFile(f);
             }}
           />
-          <Button onClick={() => fileRef.current?.click()} disabled={loading}>
+          <Button
+            onClick={(e) => {
+              e.stopPropagation();
+              fileRef.current?.click();
+            }}
+            disabled={loading}
+          >
             {loading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Reviewing…</> : "Choose PDF"}
           </Button>
         </div>
