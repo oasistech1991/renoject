@@ -17,7 +17,6 @@ import { Route as RefinanceRouteImport } from './routes/refinance'
 import { Route as PropertiesRouteImport } from './routes/properties'
 import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as PrivacyRouteImport } from './routes/privacy'
-import { Route as PortfolioTimelineRouteImport } from './routes/portfolio-timeline'
 import { Route as MessagesRouteImport } from './routes/messages'
 import { Route as MarketRouteImport } from './routes/market'
 import { Route as LegalRouteImport } from './routes/legal'
@@ -71,11 +70,6 @@ const ProfileRoute = ProfileRouteImport.update({
 const PrivacyRoute = PrivacyRouteImport.update({
   id: '/privacy',
   path: '/privacy',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PortfolioTimelineRoute = PortfolioTimelineRouteImport.update({
-  id: '/portfolio-timeline',
-  path: '/portfolio-timeline',
   getParentRoute: () => rootRouteImport,
 } as any)
 const MessagesRoute = MessagesRouteImport.update({
@@ -162,7 +156,6 @@ export interface FileRoutesByFullPath {
   '/legal': typeof LegalRoute
   '/market': typeof MarketRoute
   '/messages': typeof MessagesRoute
-  '/portfolio-timeline': typeof PortfolioTimelineRoute
   '/privacy': typeof PrivacyRoute
   '/profile': typeof ProfileRoute
   '/properties': typeof PropertiesRoute
@@ -187,7 +180,6 @@ export interface FileRoutesByTo {
   '/legal': typeof LegalRoute
   '/market': typeof MarketRoute
   '/messages': typeof MessagesRoute
-  '/portfolio-timeline': typeof PortfolioTimelineRoute
   '/privacy': typeof PrivacyRoute
   '/profile': typeof ProfileRoute
   '/properties': typeof PropertiesRoute
@@ -213,7 +205,6 @@ export interface FileRoutesById {
   '/legal': typeof LegalRoute
   '/market': typeof MarketRoute
   '/messages': typeof MessagesRoute
-  '/portfolio-timeline': typeof PortfolioTimelineRoute
   '/privacy': typeof PrivacyRoute
   '/profile': typeof ProfileRoute
   '/properties': typeof PropertiesRoute
@@ -240,7 +231,6 @@ export interface FileRouteTypes {
     | '/legal'
     | '/market'
     | '/messages'
-    | '/portfolio-timeline'
     | '/privacy'
     | '/profile'
     | '/properties'
@@ -265,7 +255,6 @@ export interface FileRouteTypes {
     | '/legal'
     | '/market'
     | '/messages'
-    | '/portfolio-timeline'
     | '/privacy'
     | '/profile'
     | '/properties'
@@ -290,7 +279,6 @@ export interface FileRouteTypes {
     | '/legal'
     | '/market'
     | '/messages'
-    | '/portfolio-timeline'
     | '/privacy'
     | '/profile'
     | '/properties'
@@ -316,7 +304,6 @@ export interface RootRouteChildren {
   LegalRoute: typeof LegalRoute
   MarketRoute: typeof MarketRoute
   MessagesRoute: typeof MessagesRoute
-  PortfolioTimelineRoute: typeof PortfolioTimelineRoute
   PrivacyRoute: typeof PrivacyRoute
   ProfileRoute: typeof ProfileRoute
   PropertiesRoute: typeof PropertiesRoute
@@ -385,13 +372,6 @@ declare module '@tanstack/react-router' {
       path: '/privacy'
       fullPath: '/privacy'
       preLoaderRoute: typeof PrivacyRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/portfolio-timeline': {
-      id: '/portfolio-timeline'
-      path: '/portfolio-timeline'
-      fullPath: '/portfolio-timeline'
-      preLoaderRoute: typeof PortfolioTimelineRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/messages': {
@@ -508,7 +488,6 @@ const rootRouteChildren: RootRouteChildren = {
   LegalRoute: LegalRoute,
   MarketRoute: MarketRoute,
   MessagesRoute: MessagesRoute,
-  PortfolioTimelineRoute: PortfolioTimelineRoute,
   PrivacyRoute: PrivacyRoute,
   ProfileRoute: ProfileRoute,
   PropertiesRoute: PropertiesRoute,
