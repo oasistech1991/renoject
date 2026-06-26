@@ -1,5 +1,4 @@
 import { createServerFn } from "@tanstack/react-start";
-import { compile } from "planscript";
 
 export const HMO_SYSTEM_PROMPT = `You are a UK HMO (Houses in Multiple Occupation) compliance expert. You analyse a property floorplan image plus property details and return STRUCTURED JSON ONLY (no prose around it) matching the requested schema.
 
@@ -96,148 +95,57 @@ export const generateUpdatedFloorplan = createServerFn({ method: "POST" })
     const apiKey = process.env.LOVABLE_API_KEY;
     if (!apiKey) throw new Error("LOVABLE_API_KEY not configured");
 
-    // Pipeline: Gemini emits PlanScript DSL → planscript compiles → deterministic SVG.
-    // We do NOT ask the model to draw pixels. It only emits structured DSL text,
-    // which the compiler turns into the same SVG every time for the same input.
-
     const roomLines = data.rooms
       .map((r, i) => `  ${i + 1}. ${r.label} — ${r.estimatedSqm.toFixed(1)} m²`)
       .join("\n");
     const reconfigLines = data.reconfiguration.length
       ? data.reconfiguration.map((r, i) => `  ${i + 1}. (${r.complexity}) ${r.change}`).join("\n")
       : "  (no structural changes)";
+    const totalArea =
+      data.totalFloorAreaSqm ??
+      Math.max(60, data.rooms.reduce((s, r) => s + r.estimatedSqm, 0) * 1.25);
 
-    const totalArea = data.totalFloorAreaSqm ?? Math.max(60, data.rooms.reduce((s, r) => s + r.estimatedSqm, 0) * 1.25);
-    // Default footprint: square root of total area, rounded to 0.5m.
-    const side = Math.max(6, Math.round(Math.sqrt(totalArea) * 2) / 2);
+    const prompt = `Redraw this UK floorplan as a clean, top-down 2D architectural schematic showing the "${data.scenarioLabel}" HMO scenario.
 
-    const PLANSCRIPT_CHEATSHEET = `PlanScript DSL — minimal syntax you MUST follow exactly.
+Total internal area ~${totalArea.toFixed(1)} m². Preserve the original building footprint and external walls.
 
-Top-level shape (always include these lines in this order):
-  units m
-  defaults { door_width 0.9 window_width 1.2 }
-  plan "TITLE" {
-    footprint rect (0,0) (W,H)
-    room ID { rect (x1,y1) (x2,y2) label "LABEL" }
-    ...
-    opening door dN { between roomA and roomB on shared_edge at 50% }
-    opening window wN { on roomID.edge SIDE at OFFSET }
-    assert no_overlap rooms
-    assert inside footprint all_rooms
-  }
-
-RULES:
-- Coordinates are metres, origin (0,0) at top-left, x grows right, y grows down.
-- Every room MUST be a single \`rect (x1,y1) (x2,y2)\` inside the footprint (no overlaps).
-- Room IDs are snake_case, unique, no spaces (e.g. bed_1, ensuite_1, kitchen_diner).
-- "label" is the human-readable name shown on the plan.
-- For each adjacent pair of rooms add ONE door between them on the shared_edge.
-- SIDE for windows is one of: north, south, east, west.
-- Do NOT invent any syntax not shown above. Do NOT add comments. Do NOT add furniture.
-- Output PURE PlanScript source, nothing else (no markdown fences, no prose).`;
-
-    const userText = `Generate a PlanScript floorplan for the "${data.scenarioLabel}" HMO scenario.
-
-Building footprint: ${side} m × ${side} m  (total internal area ~${totalArea.toFixed(1)} m²).
-Place all rooms inside this footprint with NO overlaps.
-
-Rooms to fit (use these labels exactly, size each rect so its area is close to the target sqm):
+Rooms to show (label each room clearly with its name and approximate sqm):
 ${roomLines}
 
-Reconfiguration intent (informational — turn into wall layout):
+Reconfiguration / wall changes to apply:
 ${reconfigLines}
 
-Return ONLY valid PlanScript source code following the cheatsheet.`;
+Style: black line drawing on white background, thick external walls, thinner internal walls, doors shown as arcs, windows as double lines on external walls, room labels in clean sans-serif. No furniture, no colours, no shading, no perspective — pure 2D plan view.`;
 
-    async function askForDSL(extraInstruction = ""): Promise<string> {
-      const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-        method: "POST",
-        headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-        body: JSON.stringify({
-          model: "google/gemini-2.5-flash",
-          messages: [
-            { role: "system", content: PLANSCRIPT_CHEATSHEET },
-            { role: "user", content: userText + (extraInstruction ? `\n\n${extraInstruction}` : "") },
-          ],
-          response_format: {
-            type: "json_schema",
-            json_schema: {
-              name: "planscript_output",
-              schema: {
-                type: "object",
-                properties: { planscript: { type: "string" } },
-                required: ["planscript"],
-                additionalProperties: false,
-              },
-            },
+    const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "google/gemini-2.5-flash-image",
+        messages: [
+          {
+            role: "user",
+            content: [
+              { type: "text", text: prompt },
+              { type: "image_url", image_url: { url: data.imageBase64 } },
+            ],
           },
-        }),
-      });
-      if (!res.ok) {
-        const body = await res.text();
-        if (res.status === 429) throw new Error("Rate limit reached. Please try again in a moment.");
-        if (res.status === 402) throw new Error("AI credits exhausted. Please top up Lovable AI usage.");
-        throw new Error(`AI request failed (${res.status}): ${body.slice(0, 200)}`);
-      }
-      const json = (await res.json()) as {
-        choices?: { message?: { content?: string } }[];
-      };
-      const raw = json.choices?.[0]?.message?.content ?? "";
-      try {
-        const parsed = JSON.parse(raw) as { planscript?: string };
-        if (parsed.planscript) return parsed.planscript;
-      } catch {
-        /* fall through */
-      }
-      return raw.replace(/```[a-z]*\n?/gi, "").replace(/```/g, "").trim();
+        ],
+        modalities: ["image", "text"],
+      }),
+    });
+    if (!res.ok) {
+      const body = await res.text();
+      if (res.status === 429) throw new Error("Rate limit reached. Please try again in a moment.");
+      if (res.status === 402) throw new Error("AI credits exhausted. Please top up Lovable AI usage.");
+      throw new Error(`AI request failed (${res.status}): ${body.slice(0, 200)}`);
     }
-
-    let dsl = await askForDSL();
-    let result = compile(dsl);
-    if (!result.success) {
-      const errMsg = result.errors?.map((e: any) => e.message ?? String(e)).join("; ") ?? "unknown error";
-      dsl = await askForDSL(`Your previous PlanScript failed to compile with these errors:\n${errMsg}\nReturn a corrected PlanScript that compiles cleanly.`);
-      result = compile(dsl);
-      if (!result.success) {
-        // Fallback: openings are the most common cause of grammar drift
-        // (e.g. `on bed_1.west at 2` instead of `on bed_1.edge west at 2`).
-        // Strip all opening lines and recompile — rooms + footprint still render.
-        const stripped = dsl
-          .split("\n")
-          .filter((l) => !/^\s*opening\b/.test(l))
-          .join("\n");
-        result = compile(stripped);
-        if (!result.success) {
-          // Last resort: render just the footprint + rooms from input data deterministically.
-          const w = side;
-          const h = side;
-          const cols = Math.ceil(Math.sqrt(data.rooms.length));
-          const rows = Math.ceil(data.rooms.length / cols);
-          const cw = w / cols;
-          const rh = h / rows;
-          const roomDsl = data.rooms
-            .map((r, i) => {
-              const cx = i % cols;
-              const cy = Math.floor(i / cols);
-              const id = `r_${i + 1}`;
-              const label = r.label.replace(/"/g, "'");
-              return `  room ${id} { rect (${(cx * cw).toFixed(2)},${(cy * rh).toFixed(2)}) (${((cx + 1) * cw).toFixed(2)},${((cy + 1) * rh).toFixed(2)}) label "${label}" }`;
-            })
-            .join("\n");
-          const fallbackDsl = `units m\nplan "${data.scenarioLabel}" {\n  footprint rect (0,0) (${w},${h})\n${roomDsl}\n}`;
-          result = compile(fallbackDsl);
-          if (!result.success) {
-            const e3 = result.errors?.map((e: any) => e.message ?? String(e)).join("; ") ?? "unknown error";
-            throw new Error(`Floorplan compile failed: ${e3}`);
-          }
-        }
-      }
-    }
-
-    const svg = result.svg ?? "";
-    if (!svg) throw new Error("Compiler produced no SVG.");
-    const base64 = Buffer.from(svg, "utf8").toString("base64");
-    return { imageBase64: `data:image/svg+xml;base64,${base64}` };
+    const json = (await res.json()) as {
+      choices?: { message?: { images?: { image_url?: { url?: string } }[] } }[];
+    };
+    const imageUrl = json.choices?.[0]?.message?.images?.[0]?.image_url?.url;
+    if (!imageUrl) throw new Error("AI did not return an image.");
+    return { imageBase64: imageUrl };
   });
 
 export interface RoomAssessment {
