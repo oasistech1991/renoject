@@ -1,0 +1,1 @@
+REVOKE EXECUTE ON FUNCTION public.crm_on_feed_post_insert() FROM PUBLIC, anon, authenticated;
