@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 const PdfInput = z.object({
   pdfBase64: z.string().min(1).max(20_000_000),
@@ -17,6 +18,28 @@ const ChatInput = z.object({
     )
     .min(1)
     .max(40),
+});
+
+const AttachInput = z.object({
+  propertyId: z.string().uuid(),
+  pdfBase64: z.string().min(1).max(20_000_000),
+  filename: z.string().min(1).max(255),
+  review: z.object({
+    documentType: z.string(),
+    summary: z.string(),
+    parties: z.array(z.string()),
+    keyTerms: z.array(z.object({ label: z.string(), value: z.string() })),
+    obligations: z.array(z.object({ party: z.string(), obligation: z.string() })),
+    redFlags: z.array(
+      z.object({
+        severity: z.enum(["high", "medium", "low"]),
+        clause: z.string(),
+        concern: z.string(),
+      })
+    ),
+    missingClauses: z.array(z.string()),
+    recommendedQuestions: z.array(z.string()),
+  }),
 });
 
 async function extractPdfText(pdfBase64: string): Promise<string> {
