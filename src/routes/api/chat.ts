@@ -24,7 +24,7 @@ You help with:
 - General UK property questions (SDLT, HMO licensing, Section 24, etc.)
 
 Key Renoject routes you can suggest with the navigate tool:
-/ (home), /refinance (BRRR calc), /properties (deals), /feed (client deal feed), /portfolio-timeline,
+/ (home), /refinance (BRRR calc), /properties (deals), /feed (client deal feed),
 /crm (sales/portfolio/projects/lettings/leads), /construction-timeline, /legal (legal PDF review),
 /hmo-compliance, /market (Rightmove search), /tradesmen, /messages, /profile, /forecast.
 
@@ -116,14 +116,8 @@ export const Route = createFileRoute("/api/chat")({
               "Get the user's portfolio capital settings, upcoming refinance entries and total free capital.",
             inputSchema: z.object({}),
             execute: async () => {
-              const [{ data: settings }, { data: entries }, { data: injections }] = await Promise.all([
+              const [{ data: settings }, { data: injections }] = await Promise.all([
                 supabase.from("portfolio_capital_settings").select("*").eq("user_id", userId).maybeSingle(),
-                supabase
-                  .from("portfolio_timeline_entries")
-                  .select("*")
-                  .eq("user_id", userId)
-                  .order("planned_refi_date", { ascending: true })
-                  .limit(50),
                 supabase
                   .from("portfolio_capital_injections")
                   .select("amount,date,label")
@@ -133,13 +127,6 @@ export const Route = createFileRoute("/api/chat")({
               return {
                 startingCapital: (settings as any)?.starting_capital ?? 0,
                 injections: injections ?? [],
-                upcomingRefinances: (entries ?? []).map((e: any) => ({
-                  id: e.id,
-                  property: e.property_label,
-                  refiDate: e.planned_refi_date,
-                  cashOut: e.expected_cash_out,
-                  stage: e.stage,
-                })),
               };
             },
           }),
