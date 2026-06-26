@@ -50,6 +50,38 @@ async function extractPdfText(pdfBase64: string): Promise<string> {
   return (Array.isArray(text) ? text.join("\n") : text).slice(0, 180_000);
 }
 
+async function ocrPdfWithGemini(pdfBase64: string, apiKey: string): Promise<string> {
+  const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
+    body: JSON.stringify({
+      model: "google/gemini-2.5-flash",
+      messages: [
+        {
+          role: "user",
+          content: [
+            {
+              type: "text",
+              text: "Extract ALL text from this PDF document, preserving structure (headings, clauses, tables). Return only the extracted text, no commentary.",
+            },
+            {
+              type: "file",
+              file: {
+                filename: "document.pdf",
+                file_data: `data:application/pdf;base64,${pdfBase64}`,
+              },
+            },
+          ],
+        },
+      ],
+    }),
+  });
+  if (!res.ok) throw gatewayError(res.status, await res.text());
+  const json = await res.json();
+  const text = json?.choices?.[0]?.message?.content;
+  return typeof text === "string" ? text.slice(0, 180_000) : "";
+}
+
 function gatewayError(status: number, body: string): Error {
   if (status === 429) return new Error("AI rate limit reached, try again shortly.");
   if (status === 402) return new Error("AI credits exhausted. Add credits in Lovable Cloud.");
@@ -77,9 +109,21 @@ export const analyzeLegalPdf = createServerFn({ method: "POST" })
     const apiKey = process.env.LOVABLE_API_KEY;
     if (!apiKey) throw new Error("AI gateway not configured");
 
-    const documentText = await extractPdfText(data.pdfBase64);
+    let documentText = await extractPdfText(data.pdfBase64);
+    if (documentText.replace(/\s+/g, " ").trim().length < 50) {
+      // Likely a scanned/image PDF — fall back to Gemini OCR.
+      try {
+        documentText = await ocrPdfWithGemini(data.pdfBase64, apiKey);
+      } catch (e) {
+        return {
+          documentText: "",
+          review: null,
+          warning: `OCR failed: ${e instanceof Error ? e.message : "unknown error"}`,
+        };
+      }
+    }
     if (!documentText.trim()) {
-      return { documentText: "", review: null, warning: "No text could be read from this PDF." };
+      return { documentText: "", review: null, warning: "No text could be read from this PDF, even with OCR." };
     }
 
     const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
