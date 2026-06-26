@@ -71,7 +71,7 @@ function ProfilePage() {
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [tab, setTab] = useState<"about" | "activity" | "saved" | "preferences">("about");
+  const [tab, setTab] = useState<"about" | "progress" | "activity" | "saved" | "preferences">("about");
   const [activity, setActivity] = useState<ActivityItem[]>([]);
   const [saved, setSaved] = useState<SavedDeal[]>([]);
 
@@ -289,6 +289,7 @@ function ProfilePage() {
         <div className="mt-6 flex gap-1 border-b border-border">
           {([
             ["about", "About"],
+            ["progress", "Progress"],
             ["activity", "Activity"],
             ["saved", "Saved"],
             ["preferences", "Preferences"],
@@ -305,6 +306,7 @@ function ProfilePage() {
 
         <div className="mt-6">
           {tab === "about" && <AboutTab profile={profile} editing={editing} setProfile={setProfile} />}
+          {tab === "progress" && <ProgressTab userId={userId} />}
           {tab === "activity" && <ActivityTab items={activity} />}
           {tab === "saved" && <SavedTab items={saved} />}
           {tab === "preferences" && <PreferencesTab profile={profile} setProfile={setProfile} userId={userId} />}
