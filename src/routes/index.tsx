@@ -12,7 +12,17 @@ import {
   Wrench,
   Wallet,
   Users,
+  Briefcase,
+  ListChecks,
+  TrendingUp,
+  Activity,
 } from "lucide-react";
+import {
+  PROJECT_STAGES,
+  PROJECT_STAGE_LABEL,
+  PROJECT_STAGE_COLOR,
+  type ProjectStage,
+} from "@/components/crm/property/types";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -43,50 +53,14 @@ const tools: Array<{ to: string; title: string; desc: string; icon: typeof Calcu
 function Index() {
   return (
     <div className="px-6 py-8 lg:px-10 lg:py-10 max-w-7xl mx-auto w-full">
+      <TeamDashboard />
       <AdminCashPipeline />
-      {/* Hero workspace panel */}
-      <section className="mb-10 rounded-2xl border border-border bg-card/40 p-8 lg:p-10">
-        <div className="max-w-3xl">
-          <div className="inline-flex items-center gap-2 rounded-full border border-muted bg-background/40 px-3 py-1 mb-6">
-            <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground animate-pulse" />
-            <span className="text-[10px] font-bold uppercase tracking-widest text-foreground">
-              Renoject
-            </span>
-          </div>
-          <h1 className="font-display text-4xl lg:text-5xl font-bold text-foreground leading-[1.1] mb-6">
-            The complete toolkit for{" "}
-            <span className="text-muted-foreground">serious</span> UK property investors.
-          </h1>
-          <p className="text-lg text-muted-foreground leading-relaxed mb-8">
-            Underwrite deals, check HMO compliance, estimate refurb costs and find tradesmen —
-            all in one workspace, for £1/month.
-          </p>
-          <div className="flex flex-wrap gap-3">
-            <Link
-              to="/refinance"
-              search={{}}
-              className="inline-flex items-center gap-2 rounded-lg bg-primary px-6 py-3 text-sm font-bold text-primary-foreground transition-all hover:opacity-90"
-            >
-              Open Property Calculator
-              <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
-              </svg>
-            </Link>
-            <Link
-              to="/market"
-              className="inline-flex items-center rounded-lg border border-muted px-6 py-3 text-sm font-bold text-foreground transition-all hover:bg-accent"
-            >
-              Browse Market
-            </Link>
-          </div>
-        </div>
-      </section>
 
       {/* Tools grid */}
       <section>
         <div className="mb-6 flex items-end justify-between">
           <div>
-            <h2 className="font-display text-xl font-bold text-foreground mb-1">Explore the tools</h2>
+            <h2 className="font-display text-xl font-bold text-foreground mb-1">Workspace tools</h2>
             <p className="text-sm text-muted-foreground">Jump straight into any workflow.</p>
           </div>
         </div>
