@@ -35,6 +35,7 @@ import {
   MessageSquare,
   Briefcase,
   HardHat,
+  ScrollText,
 } from "lucide-react";
 
 function NotFoundComponent() {
@@ -339,6 +340,7 @@ const TOOL_ITEMS: Array<{ to: string; label: string; icon: typeof Home }> = [
   { to: "/messages", label: "Messages", icon: MessageSquare },
   { to: "/crm", label: "Team CRM", icon: Briefcase },
   { to: "/hmo-compliance", label: "HMO Compliance", icon: ShieldCheck },
+  { to: "/legal", label: "Legal Review", icon: ScrollText },
   { to: "/tradesmen", label: "Tradesmen", icon: Wrench },
   { to: "/tokenize", label: "Tokenize", icon: Coins },
 ];
