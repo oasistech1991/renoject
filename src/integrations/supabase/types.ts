@@ -214,8 +214,71 @@ export type Database = {
           },
         ]
       }
+      construction_progress_comments: {
+        Row: {
+          author_id: string
+          body: string
+          created_at: string
+          daily_log_id: string | null
+          id: string
+          phase_id: string | null
+          schedule_id: string
+          task_id: string | null
+        }
+        Insert: {
+          author_id: string
+          body: string
+          created_at?: string
+          daily_log_id?: string | null
+          id?: string
+          phase_id?: string | null
+          schedule_id: string
+          task_id?: string | null
+        }
+        Update: {
+          author_id?: string
+          body?: string
+          created_at?: string
+          daily_log_id?: string | null
+          id?: string
+          phase_id?: string | null
+          schedule_id?: string
+          task_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "construction_progress_comments_daily_log_id_fkey"
+            columns: ["daily_log_id"]
+            isOneToOne: false
+            referencedRelation: "construction_daily_logs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "construction_progress_comments_phase_id_fkey"
+            columns: ["phase_id"]
+            isOneToOne: false
+            referencedRelation: "construction_phases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "construction_progress_comments_schedule_id_fkey"
+            columns: ["schedule_id"]
+            isOneToOne: false
+            referencedRelation: "construction_schedules"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "construction_progress_comments_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "construction_tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       construction_schedules: {
         Row: {
+          client_id: string | null
           colour_palette: Json
           created_at: string
           id: string
@@ -231,6 +294,7 @@ export type Database = {
           working_days: number[]
         }
         Insert: {
+          client_id?: string | null
           colour_palette?: Json
           created_at?: string
           id?: string
@@ -246,6 +310,7 @@ export type Database = {
           working_days?: number[]
         }
         Update: {
+          client_id?: string | null
           colour_palette?: Json
           created_at?: string
           id?: string
