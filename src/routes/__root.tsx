@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Toaster } from "@/components/ui/sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { CopilotFab } from "@/components/copilot/CopilotFab";
+import { OnboardingTour } from "@/components/OnboardingTour";
 import type { Session } from "@supabase/supabase-js";
 import {
   Loader2,
@@ -263,6 +264,7 @@ function AuthGate() {
       </AppShell>
       <Toaster />
       <CopilotFab />
+      <OnboardingTour />
     </>
   );
 }
