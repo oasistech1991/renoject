@@ -43,7 +43,7 @@ export const Route = createFileRoute("/")({
 const tools: Array<{ to: string; title: string; desc: string; icon: typeof Calculator; free?: boolean }> = [
   { to: "/refinance", title: "Property Calculator", desc: "Model BTL, BRRR, mortgage and cash purchases in one place.", icon: Calculator, free: true },
   { to: "/condition", title: "Renovation Calculator", desc: "Estimate refurb costs room-by-room with current UK rates.", icon: Hammer },
-  { to: "/market", title: "Market Search", desc: "Find live deals matched to your investment criteria.", icon: Search },
+  { to: "/market", title: "Deal Locations", desc: "Browse Renoject deals on an interactive map with filters.", icon: Search },
   { to: "/properties", title: "View Deals", desc: "Curated property opportunities ready to underwrite.", icon: Building2 },
   { to: "/forecast", title: "Forecast", desc: "Project long-term cashflow, equity and yield trajectories.", icon: LineChart },
   { to: "/hmo-compliance", title: "HMO Compliance", desc: "Check floorplans against UK HMO licensing rules.", icon: ShieldCheck },
