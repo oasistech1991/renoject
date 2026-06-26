@@ -10,7 +10,6 @@ import {
   Building2,
   ShieldCheck,
   Wrench,
-  Coins,
   Wallet,
   Users,
 } from "lucide-react";

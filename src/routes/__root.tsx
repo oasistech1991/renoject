@@ -29,7 +29,6 @@ import {
   Search,
   LineChart,
   Wrench,
-  Coins,
   UserCircle,
   Users,
   User,
