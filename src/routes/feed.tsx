@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { fmtGBP, fmtPct } from "@/lib/btl";
+import { ShareToWhatsAppButton } from "@/components/feed/ShareToWhatsAppButton";
 import {
   REACTION_EMOJI,
   HIDABLE_FIELDS,
@@ -101,6 +102,20 @@ function FeedPage() {
   const [profiles, setProfiles] = useState<Record<string, Profile>>({});
   const [loading, setLoading] = useState(true);
   const [openPostId, setOpenPostId] = useState<string | null>(null);
+
+  // Track inbound WhatsApp share clicks (?src=wa&c=<linkId>)
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("src") !== "wa") return;
+    const linkId = params.get("c");
+    if (!linkId) return;
+    fetch("/api/public/track-share-click", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ linkId }),
+    }).catch(() => {});
+  }, []);
 
   useEffect(() => {
     supabase.auth.getUser().then(async ({ data }) => {
@@ -397,6 +412,7 @@ function FeedPage() {
                 post={p}
                 profile={profiles[p.author_id]}
                 userId={userId}
+                isAdmin={isAdmin}
                 onReact={toggleReact}
                 onSave={toggleSave}
                 onInterest={expressInterest}
