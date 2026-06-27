@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { fmtGBP, fmtPct } from "@/lib/btl";
+import { ShareToWhatsAppButton } from "@/components/feed/ShareToWhatsAppButton";
 import {
   REACTION_EMOJI,
   HIDABLE_FIELDS,
@@ -101,6 +102,20 @@ function FeedPage() {
   const [profiles, setProfiles] = useState<Record<string, Profile>>({});
   const [loading, setLoading] = useState(true);
   const [openPostId, setOpenPostId] = useState<string | null>(null);
+
+  // Track inbound WhatsApp share clicks (?src=wa&c=<linkId>)
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("src") !== "wa") return;
+    const linkId = params.get("c");
+    if (!linkId) return;
+    fetch("/api/public/track-share-click", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ linkId }),
+    }).catch(() => {});
+  }, []);
 
   useEffect(() => {
     supabase.auth.getUser().then(async ({ data }) => {
@@ -397,6 +412,7 @@ function FeedPage() {
                 post={p}
                 profile={profiles[p.author_id]}
                 userId={userId}
+                isAdmin={isAdmin}
                 onReact={toggleReact}
                 onSave={toggleSave}
                 onInterest={expressInterest}
@@ -452,6 +468,7 @@ function PostCard({
   post,
   profile,
   userId,
+  isAdmin,
   onReact,
   onSave,
   onInterest,
@@ -462,6 +479,7 @@ function PostCard({
   post: FeedPost;
   profile?: Profile;
   userId: string;
+  isAdmin?: boolean;
   onReact: (id: string, kind: ReactionKind) => void;
   onSave: (id: string) => void;
   onInterest: (id: string) => void;
@@ -565,6 +583,20 @@ function PostCard({
             <Button variant="ghost" size="icon" onClick={() => onSave(post.id)} title="Save">
               <Bookmark className={`h-4 w-4 ${post.saved ? "fill-current text-primary" : ""}`} />
             </Button>
+            {isAdmin && (
+              <ShareToWhatsAppButton
+                post={{
+                  id: post.id,
+                  caption: post.caption,
+                  deal_type: post.deal_type,
+                  hidden_fields: post.hidden_fields as string[],
+                  property: post.property
+                    ? { name: post.property.name, inputs: post.property.inputs, metrics: post.property.metrics }
+                    : null,
+                }}
+                userId={userId}
+              />
+            )}
             <Button variant="ghost" size="icon" onClick={() => onShare(post.id)} title="Share">
               <Share2 className="h-4 w-4" />
             </Button>

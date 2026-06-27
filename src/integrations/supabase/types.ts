@@ -33,6 +33,9 @@ export type Database = {
           preferred_deal_types: string[]
           updated_at: string
           user_id: string
+          whatsapp_business_number: string | null
+          whatsapp_number: string | null
+          whatsapp_opt_in: boolean
         }
         Insert: {
           available_capital?: number | null
@@ -52,6 +55,9 @@ export type Database = {
           preferred_deal_types?: string[]
           updated_at?: string
           user_id: string
+          whatsapp_business_number?: string | null
+          whatsapp_number?: string | null
+          whatsapp_opt_in?: boolean
         }
         Update: {
           available_capital?: number | null
@@ -71,6 +77,9 @@ export type Database = {
           preferred_deal_types?: string[]
           updated_at?: string
           user_id?: string
+          whatsapp_business_number?: string | null
+          whatsapp_number?: string | null
+          whatsapp_opt_in?: boolean
         }
         Relationships: []
       }
@@ -1620,6 +1629,41 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "feed_saves_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "feed_posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      feed_share_links: {
+        Row: {
+          channel: string
+          click_count: number
+          created_at: string
+          created_by: string | null
+          id: string
+          post_id: string
+        }
+        Insert: {
+          channel?: string
+          click_count?: number
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          post_id: string
+        }
+        Update: {
+          channel?: string
+          click_count?: number
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          post_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "feed_share_links_post_id_fkey"
             columns: ["post_id"]
             isOneToOne: false
             referencedRelation: "feed_posts"

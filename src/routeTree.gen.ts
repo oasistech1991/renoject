@@ -31,6 +31,7 @@ import { Route as AccountRouteImport } from './routes/account'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as FeedMapRouteImport } from './routes/feed_.map'
 import { Route as ApiChatRouteImport } from './routes/api/chat'
+import { Route as ApiPublicTrackShareClickRouteImport } from './routes/api/public/track-share-click'
 
 const TradesmenRoute = TradesmenRouteImport.update({
   id: '/tradesmen',
@@ -142,6 +143,12 @@ const ApiChatRoute = ApiChatRouteImport.update({
   path: '/api/chat',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicTrackShareClickRoute =
+  ApiPublicTrackShareClickRouteImport.update({
+    id: '/api/public/track-share-click',
+    path: '/api/public/track-share-click',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -166,6 +173,7 @@ export interface FileRoutesByFullPath {
   '/tradesmen': typeof TradesmenRoute
   '/api/chat': typeof ApiChatRoute
   '/feed/map': typeof FeedMapRoute
+  '/api/public/track-share-click': typeof ApiPublicTrackShareClickRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -190,6 +198,7 @@ export interface FileRoutesByTo {
   '/tradesmen': typeof TradesmenRoute
   '/api/chat': typeof ApiChatRoute
   '/feed/map': typeof FeedMapRoute
+  '/api/public/track-share-click': typeof ApiPublicTrackShareClickRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -215,6 +224,7 @@ export interface FileRoutesById {
   '/tradesmen': typeof TradesmenRoute
   '/api/chat': typeof ApiChatRoute
   '/feed_/map': typeof FeedMapRoute
+  '/api/public/track-share-click': typeof ApiPublicTrackShareClickRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -241,6 +251,7 @@ export interface FileRouteTypes {
     | '/tradesmen'
     | '/api/chat'
     | '/feed/map'
+    | '/api/public/track-share-click'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -265,6 +276,7 @@ export interface FileRouteTypes {
     | '/tradesmen'
     | '/api/chat'
     | '/feed/map'
+    | '/api/public/track-share-click'
   id:
     | '__root__'
     | '/'
@@ -289,6 +301,7 @@ export interface FileRouteTypes {
     | '/tradesmen'
     | '/api/chat'
     | '/feed_/map'
+    | '/api/public/track-share-click'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -314,6 +327,7 @@ export interface RootRouteChildren {
   TradesmenRoute: typeof TradesmenRoute
   ApiChatRoute: typeof ApiChatRoute
   FeedMapRoute: typeof FeedMapRoute
+  ApiPublicTrackShareClickRoute: typeof ApiPublicTrackShareClickRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -472,6 +486,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiChatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/track-share-click': {
+      id: '/api/public/track-share-click'
+      path: '/api/public/track-share-click'
+      fullPath: '/api/public/track-share-click'
+      preLoaderRoute: typeof ApiPublicTrackShareClickRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -498,17 +519,8 @@ const rootRouteChildren: RootRouteChildren = {
   TradesmenRoute: TradesmenRoute,
   ApiChatRoute: ApiChatRoute,
   FeedMapRoute: FeedMapRoute,
+  ApiPublicTrackShareClickRoute: ApiPublicTrackShareClickRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
