@@ -355,6 +355,37 @@ function AboutTab({ profile, editing, setProfile }: { profile: Profile; editing:
                 <Textarea rows={2} placeholder="e.g. £50k cash + £25k available on personal credit line in 30 days." value={profile.capital_notes ?? ""} onChange={(e) => setProfile((p) => ({ ...p, capital_notes: e.target.value }))} />
               </Field>
             </div>
+            <div className="rounded-lg border border-[#25D366]/40 bg-[#25D366]/5 p-3">
+              <div className="mb-2 text-xs font-semibold uppercase tracking-wider text-[#1ea952]">WhatsApp</div>
+              <p className="mb-2 text-xs text-muted-foreground">
+                Optional — share your WhatsApp number to get deal alerts there.
+              </p>
+              <Field label="My WhatsApp number">
+                <Input
+                  placeholder="+44 7700 900123"
+                  value={profile.whatsapp_number ?? ""}
+                  onChange={(e) => setProfile((p) => ({ ...p, whatsapp_number: e.target.value || null }))}
+                />
+              </Field>
+              <label className="mt-2 flex items-center gap-2 text-xs">
+                <input
+                  type="checkbox"
+                  checked={profile.whatsapp_opt_in}
+                  onChange={(e) => setProfile((p) => ({ ...p, whatsapp_opt_in: e.target.checked }))}
+                />
+                Send me new deals matching my criteria on WhatsApp
+              </label>
+              <Field label="Business WhatsApp number (admin / team broadcast)">
+                <Input
+                  placeholder="+44 7700 900999"
+                  value={profile.whatsapp_business_number ?? ""}
+                  onChange={(e) => setProfile((p) => ({ ...p, whatsapp_business_number: e.target.value || null }))}
+                />
+              </Field>
+              <p className="mt-1 text-[11px] text-muted-foreground">
+                Used to pre-fill the WhatsApp "Share to channel" button on feed cards.
+              </p>
+            </div>
           </div>
         ) : (
           <div className="space-y-3 text-sm">
