@@ -468,6 +468,7 @@ function PostCard({
   post,
   profile,
   userId,
+  isAdmin,
   onReact,
   onSave,
   onInterest,
@@ -478,6 +479,7 @@ function PostCard({
   post: FeedPost;
   profile?: Profile;
   userId: string;
+  isAdmin?: boolean;
   onReact: (id: string, kind: ReactionKind) => void;
   onSave: (id: string) => void;
   onInterest: (id: string) => void;
@@ -581,6 +583,20 @@ function PostCard({
             <Button variant="ghost" size="icon" onClick={() => onSave(post.id)} title="Save">
               <Bookmark className={`h-4 w-4 ${post.saved ? "fill-current text-primary" : ""}`} />
             </Button>
+            {isAdmin && (
+              <ShareToWhatsAppButton
+                post={{
+                  id: post.id,
+                  caption: post.caption,
+                  deal_type: post.deal_type,
+                  hidden_fields: post.hidden_fields as string[],
+                  property: post.property
+                    ? { name: post.property.name, inputs: post.property.inputs, metrics: post.property.metrics }
+                    : null,
+                }}
+                userId={userId}
+              />
+            )}
             <Button variant="ghost" size="icon" onClick={() => onShare(post.id)} title="Share">
               <Share2 className="h-4 w-4" />
             </Button>
