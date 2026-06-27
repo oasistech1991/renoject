@@ -39,6 +39,9 @@ type Profile = {
   available_capital: number | null;
   capital_notes: string | null;
   capital_updated_at: string | null;
+  whatsapp_number: string | null;
+  whatsapp_opt_in: boolean;
+  whatsapp_business_number: string | null;
 };
 
 const EMPTY: Profile = {
@@ -46,6 +49,7 @@ const EMPTY: Profile = {
   headline: "", bio: "", location: "", investor_type: "",
   preferred_areas: [], preferred_deal_types: [], budget_min: null, budget_max: null,
   available_capital: null, capital_notes: null, capital_updated_at: null,
+  whatsapp_number: null, whatsapp_opt_in: false, whatsapp_business_number: null,
 };
 
 type ActivityItem = {
@@ -210,6 +214,9 @@ function ProfilePage() {
       available_capital: profile.available_capital,
       capital_notes: profile.capital_notes,
       capital_updated_at: capitalChanged ? new Date().toISOString() : profile.capital_updated_at,
+      whatsapp_number: profile.whatsapp_number,
+      whatsapp_opt_in: profile.whatsapp_opt_in,
+      whatsapp_business_number: profile.whatsapp_business_number,
     });
     setSaving(false);
     if (error) toast.error(error.message);
