@@ -74,7 +74,7 @@ export function HomeBoard({ onJump }: { onJump: (key: string) => void }) {
           })}
           {expiringSoon.length === 0 && <Empty>Nothing expiring soon.</Empty>}
         </Tile>
-        <Tile title="Cash health" count={null}>
+        <Tile title="Cash health" count={null} onClick={() => onJump("rent")}>
           <Row left="Monthly rent roll" right={fmtGBP(monthlyRent)} />
           <Row left="Arrears" right={fmtGBP(arrears)} danger={arrears > 0} />
           <Row left="Vacant units" right={units.filter((u) => u.status === "vacant").length.toString()} />
@@ -98,10 +98,17 @@ function Kpi({ icon, label, value, danger }: { icon: React.ReactNode; label: str
 function Tile({ title, count, children, onClick }: { title: string; count: number | null; children: React.ReactNode; onClick?: () => void }) {
   return (
     <Card className="p-4">
-      <button onClick={onClick} className="mb-2 flex w-full items-center justify-between text-left">
-        <span className="text-sm font-semibold text-foreground">{title}</span>
-        {count !== null && <Badge variant="outline">{count}</Badge>}
-      </button>
+      {onClick ? (
+        <button onClick={onClick} className="mb-2 flex w-full items-center justify-between text-left hover:opacity-80">
+          <span className="text-sm font-semibold text-foreground">{title}</span>
+          {count !== null && <Badge variant="outline">{count}</Badge>}
+        </button>
+      ) : (
+        <div className="mb-2 flex w-full items-center justify-between">
+          <span className="text-sm font-semibold text-foreground">{title}</span>
+          {count !== null && <Badge variant="outline">{count}</Badge>}
+        </div>
+      )}
       <div className="space-y-1">{children}</div>
     </Card>
   );
